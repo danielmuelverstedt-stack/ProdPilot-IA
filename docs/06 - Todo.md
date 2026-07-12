@@ -1,0 +1,36 @@
+# Backlog — ProdPilot IA
+
+Les cases cochées correspondent uniquement à un travail effectivement présent et relu dans le dépôt au 12/07/2026. L’ordre à l’intérieur de chaque section indique la priorité pratique ; il ne constitue pas un calendrier.
+
+## Maintenant
+
+- [x] Finaliser la documentation initiale du projet.
+- [ ] Créer le shell de « Mon Espace » avec ses états vide, chargement et erreur.
+- [ ] Créer la barre latérale et la navigation responsive et accessible.
+- [ ] Définir l’architecture de connexion Gmail côté serveur.
+- [ ] Créer une interface simulée pour les e-mails, clairement signalée comme telle.
+- [ ] Configurer Google OAuth avec les portées minimales.
+- [ ] Lister les messages Gmail récents.
+- [ ] Créer les résumés d’e-mails avec l’IA et afficher leur provenance.
+- [ ] Générer des brouillons Gmail modifiables avec confirmation explicite avant envoi.
+
+## Ensuite
+
+- [ ] Valider le besoin puis intégrer Supabase pour l’authentification et/ou la persistance.
+- [ ] Créer l’import ERP CSV/Excel sécurisé.
+- [ ] Créer le mappage interactif des colonnes et les modèles réutilisables.
+- [ ] Conserver les imports bruts, immuables et traçables.
+- [ ] Créer les contrôles de qualité et le rapport d’anomalies.
+- [ ] Transformer les imports validés en OF nettoyés liés à leur source.
+- [ ] Générer le planning machines à partir des données ERP nettoyées.
+- [ ] Détecter les conflits et permettre des ajustements tracés.
+- [ ] Créer les plannings imprimables par machine avec date et version.
+
+## Plus tard
+
+- [ ] Améliorer le QRQC et l’analyse des problèmes récurrents.
+- [ ] Structurer les réunions de production et leurs comptes rendus.
+- [ ] Développer le suivi des machines et la planification légère de maintenance.
+- [ ] Créer le centre de demandes internes.
+- [ ] Ajouter des commandes IA avancées, multi-sources et confirmées.
+- [ ] Préparer puis déployer le mode SaaS multi-entreprise avec isolation vérifiée.

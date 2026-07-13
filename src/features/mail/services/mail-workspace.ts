@@ -6,8 +6,12 @@ import type { MailMessage } from "@/features/mail/types/mail";
 export async function getMailWorkspaceMessages(): Promise<MailMessage[]> {
   const messageGroups = await Promise.all(
     getMailProviders().map(async (provider) => {
-      const status = await provider.getConnectionStatus();
-      return status.state === "connected" ? provider.listMessages() : [];
+      try {
+        const status = await provider.getConnectionStatus();
+        return status.state === "connected" ? provider.listMessages() : [];
+      } catch {
+        return [];
+      }
     }),
   );
 

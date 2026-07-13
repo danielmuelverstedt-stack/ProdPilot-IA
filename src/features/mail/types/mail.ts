@@ -13,7 +13,8 @@ export type MailPriority = "high" | "normal" | "low";
 export type MailConnectionState =
   | "connected"
   | "disconnected"
-  | "unavailable";
+  | "unavailable"
+  | "error";
 
 export interface MailAddress {
   name?: string;
@@ -80,6 +81,7 @@ export interface MailDraft {
   createdAt: string;
   updatedAt: string;
   status: "draft";
+  threadId?: string;
 }
 
 export interface CreateMailDraftInput {
@@ -89,6 +91,7 @@ export interface CreateMailDraftInput {
   subject: string;
   bodyText: string;
   replyToMessageId?: string;
+  replyToThreadId?: string;
 }
 
 export interface ListMessagesOptions {
@@ -103,6 +106,8 @@ export interface MailConnectionStatus {
   state: MailConnectionState;
   emailAddress: string | null;
   connectedAt: string | null;
+  lastSuccessfulSyncAt?: string | null;
+  error?: string | null;
 }
 
 export interface MailConnectionSummary extends MailConnectionStatus {

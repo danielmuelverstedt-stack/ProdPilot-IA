@@ -6,6 +6,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ### Ajouté — 13/07/2026
 
+- Flux Google OAuth 2.0 côté serveur avec contrôle d’état, restriction du compte autorisé, renouvellement des jetons et déconnexion.
+- Routes serveur pour l’état Gmail, la liste, le détail des messages et la création confirmée de brouillons.
+- Lecture des messages Gmail reçus depuis la veille avec expéditeur, destinataires, corps texte sûr, état de lecture et métadonnées de pièces jointes.
+- Dépôt de jetons abstrait avec stockage local réservé au développement et exclu de Git.
+- États de chargement, connexion requise, erreur, liste vide et fallback de démonstration explicite dans l’espace Mails.
+- Guide `docs/09 - Google Mail Setup.md` pour la configuration Google Cloud et les tests locaux.
+
 - Audit complet du prototype historique et plan de migration dans `docs/08 - Legacy Migration.md`.
 - Centre de réglages en dix catégories avec navigation détaillée de Personnalisation.
 - Designers configurables du menu principal et des cartes de Mon Espace.
@@ -29,6 +36,10 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 - Route serveur générique pour consulter, connecter et déconnecter les fournisseurs simulés.
 
 ### Modifié — 13/07/2026
+
+- Fournisseur Google Workspace simulé remplacé par l’adaptateur Gmail API officiel, sans modifier le contrat fournisseur ni le placeholder Microsoft 365.
+- Écran des connexions enrichi avec l’adresse connectée, la dernière synchronisation et les erreurs de connexion.
+- Préparation de réponse reliée à la création d’un brouillon Gmail après validation explicite ; aucun envoi direct ajouté.
 
 - Identité visuelle alignée sur le prototype historique : sidebar bleu nuit, surfaces claires, cartes compactes et tokens de thème.
 - Shell applicatif rendu configurable, repliable et adapté aux écrans mobiles.

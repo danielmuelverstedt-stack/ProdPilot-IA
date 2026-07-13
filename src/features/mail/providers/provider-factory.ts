@@ -1,6 +1,6 @@
 import "server-only";
 
-import { MockGoogleMailProvider } from "@/features/mail/providers/google/mock-google-mail-provider";
+import { GoogleMailProvider } from "@/features/mail/providers/google/google-mail-provider";
 import { MicrosoftMailProvider } from "@/features/mail/providers/microsoft/microsoft-mail-provider";
 import type { MailProvider } from "@/features/mail/services/mail-provider";
 import type {
@@ -9,7 +9,7 @@ import type {
 } from "@/features/mail/types/mail";
 
 const providers: Record<MailProviderType, MailProvider> = {
-  google: new MockGoogleMailProvider(),
+  google: new GoogleMailProvider(),
   microsoft: new MicrosoftMailProvider(),
 };
 

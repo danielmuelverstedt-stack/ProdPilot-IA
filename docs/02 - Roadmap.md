@@ -9,7 +9,7 @@
 
 ## État actuel
 
-Le dépôt contient le socle généré par Create Next App avec Next.js 16.2.10, React 19, TypeScript en mode strict et Tailwind CSS 4. Git et le dépôt distant sont configurés. La documentation produit et technique initiale est créée. L’App Router est organisé sous `src/app`. « Mon Espace » propose un shell responsive, six cartes métier, un assistant temporaire et un espace Mails alimenté par des données Google Workspace simulées. L’architecture reste indépendante du fournisseur et réserve un adaptateur à Microsoft 365, mais aucune authentification réelle, aucun accès à une boîte e-mail et aucun envoi ne sont implémentés.
+Le dépôt utilise Next.js 16.2.10, React 19, TypeScript strict et Tailwind CSS 4. L’App Router est organisé sous `src/app`. « Mon Espace » propose un shell responsive, des cartes configurables, un assistant temporaire et un espace Mails. Google Workspace est intégré côté serveur avec OAuth 2.0 et Gmail API pour la lecture des messages récents et la création confirmée de brouillons. Le stockage des jetons reste local au développement et doit être remplacé avant la production. L’architecture demeure indépendante du fournisseur et réserve un adaptateur à Microsoft 365 ; aucun envoi d’e-mail n’est implémenté.
 
 | Phase | Statut | Résultat attendu |
 |---|---|---|

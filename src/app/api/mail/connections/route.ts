@@ -35,6 +35,7 @@ export async function POST(request: Request) {
   if (!provider) {
     return errorResponse("Le fournisseur de messagerie est invalide.", 400);
   }
+  if (provider === "google") return errorResponse("Utilisez le parcours OAuth Google Workspace.", 409);
 
   try {
     const connection = await connectMailProvider(provider);
@@ -50,6 +51,7 @@ export async function DELETE(request: Request) {
   if (!provider) {
     return errorResponse("Le fournisseur de messagerie est invalide.", 400);
   }
+  if (provider === "google") return errorResponse("Utilisez la route de déconnexion Google Workspace.", 409);
 
   try {
     const connection = await disconnectMailProvider(provider);

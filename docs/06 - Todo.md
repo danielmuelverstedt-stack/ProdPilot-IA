@@ -18,12 +18,14 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Créer l’abstraction de messagerie indépendante du fournisseur et sa factory.
 - [x] Créer l’écran Réglages → Connexions → Messagerie avec Google Workspace et Microsoft 365.
 - [x] Créer le fournisseur Gmail simulé et l’emplacement Microsoft Graph.
-- [ ] Remplacer le fournisseur Gmail simulé par l’intégration Google Workspace côté serveur.
+- [x] Remplacer le fournisseur Gmail simulé par l’intégration Google Workspace côté serveur.
 - [x] Créer une interface simulée pour les e-mails, clairement signalée comme telle.
-- [ ] Configurer Google OAuth avec les portées minimales.
-- [ ] Lister les messages Gmail récents.
+- [x] Implémenter Google OAuth côté serveur avec les portées minimales et la restriction du compte autorisé.
+- [x] Lister les messages Gmail reçus depuis la veille avec leur contenu texte et leurs métadonnées.
 - [ ] Créer les résumés d’e-mails avec l’IA et afficher leur provenance.
-- [ ] Générer des brouillons Gmail modifiables avec confirmation explicite avant envoi.
+- [x] Créer des brouillons Gmail modifiables après confirmation explicite, sans fonctionnalité d’envoi.
+- [ ] Remplacer le dépôt local de jetons Google par un stockage chiffré associé à l’utilisateur et à l’entreprise.
+- [ ] Ajouter l’authentification applicative avant tout déploiement partagé de l’intégration Gmail.
 
 ## Ensuite
 

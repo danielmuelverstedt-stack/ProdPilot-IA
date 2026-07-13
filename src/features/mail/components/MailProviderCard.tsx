@@ -23,6 +23,11 @@ const statusPresentation = {
     dotClassName: "bg-[#d69b32]",
     badgeClassName: "border-[#ead7ae] bg-[#fff8e8] text-[#805d1f]",
   },
+  error: {
+    label: "Erreur de connexion",
+    dotClassName: "bg-red-600",
+    badgeClassName: "border-red-200 bg-red-50 text-red-800",
+  },
 } as const;
 
 export function MailProviderCard({
@@ -32,8 +37,8 @@ export function MailProviderCard({
   onDisconnect,
 }: MailProviderCardProps) {
   const status = statusPresentation[connection.state];
-  const canConnect = connection.state === "disconnected" && !isPending;
-  const canDisconnect = connection.state === "connected" && !isPending;
+  const canConnect = (connection.state === "disconnected" || connection.state === "error") && !isPending;
+  const canDisconnect = (connection.state === "connected" || (connection.state === "error" && Boolean(connection.emailAddress))) && !isPending;
 
   return (
     <article className="flex min-h-[310px] flex-col rounded-3xl border border-[#dfe6e2] bg-white p-6 shadow-[0_18px_55px_rgba(29,64,50,0.07)] transition-shadow hover:shadow-[0_20px_60px_rgba(29,64,50,0.11)] sm:p-7">
@@ -75,7 +80,11 @@ export function MailProviderCard({
         <dd className="mt-2 min-h-6 break-all text-sm font-medium text-[#263b32]">
           {connection.emailAddress ?? "Aucune adresse connectée"}
         </dd>
+        <dt className="mt-4 text-xs font-semibold uppercase tracking-[0.1em] text-[#89968f]">Dernière synchronisation réussie</dt>
+        <dd className="mt-2 text-sm text-[#263b32]">{connection.lastSuccessfulSyncAt ? new Intl.DateTimeFormat("fr-BE", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Brussels" }).format(new Date(connection.lastSuccessfulSyncAt)) : "Aucune synchronisation"}</dd>
       </dl>
+
+      {connection.error ? <p role="alert" className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{connection.error}</p> : null}
 
       <div className="mt-auto flex flex-col gap-2 pt-6 sm:flex-row">
         <button
@@ -84,9 +93,9 @@ export function MailProviderCard({
           disabled={!canConnect}
           className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl bg-[#195c45] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#104432] disabled:cursor-not-allowed disabled:bg-[#dce3df] disabled:text-[#829088]"
         >
-          {isPending && connection.state === "disconnected"
+          {isPending && (connection.state === "disconnected" || connection.state === "error")
             ? "Connexion…"
-            : "Connecter"}
+            : connection.provider === "google" ? "Connecter Google Workspace" : "Connecter"}
         </button>
         <button
           type="button"

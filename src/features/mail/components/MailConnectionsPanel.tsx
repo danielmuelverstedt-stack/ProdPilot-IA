@@ -9,6 +9,7 @@ import type {
 
 interface MailConnectionsPanelProps {
   initialConnections: MailConnectionSummary[];
+  callbackNotice?: { tone: "success" | "error"; message: string } | null;
 }
 
 interface ConnectionResponse {
@@ -18,6 +19,7 @@ interface ConnectionResponse {
 
 export function MailConnectionsPanel({
   initialConnections,
+  callbackNotice = null,
 }: MailConnectionsPanelProps) {
   const [connections, setConnections] = useState(initialConnections);
   const [pendingProvider, setPendingProvider] =
@@ -25,7 +27,7 @@ export function MailConnectionsPanel({
   const [notice, setNotice] = useState<{
     tone: "success" | "error";
     message: string;
-  } | null>(null);
+  } | null>(callbackNotice);
 
   async function updateConnection(
     provider: MailProviderType,
@@ -34,13 +36,27 @@ export function MailConnectionsPanel({
     setPendingProvider(provider);
     setNotice(null);
 
+    if (provider === "google" && action === "connect") {
+      window.location.assign("/api/auth/google");
+      return;
+    }
+
     try {
-      const response = await fetch("/api/mail/connections", {
-        method: action === "connect" ? "POST" : "DELETE",
+      const response = await fetch(provider === "google" ? "/api/auth/google/disconnect" : "/api/mail/connections", {
+        method: provider === "google" ? "POST" : action === "connect" ? "POST" : "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider }),
+        body: provider === "google" ? undefined : JSON.stringify({ provider }),
       });
       const result: ConnectionResponse = await response.json();
+
+      if (provider === "google" && response.ok) {
+        const statusResponse = await fetch("/api/mail/connection", { cache: "no-store" });
+        const statusResult = await statusResponse.json() as { connection?: MailConnectionSummary; message?: string };
+        if (!statusResponse.ok || !statusResult.connection) throw new Error(statusResult.message ?? "La déconnexion n’a pas pu être vérifiée.");
+        setConnections((current) => current.map((connection) => connection.provider === "google" ? { ...connection, ...statusResult.connection } : connection));
+        setNotice({ tone: "success", message: "Google Workspace est déconnecté." });
+        return;
+      }
 
       if (!response.ok || !result.connection) {
         throw new Error(
@@ -57,7 +73,7 @@ export function MailConnectionsPanel({
         tone: "success",
         message:
           action === "connect"
-            ? `${result.connection.providerName} est connecté en mode démonstration.`
+            ? `${result.connection.providerName} est connecté.`
             : `${result.connection.providerName} est déconnecté.`,
       });
     } catch (error) {

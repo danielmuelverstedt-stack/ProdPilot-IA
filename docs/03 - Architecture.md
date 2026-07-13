@@ -123,19 +123,19 @@ L’authentification applicative et l’autorisation d’un fournisseur de messa
 
 Les composants d’interface utilisent uniquement les types communs et les services de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons et archivage. L’envoi est volontairement absent des premières versions. Une factory sélectionne l’adaptateur à partir du type du compte connecté (`google` ou `microsoft`).
 
-L’état actuel comprend un adaptateur Google Workspace simulé et un adaptateur Microsoft 365 temporaire et indisponible qui implémentent le même contrat. Aucun identifiant OAuth réel n’est configuré.
+L’état actuel comprend un adaptateur Google Workspace réel côté serveur et un adaptateur Microsoft 365 temporaire et indisponible qui implémentent le même contrat. Le fournisseur Google utilise `googleapis`, des Route Handlers, un dépôt de jetons local réservé au développement et un fallback de démonstration explicitement activé par l’utilisateur.
 
 ### Flux Google Workspace prévu
 
 1. L’utilisateur choisit de connecter Gmail.
 2. Le serveur sélectionne le fournisseur Google puis lance Google OAuth avec les portées minimales.
 3. Google retourne un code au callback serveur.
-4. Le serveur échange le code, chiffre et stocke les jetons associés à l’utilisateur et à l’entreprise.
-5. Un service Gmail récupère les métadonnées puis le contenu autorisé à la demande.
-6. Le contenu nécessaire est transmis au service OpenAI côté serveur pour synthèse ou brouillon.
-7. L’utilisateur relit, modifie et confirme toute action d’envoi.
+4. Le serveur échange le code, valide l’adresse autorisée et stocke localement les jetons pour cette phase de développement.
+5. Un service Gmail récupère les identifiants puis le détail des messages autorisés à la demande.
+6. L’utilisateur relit, modifie et confirme explicitement la création d’un brouillon Gmail.
+7. Aucun envoi ni archivage n’est disponible dans cette version.
 
-Ni les jetons de messagerie ni la clé OpenAI ne sont exposés au navigateur. La conservation du contenu des e-mails doit être minimale, justifiée et documentée. Le futur flux Microsoft 365 suivra les mêmes frontières, avec Microsoft Graph encapsulé dans son propre adaptateur.
+Ni les jetons de messagerie ni le contenu HTML non fiable ne sont exposés au rendu. Le dépôt local de jetons doit être remplacé par un stockage chiffré et multi-entreprise avant la production. Le futur flux Microsoft 365 suivra les mêmes frontières, avec Microsoft Graph encapsulé dans son propre adaptateur.
 
 ## Flux d’import ERP
 

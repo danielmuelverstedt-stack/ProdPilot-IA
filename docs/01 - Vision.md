@@ -74,4 +74,4 @@ Les mesures précises et leurs valeurs de référence seront définies lors des 
 
 ## Vision à long terme
 
-ProdPilot IA devient le copilote opérationnel de la production des PME industrielles : il réunit les événements issus de l’ERP, de Gmail et des données internes, anticipe les risques, explique les arbitrages possibles et facilite leur exécution. À terme, une architecture multi-entreprise permettra de proposer ce poste de pilotage en SaaS, avec des intégrations ERP plus directes et une IA avancée, tout en maintenant l’isolation des données et la décision humaine.
+ProdPilot IA devient le copilote opérationnel de la production des PME industrielles : il réunit les événements issus de l’ERP, des messageries professionnelles et des données internes, anticipe les risques, explique les arbitrages possibles et facilite leur exécution. À terme, une architecture multi-entreprise permettra de proposer ce poste de pilotage en SaaS, avec des intégrations ERP plus directes et une IA avancée, tout en maintenant l’isolation des données et la décision humaine.

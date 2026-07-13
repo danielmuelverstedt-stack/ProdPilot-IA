@@ -2,7 +2,7 @@
 
 ## État et objectif
 
-Le projet utilise actuellement Next.js 16.2.10, React 19, TypeScript strict, Tailwind CSS 4 et l’App Router, avec le dossier `app/` à la racine. L’architecture ci-dessous est une cible progressive : elle ne signifie pas que les intégrations ou la base de données sont déjà implémentées.
+Le projet utilise actuellement Next.js 16.2.10, React 19, TypeScript strict, Tailwind CSS 4 et l’App Router sous `src/app`. L’architecture ci-dessous est une cible progressive : elle ne signifie pas que les intégrations réelles ou la base de données sont déjà implémentées.
 
 L’objectif est un monolithe modulaire simple à déployer, dont les domaines métier restent séparés et pourront évoluer sans réécriture globale.
 
@@ -20,7 +20,7 @@ L’objectif est un monolithe modulaire simple à déployer, dont les domaines m
 
 - Route Handlers et fonctions serveur Next.js pour les premiers besoins.
 - Validation systématique aux frontières : formulaires, fichiers, routes et réponses externes.
-- Couche de services indépendante de l’affichage pour Gmail, OpenAI et les imports.
+- Couche de services indépendante de l’affichage pour la messagerie, OpenAI et les imports.
 - Supabase pourra être ajouté lorsque l’authentification, la persistance ou les traitements le justifieront.
 
 ### Base de données
@@ -32,14 +32,15 @@ L’objectif est un monolithe modulaire simple à déployer, dont les domaines m
 
 ### Intégrations
 
-- Gmail API via Google OAuth, avec portée minimale.
+- Gmail API via Google OAuth, avec portée minimale, comme premier fournisseur réel.
+- Microsoft Graph via Microsoft OAuth dans une phase suivante.
 - OpenAI API appelée uniquement côté serveur.
 - ERP par fichiers CSV/Excel en lecture seule dans un premier temps.
 - Connexions SQL ou API ERP envisagées plus tard, derrière des adaptateurs dédiés.
 
 ## Structure `src` suggérée
 
-Le projet peut migrer progressivement vers `src/` lors d’un changement architectural explicitement validé. La structure cible est :
+Le projet utilise `src/` depuis la mise en place de l’architecture de messagerie. La structure cible est :
 
 ```text
 src/
@@ -47,11 +48,19 @@ src/
 │   ├── (auth)/
 │   ├── (workspace)/
 │   ├── api/
+│   │   ├── auth/
+│   │   └── mail/
 │   ├── layout.tsx
 │   └── page.tsx
 ├── features/
 │   ├── workspace/
 │   ├── mail/
+│   │   ├── components/
+│   │   ├── providers/
+│   │   │   ├── gmail/
+│   │   │   └── microsoft/
+│   │   ├── services/
+│   │   └── types/
 │   ├── actions/
 │   ├── erp-import/
 │   ├── work-orders/
@@ -64,7 +73,6 @@ src/
 ├── lib/
 │   ├── auth/
 │   ├── db/
-│   ├── gmail/
 │   ├── openai/
 │   ├── validation/
 │   └── observability/
@@ -89,7 +97,7 @@ Interface → opération/route serveur → service métier → dépôt ou adapta
 - **Présentation** : pages et composants, sans secret ni accès direct aux fournisseurs externes.
 - **Application** : cas d’usage, permissions, orchestration et transactions.
 - **Domaine** : règles de production, qualité, planning et états métier.
-- **Infrastructure** : PostgreSQL, stockage de fichiers, Gmail, OpenAI et futurs ERP.
+- **Infrastructure** : PostgreSQL, stockage de fichiers, adaptateurs de messagerie, OpenAI et futurs ERP.
 
 ## Flux de données général
 
@@ -109,19 +117,25 @@ Interface → opération/route serveur → service métier → dépôt ou adapta
 5. Chaque opération protégée revérifie l’accès ; masquer un bouton ne constitue pas une autorisation.
 6. Le changement d’entreprise, s’il devient possible, recrée un contexte strictement isolé.
 
-L’authentification applicative et l’autorisation Gmail sont deux consentements distincts.
+L’authentification applicative et l’autorisation d’un fournisseur de messagerie sont deux consentements distincts.
 
-## Flux Gmail
+## Architecture et flux de messagerie
+
+Les composants d’interface utilisent uniquement les types communs et les routes de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons, envois confirmés et archivage. Une factory sélectionne l’adaptateur à partir du type du compte connecté (`google` ou `microsoft`).
+
+L’état actuel comprend un adaptateur Google simulé et un adaptateur Microsoft indisponible qui implémentent le même contrat. Aucun identifiant OAuth réel n’est configuré.
+
+### Flux Google Workspace prévu
 
 1. L’utilisateur choisit de connecter Gmail.
-2. Le serveur lance Google OAuth avec les portées minimales.
+2. Le serveur sélectionne le fournisseur Google puis lance Google OAuth avec les portées minimales.
 3. Google retourne un code au callback serveur.
 4. Le serveur échange le code, chiffre et stocke les jetons associés à l’utilisateur et à l’entreprise.
 5. Un service Gmail récupère les métadonnées puis le contenu autorisé à la demande.
 6. Le contenu nécessaire est transmis au service OpenAI côté serveur pour synthèse ou brouillon.
 7. L’utilisateur relit, modifie et confirme toute action d’envoi.
 
-Ni les jetons Gmail ni la clé OpenAI ne sont exposés au navigateur. La conservation du contenu des e-mails doit être minimale, justifiée et documentée.
+Ni les jetons de messagerie ni la clé OpenAI ne sont exposés au navigateur. La conservation du contenu des e-mails doit être minimale, justifiée et documentée. Le futur flux Microsoft 365 suivra les mêmes frontières, avec Microsoft Graph encapsulé dans son propre adaptateur.
 
 ## Flux d’import ERP
 
@@ -155,7 +169,7 @@ Chaque enregistrement nettoyé conserve un lien vers l’import et, si possible,
 
 - Secrets uniquement dans des variables d’environnement serveur ou un coffre adapté.
 - Validation et autorisation côté serveur pour chaque entrée et opération.
-- Principe du moindre privilège pour Google OAuth, la base et les rôles applicatifs.
+- Principe du moindre privilège pour Google OAuth, Microsoft OAuth, la base et les rôles applicatifs.
 - Chiffrement des communications et des jetons sensibles au repos.
 - Protection contre les fichiers malveillants, limites de taille et noms de fichiers neutralisés.
 - Journalisation sans clés, jetons, contenu sensible inutile ni données personnelles excessives.
@@ -167,7 +181,7 @@ Chaque enregistrement nettoyé conserve un lien vers l’import et, si possible,
 
 - Les entités métier portent un identifiant d’entreprise non nullable dès que la persistance partagée existe.
 - Les requêtes sont filtrées côté serveur et, avec Supabase, par des politiques RLS.
-- Les connexions Gmail, imports ERP, configurations de mappage et fichiers appartiennent à une entreprise.
+- Les connexions de messagerie, imports ERP, configurations de mappage et fichiers appartiennent à une entreprise.
 - Les caches, chemins de stockage, journaux et tâches asynchrones incluent le contexte d’entreprise.
 - Un utilisateur n’accède qu’aux entreprises et rôles explicitement attribués.
 

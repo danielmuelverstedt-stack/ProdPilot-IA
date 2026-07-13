@@ -84,7 +84,7 @@ Ces règles s’appliquent à toute intervention sur ProdPilot IA. En cas de con
 ## Sécurité et confidentialité
 
 - Ne jamais exposer de secret dans le navigateur, le dépôt, les journaux ou les captures.
-- Ne jamais placer de clé Gmail ou OpenAI dans du code client ou une variable publique.
+- Ne jamais placer de clé ou jeton Google, Microsoft ou OpenAI dans du code client ou une variable publique.
 - Stocker les jetons OAuth de manière chiffrée et les révoquer lors d’une déconnexion définitive.
 - Appliquer le moindre privilège et vérifier les autorisations côté serveur pour chaque opération.
 - Isoler toutes les données par entreprise ; ne jamais faire confiance à un `company_id` fourni par le client sans contrôle.

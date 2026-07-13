@@ -9,13 +9,13 @@
 
 ## État actuel
 
-Le dépôt contient le socle généré par Create Next App avec Next.js 16.2.10, React 19, TypeScript en mode strict et Tailwind CSS 4. Git et le dépôt distant sont configurés. La documentation produit et technique initiale est créée. L’application affiche encore l’écran de démarrage : aucun module métier, aucune authentification et aucune intégration ne sont considérés comme livrés.
+Le dépôt contient le socle généré par Create Next App avec Next.js 16.2.10, React 19, TypeScript en mode strict et Tailwind CSS 4. Git et le dépôt distant sont configurés. La documentation produit et technique initiale est créée. L’App Router est organisé sous `src/app`. Une première interface de réglages et une abstraction de messagerie indépendante du fournisseur sont disponibles avec un fournisseur Google simulé et un emplacement Microsoft 365 non connecté. Aucune authentification réelle, aucun accès à une boîte e-mail et aucun autre module métier ne sont considérés comme livrés.
 
 | Phase | Statut | Résultat attendu |
 |---|---|---|
 | 0 — Fondations techniques | En cours | Socle fiable, conventions, qualité et sécurité minimales |
 | 1 — Mon Espace | À faire | Poste de pilotage quotidien et navigation |
-| 2 — Gmail | À faire | Consultation, résumé et brouillons confirmés |
+| 2 — Messagerie | En cours | Google Workspace en premier, puis Microsoft 365 |
 | 3 — Import ERP | À faire | Import CSV/Excel contrôlé et données nettoyées |
 | 4 — Planning | À faire | Planning machines issu des données ERP |
 | 5 — Actions et réunions | À faire | Suivi coordonné des décisions et rituels |
@@ -56,17 +56,18 @@ Critères d’acceptation :
 - Les données simulées sont explicitement identifiées comme telles.
 - Les principaux parcours sont utilisables au clavier.
 
-## Phase 2 — Gmail
+## Phase 2 — Messagerie
 
-**Statut : À faire**
+**Statut : En cours**
 
 Objectif : traiter les messages importants depuis ProdPilot IA sans perdre le contrôle des envois.
 
-Travaux : Google OAuth, connexion/déconnexion, liste des messages récents, détail, synthèse par IA, proposition d’action et génération de brouillon.
+Travaux : abstraction commune de fournisseurs, interface de connexions, Google OAuth et Gmail API en premier, Microsoft Graph ensuite, connexion/déconnexion, liste des messages récents, détail, synthèse par IA, proposition d’action et génération de brouillon.
 
 Critères d’acceptation :
 
-- L’utilisateur autorise Gmail par OAuth avec les droits minimaux nécessaires.
+- L’interface métier ne contient aucune logique propre à Gmail ou Microsoft Graph.
+- L’utilisateur autorise sa messagerie par OAuth avec les droits minimaux nécessaires.
 - Les jetons sont protégés côté serveur et leur expiration est gérée.
 - Les messages récents sont listés avec des états de chargement et d’erreur compréhensibles.
 - Un résumé distingue clairement le contenu source du texte généré.
@@ -155,7 +156,7 @@ Critères d’acceptation :
 
 ## Définition du MVP
 
-Le MVP couvre les phases 0 à 4 dans un parcours cohérent : Mon Espace, connexion Gmail, consultation et synthèse de messages, brouillons confirmés, import ERP CSV/Excel avec mappage et qualité, OF nettoyés, planning par machine et impression. Les actions simples nécessaires à « Mon Espace » peuvent être incluses ; les réunions avancées, le parc machines complet et l’IA transversale restent hors MVP.
+Le MVP couvre les phases 0 à 4 dans un parcours cohérent : Mon Espace, connexion Google Workspace, consultation et synthèse de messages, brouillons confirmés, import ERP CSV/Excel avec mappage et qualité, OF nettoyés, planning par machine et impression. Microsoft 365 peut suivre sans remettre en cause les écrans métier. Les actions simples nécessaires à « Mon Espace » peuvent être incluses ; les réunions avancées, le parc machines complet et l’IA transversale restent hors MVP.
 
 ## Jalons
 
@@ -163,7 +164,7 @@ Le MVP couvre les phases 0 à 4 dans un parcours cohérent : Mon Espace, connexi
 |---|---|---|
 | J0 — Socle prêt | Phase 0 | Contrôles qualité et règles de sécurité opérationnels |
 | J1 — Poste de pilotage | Phase 1 | Mon Espace validé sur desktop et mobile |
-| J2 — E-mails assistés | Phase 2 | OAuth, lecture, résumé et brouillon confirmés |
+| J2 — E-mails assistés | Phase 2 | Google OAuth, lecture, résumé et brouillon confirmés |
 | J3 — Données fiables | Phase 3 | Import réel testé, anomalies tracées, OF nettoyés |
 | J4 — MVP pilotable | Phase 4 | Planning machines généré, ajusté et imprimé |
 | J5 — Boucle d’exécution | Phase 5 | Actions et réunions reliées et suivies |

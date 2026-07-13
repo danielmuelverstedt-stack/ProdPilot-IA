@@ -1,13 +1,17 @@
 # Backlog — ProdPilot IA
 
-Les cases cochées correspondent uniquement à un travail effectivement présent et relu dans le dépôt au 12/07/2026. L’ordre à l’intérieur de chaque section indique la priorité pratique ; il ne constitue pas un calendrier.
+Les cases cochées correspondent uniquement à un travail effectivement présent et relu dans le dépôt au 13/07/2026. L’ordre à l’intérieur de chaque section indique la priorité pratique ; il ne constitue pas un calendrier.
 
 ## Maintenant
 
 - [x] Finaliser la documentation initiale du projet.
+- [x] Créer les instructions opérationnelles de contribution dans `AGENTS.md`.
 - [ ] Créer le shell de « Mon Espace » avec ses états vide, chargement et erreur.
 - [ ] Créer la barre latérale et la navigation responsive et accessible.
-- [ ] Définir l’architecture de connexion Gmail côté serveur.
+- [x] Créer l’abstraction de messagerie indépendante du fournisseur et sa factory.
+- [x] Créer l’écran Réglages → Connexions → Messagerie avec Google Workspace et Microsoft 365.
+- [x] Créer le fournisseur Gmail simulé et l’emplacement Microsoft Graph.
+- [ ] Remplacer le fournisseur Gmail simulé par l’intégration Google Workspace côté serveur.
 - [ ] Créer une interface simulée pour les e-mails, clairement signalée comme telle.
 - [ ] Configurer Google OAuth avec les portées minimales.
 - [ ] Lister les messages Gmail récents.

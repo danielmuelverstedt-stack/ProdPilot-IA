@@ -11,17 +11,17 @@ Tous les modules ci-dessous sont planifiés. La présence d’une description ne
 - **Écrans principaux** : tableau de bord du jour, détail d’une priorité, préférences d’affichage.
 - **Fonctions clés** : agrégation, priorisation, filtres, accès rapide et indication de la source/fraîcheur.
 - **Liens** : Mails, Actions, Planning, OF, QRQC, Réunion de production, Parc machines et Assistant IA.
-- **Périmètre MVP** : shell, navigation et cartes alimentées par données simulées puis par Gmail, actions et planning.
+- **Périmètre MVP** : shell, navigation et cartes alimentées par données simulées puis par la messagerie, les actions et le planning.
 - **Périmètre futur** : personnalisation par rôle, suggestions proactives et indicateurs prédictifs.
 
-## Gmail / Mails
+## Messagerie / Mails
 
 - **Objectif** : repérer et traiter les messages importants sans quitter le contexte de production.
 - **Utilisateurs principaux** : responsables de production et planificateurs.
-- **Écrans principaux** : connexion Gmail, boîte récente, détail, résumé et éditeur de brouillon.
-- **Fonctions clés** : OAuth, lecture, recherche/filtres, synthèse IA, création d’action et brouillon avec confirmation.
+- **Écrans principaux** : connexions de messagerie, boîte récente, détail, résumé et éditeur de brouillon.
+- **Fonctions clés** : fournisseurs Google Workspace puis Microsoft 365, OAuth, lecture, recherche/filtres, synthèse IA, création d’action et brouillon avec confirmation.
 - **Liens** : Mon Espace, Actions, OF, Demandes internes et Assistant IA.
-- **Périmètre MVP** : connexion, messages récents, résumé, proposition de réponse et confirmation avant envoi.
+- **Périmètre MVP** : abstraction indépendante du fournisseur, connexion Google Workspace, messages récents, résumé, proposition de réponse et confirmation avant envoi.
 - **Périmètre futur** : catégorisation avancée, rattachement suggéré aux objets métier et règles personnalisées.
 
 ## Actions
@@ -150,7 +150,7 @@ Tous les modules ci-dessous sont planifiés. La présence d’une description ne
 - **Utilisateurs principaux** : administrateurs et utilisateurs pour leurs préférences personnelles.
 - **Écrans principaux** : entreprise, profil, intégrations, calendriers, mappages et notifications.
 - **Fonctions clés** : configuration, test de connexion, historique des changements et valeurs par défaut.
-- **Liens** : Gmail, Import ERP, Planning, Utilisateurs et Impression.
+- **Liens** : Messagerie, Import ERP, Planning, Utilisateurs et Impression.
 - **Périmètre MVP** : profil, préférences essentielles et état des connexions.
 - **Périmètre futur** : politiques d’entreprise, modèles partagés et paramétrage avancé.
 
@@ -171,7 +171,7 @@ Tous les modules ci-dessous sont planifiés. La présence d’une description ne
 - **Écrans principaux** : panneau assistant, conversation, sources et confirmation d’action.
 - **Fonctions clés** : questions/réponses, synthèses, brouillons, recherche contextuelle et suggestions.
 - **Liens** : Mon Espace et tous les modules dont l’accès est autorisé.
-- **Périmètre MVP** : résumés et brouillons Gmail clairement identifiés comme générés.
+- **Périmètre MVP** : résumés et brouillons de messagerie clairement identifiés comme générés.
 - **Périmètre futur** : commandes multi-modules, scénarios de planning et préparation de réunions.
 
 L’assistant ne contourne jamais les permissions, ne reçoit jamais de secret côté navigateur et ne déclenche pas d’action engageante sans confirmation explicite.

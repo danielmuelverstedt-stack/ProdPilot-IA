@@ -12,8 +12,7 @@ import type {
 export class MicrosoftMailProvider implements MailProvider {
   readonly type = "microsoft" as const;
   readonly name = "Microsoft 365";
-  readonly description =
-    "La connexion à Outlook via Microsoft Graph sera disponible dans une prochaine étape.";
+  readonly description = "La connexion à Outlook via Microsoft Graph sera disponible dans une prochaine étape.";
   readonly isAvailable = false;
   readonly isMock = false;
 
@@ -54,17 +53,11 @@ export class MicrosoftMailProvider implements MailProvider {
     return this.unavailable();
   }
 
-  async sendDraft(): Promise<MailMessage> {
-    return this.unavailable();
-  }
-
   async archiveMessage(): Promise<void> {
     return this.unavailable();
   }
 
   private unavailable(): never {
-    throw new Error(
-      "La connexion Microsoft 365 n’est pas encore disponible.",
-    );
+    throw new Error("La connexion Microsoft 365 n’est pas encore disponible.");
   }
 }

@@ -40,13 +40,6 @@ export async function POST(request: Request) {
     const connection = await connectMailProvider(provider);
     return Response.json({ connection });
   } catch {
-    if (provider === "microsoft") {
-      return errorResponse(
-        "La connexion Microsoft 365 n’est pas encore disponible.",
-        409,
-      );
-    }
-
     return errorResponse("La connexion n’a pas pu être établie.", 500);
   }
 }

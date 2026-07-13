@@ -2,6 +2,14 @@ export const MAIL_PROVIDER_TYPES = ["google", "microsoft"] as const;
 
 export type MailProviderType = (typeof MAIL_PROVIDER_TYPES)[number];
 
+export type MailMessageCategory =
+  | "urgent"
+  | "reply_required"
+  | "information"
+  | "action_required";
+
+export type MailPriority = "high" | "normal" | "low";
+
 export type MailConnectionState =
   | "connected"
   | "disconnected"
@@ -40,6 +48,10 @@ export interface MailMessage {
   subject: string;
   snippet: string;
   bodyText: string;
+  summary: string;
+  proposedAction: string;
+  category: MailMessageCategory;
+  priority: MailPriority;
   receivedAt: string;
   isRead: boolean;
   isArchived: boolean;
@@ -67,7 +79,7 @@ export interface MailDraft {
   bodyText: string;
   createdAt: string;
   updatedAt: string;
-  status: "draft" | "sent";
+  status: "draft";
 }
 
 export interface CreateMailDraftInput {
@@ -79,14 +91,11 @@ export interface CreateMailDraftInput {
   replyToMessageId?: string;
 }
 
-export interface SendMailDraftOptions {
-  confirmedByUser: true;
-}
-
 export interface ListMessagesOptions {
   limit?: number;
   cursor?: string;
   unreadOnly?: boolean;
+  category?: MailMessageCategory;
 }
 
 export interface MailConnectionStatus {

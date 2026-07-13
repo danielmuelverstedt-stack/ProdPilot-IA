@@ -57,7 +57,7 @@ src/
 │   ├── mail/
 │   │   ├── components/
 │   │   ├── providers/
-│   │   │   ├── gmail/
+│   │   │   ├── google/
 │   │   │   └── microsoft/
 │   │   ├── services/
 │   │   └── types/
@@ -121,9 +121,9 @@ L’authentification applicative et l’autorisation d’un fournisseur de messa
 
 ## Architecture et flux de messagerie
 
-Les composants d’interface utilisent uniquement les types communs et les routes de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons, envois confirmés et archivage. Une factory sélectionne l’adaptateur à partir du type du compte connecté (`google` ou `microsoft`).
+Les composants d’interface utilisent uniquement les types communs et les services de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons et archivage. L’envoi est volontairement absent des premières versions. Une factory sélectionne l’adaptateur à partir du type du compte connecté (`google` ou `microsoft`).
 
-L’état actuel comprend un adaptateur Google simulé et un adaptateur Microsoft indisponible qui implémentent le même contrat. Aucun identifiant OAuth réel n’est configuré.
+L’état actuel comprend un adaptateur Google Workspace simulé et un adaptateur Microsoft 365 temporaire et indisponible qui implémentent le même contrat. Aucun identifiant OAuth réel n’est configuré.
 
 ### Flux Google Workspace prévu
 

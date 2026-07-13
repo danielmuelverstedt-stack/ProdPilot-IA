@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Messagerie | ProdPilot IA",
-  description: "Gérez les connexions de messagerie de ProdPilot IA.",
+  title: "ProdPilot IA | Pilotage de production",
+  description: "Pilotez les priorités de production depuis un espace de travail unifié.",
 };
 
 export default function RootLayout({

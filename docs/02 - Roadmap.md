@@ -9,12 +9,12 @@
 
 ## État actuel
 
-Le dépôt contient le socle généré par Create Next App avec Next.js 16.2.10, React 19, TypeScript en mode strict et Tailwind CSS 4. Git et le dépôt distant sont configurés. La documentation produit et technique initiale est créée. L’App Router est organisé sous `src/app`. Une première interface de réglages et une abstraction de messagerie indépendante du fournisseur sont disponibles avec un fournisseur Google simulé et un emplacement Microsoft 365 non connecté. Aucune authentification réelle, aucun accès à une boîte e-mail et aucun autre module métier ne sont considérés comme livrés.
+Le dépôt contient le socle généré par Create Next App avec Next.js 16.2.10, React 19, TypeScript en mode strict et Tailwind CSS 4. Git et le dépôt distant sont configurés. La documentation produit et technique initiale est créée. L’App Router est organisé sous `src/app`. « Mon Espace » propose un shell responsive, six cartes métier, un assistant temporaire et un espace Mails alimenté par des données Google Workspace simulées. L’architecture reste indépendante du fournisseur et réserve un adaptateur à Microsoft 365, mais aucune authentification réelle, aucun accès à une boîte e-mail et aucun envoi ne sont implémentés.
 
 | Phase | Statut | Résultat attendu |
 |---|---|---|
 | 0 — Fondations techniques | En cours | Socle fiable, conventions, qualité et sécurité minimales |
-| 1 — Mon Espace | À faire | Poste de pilotage quotidien et navigation |
+| 1 — Mon Espace | En cours | Poste de pilotage quotidien et navigation |
 | 2 — Messagerie | En cours | Google Workspace en premier, puis Microsoft 365 |
 | 3 — Import ERP | À faire | Import CSV/Excel contrôlé et données nettoyées |
 | 4 — Planning | À faire | Planning machines issu des données ERP |
@@ -42,7 +42,7 @@ Critères d’acceptation :
 
 ## Phase 1 — Mon Espace
 
-**Statut : À faire**
+**Statut : En cours**
 
 Objectif : créer l’écran d’accueil qui répond à la promesse centrale.
 

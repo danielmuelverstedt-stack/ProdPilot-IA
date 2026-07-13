@@ -7,12 +7,13 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Finaliser la documentation initiale du projet.
 - [x] Créer les instructions opérationnelles de contribution dans `AGENTS.md`.
 - [ ] Créer le shell de « Mon Espace » avec ses états vide, chargement et erreur.
-- [ ] Créer la barre latérale et la navigation responsive et accessible.
+- [x] Créer la barre latérale et la navigation responsive et accessible.
+- [x] Créer la première vue fonctionnelle de « Mon Espace » avec six cartes métier, des placeholders et une zone assistant.
 - [x] Créer l’abstraction de messagerie indépendante du fournisseur et sa factory.
 - [x] Créer l’écran Réglages → Connexions → Messagerie avec Google Workspace et Microsoft 365.
 - [x] Créer le fournisseur Gmail simulé et l’emplacement Microsoft Graph.
 - [ ] Remplacer le fournisseur Gmail simulé par l’intégration Google Workspace côté serveur.
-- [ ] Créer une interface simulée pour les e-mails, clairement signalée comme telle.
+- [x] Créer une interface simulée pour les e-mails, clairement signalée comme telle.
 - [ ] Configurer Google OAuth avec les portées minimales.
 - [ ] Lister les messages Gmail récents.
 - [ ] Créer les résumés d’e-mails avec l’IA et afficher leur provenance.

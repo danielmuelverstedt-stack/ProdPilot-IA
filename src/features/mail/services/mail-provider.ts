@@ -6,7 +6,6 @@ import type {
   MailDraft,
   MailMessage,
   MailProviderType,
-  SendMailDraftOptions,
   MailThread,
 } from "@/features/mail/types/mail";
 
@@ -25,9 +24,5 @@ export interface MailProvider {
   getThread(threadId: string): Promise<MailThread | null>;
   searchMessages(query: string): Promise<MailMessage[]>;
   createDraft(input: CreateMailDraftInput): Promise<MailDraft>;
-  sendDraft(
-    draftId: string,
-    options: SendMailDraftOptions,
-  ): Promise<MailMessage>;
   archiveMessage(messageId: string): Promise<void>;
 }

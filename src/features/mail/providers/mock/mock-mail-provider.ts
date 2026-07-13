@@ -42,6 +42,10 @@ export class MockMailProvider implements MailProvider {
     };
   }
 
+  async testConnection(): Promise<MailConnectionStatus> {
+    return this.getConnectionStatus();
+  }
+
   async listMessages(options: ListMessagesOptions = {}): Promise<MailMessage[]> {
     const messages = getMockMailMessages(this.account)
       .filter((message) => !options.unreadOnly || !message.isRead)

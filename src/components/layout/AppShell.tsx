@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
+import { useDemoData } from "@/features/demo/services/demo-repository";
 
 export type ActiveSection = string;
 
@@ -13,6 +14,7 @@ interface AppShellProps { activeSection: ActiveSection; headerTitle: string; chi
 
 export function AppShell({ activeSection, headerTitle, children }: AppShellProps) {
   const { settings, updateSettings } = useSettings();
+  const demo = useDemoData();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -21,6 +23,7 @@ export function AppShell({ activeSection, headerTitle, children }: AppShellProps
   const items = [...settings.navigation]
     .filter((item) => item.visible && (role?.permissions[item.id]?.visible ?? true))
     .sort((a, b) => a.order - b.order);
+  const canView = activeSection === "workspace" || (role?.permissions[activeSection]?.view ?? true);
 
   const navigation = (
     <nav aria-label="Navigation principale">
@@ -49,7 +52,7 @@ export function AppShell({ activeSection, headerTitle, children }: AppShellProps
 
       {mobileOpen && <div className="fixed inset-0 z-40 bg-slate-950/45 lg:hidden" onClick={() => setMobileOpen(false)} />}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-[var(--app-secondary)] p-4 text-white transition-transform lg:hidden ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="mb-6 flex h-12 items-center justify-between"><CompanyMark /><button onClick={() => setMobileOpen(false)} aria-label="Fermer le menu"><AppIcon name="close" className="size-6" /></button></div>{navigation}
+        <div className="mb-6 flex h-12 items-center justify-between"><CompanyMark /><button onClick={() => setMobileOpen(false)} aria-label="Fermer le menu"><AppIcon name="close" className="size-6" /></button></div>{navigation}<label className="mt-6 block text-xs font-semibold text-slate-300">Rôle de démonstration<select value={settings.activeRoleId} onChange={(event) => updateSettings((draft) => { draft.activeRoleId = event.target.value; }, "Rôle de démonstration modifié")} className="mt-2 w-full rounded-lg border border-white/15 bg-white/10 p-2 text-sm text-white">{settings.roles.map((item) => <option className="text-slate-900" value={item.id} key={item.id}>{item.name}</option>)}</select></label>
       </aside>
 
       <div className="min-w-0">
@@ -57,10 +60,10 @@ export function AppShell({ activeSection, headerTitle, children }: AppShellProps
           <button type="button" onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-lg border border-[var(--app-border)] lg:hidden" aria-label="Ouvrir le menu"><AppIcon name="menu" className="size-5" /></button>
           <div className="min-w-0"><p className="truncate text-sm font-semibold text-[var(--app-text)]">{headerTitle}</p><p className="hidden text-xs text-slate-500 sm:block">Pilotage de production</p></div>
           <label className="relative ml-auto hidden max-w-xs flex-1 md:block"><span className="sr-only">Rechercher</span><AppIcon name="search" className="absolute left-3 top-2.5 size-4 text-slate-400" /><input placeholder="Rechercher…" className="h-9 w-full rounded-lg border border-[var(--app-border)] bg-slate-50 pl-9 pr-3 text-sm" /></label>
-          <div className="relative"><button type="button" onClick={() => setNotificationsOpen((value) => !value)} className="relative grid size-10 place-items-center rounded-lg border border-[var(--app-border)]" aria-label="Notifications"><AppIcon name="bell" className="size-5" /><span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[var(--app-danger)]" /></button>{notificationsOpen && <div className="absolute right-0 top-12 w-72 rounded-xl border border-[var(--app-border)] bg-white p-4 text-sm shadow-xl"><p className="font-semibold">Notifications</p><p className="mt-2 text-slate-500">2 priorités de démonstration demandent votre attention.</p></div>}</div>
+          <div className="relative"><button type="button" onClick={() => setNotificationsOpen((value) => !value)} className="relative grid size-10 place-items-center rounded-lg border border-[var(--app-border)]" aria-label="Notifications"><AppIcon name="bell" className="size-5" />{demo.notifications.some((item) => !item.read) && <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-[var(--app-danger)]" />}</button>{notificationsOpen && <div className="absolute right-0 top-12 w-80 rounded-xl border border-[var(--app-border)] bg-white p-4 text-sm shadow-xl"><p className="font-semibold">Notifications</p><ul className="mt-2 space-y-2">{demo.notifications.map((item) => <li key={item.id}><Link href={item.href} onClick={() => setNotificationsOpen(false)} className="block rounded-lg p-2 hover:bg-slate-50"><strong className="block text-xs">{item.title}</strong><span className="text-xs text-slate-500">{item.description}</span></Link></li>)}</ul></div>}</div>
           <div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-full bg-blue-100 text-xs font-bold text-blue-800">{user ? `${user.firstName[0]}${user.lastName[0]}` : "PP"}</span><span className="hidden text-sm xl:block"><strong className="block font-semibold">{user ? `${user.firstName} ${user.lastName}` : "Utilisateur"}</strong><span className="text-xs text-slate-500">{role?.name}</span></span></div>
         </header>
-        <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{canView ? children : <section className="mx-auto max-w-xl rounded-2xl border border-amber-200 bg-amber-50 p-8 text-center"><h1 className="text-xl font-semibold">Accès non autorisé</h1><p className="mt-2 text-sm text-amber-900">Le rôle de démonstration « {role?.name} » ne peut pas consulter ce module. Changez de rôle dans le menu.</p></section>}</main>
       </div>
     </div>
   );

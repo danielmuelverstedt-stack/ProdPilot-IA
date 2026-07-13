@@ -9,33 +9,45 @@ export const GOOGLE_OAUTH_SCOPES = [
 ] as const;
 
 export const GOOGLE_LOCAL_REDIRECT_URI = "http://localhost:3000/api/auth/google/callback";
-export const GOOGLE_FIRST_ALLOWED_EMAIL = "daniel.muelverstedt@tkmi.be";
-export const GOOGLE_OAUTH_STATE_COOKIE = "prodpilot_google_oauth_state";
+export const GOOGLE_OAUTH_STATE_COOKIE = "prodpilot_google_oauth_nonce";
+export const GOOGLE_OAUTH_STATE_MAX_AGE_SECONDS = 10 * 60;
 
 export interface GoogleServerConfig {
   clientId: string;
   clientSecret: string;
   redirectUri: string;
-  allowedEmail: string;
+  allowedEmails: ReadonlySet<string>;
+  allowedDomains: ReadonlySet<string>;
 }
 
 export function getGoogleServerConfig(): GoogleServerConfig {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
   const redirectUri = process.env.GOOGLE_REDIRECT_URI?.trim();
-  const allowedEmail = process.env.GOOGLE_ALLOWED_EMAIL?.trim().toLowerCase();
-
-  if (!clientId || !clientSecret || !redirectUri || !allowedEmail) {
+  if (!clientId || !clientSecret || !redirectUri) {
     throw new Error("La configuration Google Workspace est incomplète.");
   }
   if (redirectUri !== GOOGLE_LOCAL_REDIRECT_URI) {
     throw new Error(`GOOGLE_REDIRECT_URI doit être ${GOOGLE_LOCAL_REDIRECT_URI}.`);
   }
-  if (allowedEmail !== GOOGLE_FIRST_ALLOWED_EMAIL) {
-    throw new Error(`GOOGLE_ALLOWED_EMAIL doit être ${GOOGLE_FIRST_ALLOWED_EMAIL} pour cette première version.`);
+
+  const allowedEmails = parseList(process.env.GOOGLE_ALLOWED_EMAILS, normalizeEmail);
+  const allowedDomains = parseList(process.env.GOOGLE_ALLOWED_DOMAINS, normalizeDomain);
+  if (process.env.NODE_ENV === "production" && !allowedEmails.size && !allowedDomains.size) {
+    throw new Error("Une politique GOOGLE_ALLOWED_EMAILS ou GOOGLE_ALLOWED_DOMAINS est requise en production.");
   }
 
-  return { clientId, clientSecret, redirectUri, allowedEmail };
+  return { clientId, clientSecret, redirectUri, allowedEmails, allowedDomains };
+}
+
+export function isGoogleEmailAllowed(emailAddress: string, config = getGoogleServerConfig()): boolean {
+  const email = normalizeEmail(emailAddress);
+  if (config.allowedEmails.has(email)) return true;
+  const domain = email.split("@")[1];
+  if (domain && config.allowedDomains.has(domain)) return true;
+  return process.env.NODE_ENV !== "production"
+    && config.allowedEmails.size === 0
+    && config.allowedDomains.size === 0;
 }
 
 export function isGoogleConfigured(): boolean {
@@ -45,4 +57,30 @@ export function isGoogleConfigured(): boolean {
   } catch {
     return false;
   }
+}
+
+function parseList(value: string | undefined, normalize: (item: string) => string): Set<string> {
+  return new Set(
+    (value ?? "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map(normalize),
+  );
+}
+
+function normalizeEmail(value: string): string {
+  const email = value.toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("GOOGLE_ALLOWED_EMAILS contient une adresse invalide.");
+  }
+  return email;
+}
+
+function normalizeDomain(value: string): string {
+  const domain = value.toLowerCase().replace(/^@/, "");
+  if (!/^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$/.test(domain) || !domain.includes(".")) {
+    throw new Error("GOOGLE_ALLOWED_DOMAINS contient un domaine invalide.");
+  }
+  return domain;
 }

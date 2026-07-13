@@ -5,6 +5,7 @@ import type { MailAccount, MailProviderType } from "@/features/mail/types/mail";
 
 interface MailConnectionsPanelProps {
   initialAccounts: MailAccount[];
+  initialNotice?: { tone: "success" | "error"; message: string };
 }
 
 interface AccountsResponse {
@@ -26,14 +27,14 @@ const dateFormatter = new Intl.DateTimeFormat("fr-BE", {
   timeZone: "Europe/Brussels",
 });
 
-export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelProps) {
+export function MailConnectionsPanel({ initialAccounts, initialNotice }: MailConnectionsPanelProps) {
   const [accounts, setAccounts] = useState(initialAccounts);
   const [isAdding, setIsAdding] = useState(false);
   const [provider, setProvider] = useState<MailProviderType>("mock");
   const [displayName, setDisplayName] = useState("");
   const [emailAddress, setEmailAddress] = useState("");
   const [pendingKey, setPendingKey] = useState<string | null>(null);
-  const [notice, setNotice] = useState<{ tone: "success" | "error"; message: string } | null>(null);
+  const [notice, setNotice] = useState<{ tone: "success" | "error"; message: string } | null>(initialNotice ?? null);
 
   async function requestAccountUpdate(
     body: Record<string, unknown>,
@@ -94,7 +95,9 @@ export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelPr
     if (action === "disconnect" && !window.confirm(`Déconnecter « ${account.displayName} » ?`)) return;
     const messages: Record<AccountAction, string> = {
       activate: "Le compte actif a été mis à jour.",
-      test: "La connexion de démonstration fonctionne correctement.",
+      test: account.mode === "oauth"
+        ? "Connexion Google testée avec succès."
+        : "La connexion de démonstration fonctionne correctement.",
       disconnect: "Le compte a été déconnecté.",
     };
     await requestAccountUpdate(
@@ -113,13 +116,18 @@ export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelPr
             Le compte actif alimente Mails et constituera l’unique contexte des futures fonctions IA.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsAdding((current) => !current)}
-          className="min-h-11 rounded-xl bg-[#195c45] px-4 text-sm font-semibold text-white hover:bg-[#104432]"
-        >
-          {isAdding ? "Fermer" : "Connecter un compte"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <a href="/api/auth/google" className="inline-flex min-h-11 items-center rounded-xl bg-[#195c45] px-4 text-sm font-semibold text-white hover:bg-[#104432]">
+            Connecter Google Workspace
+          </a>
+          <button
+            type="button"
+            onClick={() => setIsAdding((current) => !current)}
+            className="min-h-11 rounded-xl border border-[#cbd7d1] bg-white px-4 text-sm font-semibold text-[#40554b]"
+          >
+            {isAdding ? "Fermer" : "Ajouter un compte de démonstration"}
+          </button>
+        </div>
       </div>
 
       {isAdding ? (
@@ -131,7 +139,8 @@ export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelPr
               onChange={(event) => setProvider(event.target.value as MailProviderType)}
               className="mt-1 min-h-11 w-full rounded-xl border border-[#cad7d1] bg-white px-3"
             >
-              {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+              <option value="mock">Mock</option>
+              <option value="microsoft">Microsoft 365</option>
             </select>
           </label>
           <label className="text-sm font-medium text-[#33473e]">
@@ -149,7 +158,7 @@ export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelPr
             <button type="button" onClick={() => setIsAdding(false)} className="min-h-11 rounded-xl border border-[#cbd7d1] px-4 text-sm font-semibold">Annuler</button>
           </div>
           <p className="text-xs text-[#64736c] sm:col-span-2">
-            Cette étape crée uniquement un compte local de démonstration. Aucun flux OAuth n’est lancé.
+            Cette étape crée uniquement un compte local de démonstration. Utilisez le bouton Google Workspace pour ouvrir OAuth.
           </p>
         </form>
       ) : null}
@@ -173,7 +182,7 @@ export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelPr
                 <td className="p-4 font-semibold text-[#263b32]">{account.displayName}</td>
                 <td className="p-4">{providerLabels[account.provider]}</td>
                 <td className="p-4">{account.emailAddress}</td>
-                <td className="p-4"><StatusBadge account={account} /></td>
+                <td className="p-4"><StatusBadge account={account} />{account.error ? <p className="mt-2 max-w-56 text-xs text-red-700">{account.error}</p> : null}</td>
                 <td className="p-4">{formatDate(account.lastSuccessfulSyncAt)}</td>
                 <td className="p-4">{account.isActive ? <span className="font-semibold text-[#1d694b]">Oui</span> : "Non"}</td>
                 <td className="p-4"><AccountActions account={account} pendingKey={pendingKey} onRename={handleRename} onAction={handleAction} /></td>
@@ -187,6 +196,7 @@ export function MailConnectionsPanel({ initialAccounts }: MailConnectionsPanelPr
         {accounts.map((account) => (
           <article key={account.id} className="rounded-2xl border border-[#dfe6e2] bg-white p-5 shadow-sm">
             <div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold text-[#263b32]">{account.displayName}</h3><p className="mt-1 text-sm text-[#64736c]">{providerLabels[account.provider]}</p></div><StatusBadge account={account} /></div>
+            {account.error ? <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">{account.error}</p> : null}
             <dl className="mt-4 grid gap-3 text-sm"><div><dt className="text-xs uppercase text-[#7a8982]">E-mail</dt><dd className="mt-1 break-all">{account.emailAddress}</dd></div><div><dt className="text-xs uppercase text-[#7a8982]">Dernière synchronisation</dt><dd className="mt-1">{formatDate(account.lastSuccessfulSyncAt)}</dd></div><div><dt className="text-xs uppercase text-[#7a8982]">Compte actif</dt><dd className="mt-1 font-semibold">{account.isActive ? "Oui" : "Non"}</dd></div></dl>
             <div className="mt-5"><AccountActions account={account} pendingKey={pendingKey} onRename={handleRename} onAction={handleAction} /></div>
           </article>
@@ -209,7 +219,7 @@ function StatusBadge({ account }: { account: MailAccount }) {
 function AccountActions({ account, pendingKey, onRename, onAction }: { account: MailAccount; pendingKey: string | null; onRename: (account: MailAccount) => void; onAction: (account: MailAccount, action: AccountAction) => void }) {
   const isPending = pendingKey !== null;
   const buttonClass = "min-h-9 rounded-lg border border-[#cbd7d1] bg-white px-2.5 text-xs font-semibold text-[#40554b] disabled:cursor-not-allowed disabled:opacity-45";
-  return <div className="flex flex-wrap justify-end gap-2"><button type="button" disabled={isPending} onClick={() => onRename(account)} className={buttonClass}>Renommer</button><button type="button" disabled={account.isActive || isPending} onClick={() => onAction(account, "activate")} className={buttonClass}>Activer</button><button type="button" disabled={isPending} onClick={() => onAction(account, "test")} className={buttonClass}>Tester</button><button type="button" disabled={isPending} onClick={() => onAction(account, "disconnect")} className={`${buttonClass} text-red-700`}>Déconnecter</button></div>;
+  return <div className="flex flex-wrap justify-end gap-2">{account.provider === "google" ? <a href={`/api/auth/google?accountId=${encodeURIComponent(account.id)}`} className={buttonClass}>{account.mode === "oauth" ? "Reconnecter" : "Connecter"}</a> : null}<button type="button" disabled={isPending} onClick={() => onRename(account)} className={buttonClass}>Renommer</button><button type="button" disabled={account.isActive || isPending} onClick={() => onAction(account, "activate")} className={buttonClass}>Activer</button><button type="button" disabled={isPending} onClick={() => onAction(account, "test")} className={buttonClass}>Tester</button><button type="button" disabled={isPending} onClick={() => onAction(account, "disconnect")} className={`${buttonClass} text-red-700`}>Déconnecter</button></div>;
 }
 
 function formatDate(value: string | null): string {

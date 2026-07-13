@@ -4,13 +4,16 @@ import { google } from "googleapis";
 import {
   getGoogleServerConfig,
   GOOGLE_OAUTH_SCOPES,
+  isGoogleEmailAllowed,
 } from "@/features/mail/server/google/google-config";
 import { googleTokenRepository } from "@/features/mail/server/google/local-google-token-repository";
-import type { StoredGoogleTokens } from "@/features/mail/server/google/google-token-repository";
+import type {
+  GoogleTokenKey,
+  StoredGoogleTokens,
+} from "@/features/mail/server/google/google-token-repository";
 
 export function createGoogleAuthorizationUrl(state: string): string {
-  const client = createOAuthClient();
-  return client.generateAuthUrl({
+  return createOAuthClient().generateAuthUrl({
     access_type: "offline",
     include_granted_scopes: true,
     prompt: "consent",
@@ -19,7 +22,10 @@ export function createGoogleAuthorizationUrl(state: string): string {
   });
 }
 
-export async function exchangeGoogleAuthorizationCode(code: string): Promise<string> {
+export async function exchangeGoogleAuthorizationCode(
+  code: string,
+  key: GoogleTokenKey,
+): Promise<{ emailAddress: string; connectedAt: string }> {
   const config = getGoogleServerConfig();
   const client = createOAuthClient();
   const { tokens } = await client.getToken(code);
@@ -28,30 +34,32 @@ export async function exchangeGoogleAuthorizationCode(code: string): Promise<str
   const oauth = google.oauth2({ version: "v2", auth: client as never });
   const profile = await oauth.userinfo.get();
   const emailAddress = profile.data.email?.trim().toLowerCase();
-  if (!emailAddress || profile.data.verified_email !== true || emailAddress !== config.allowedEmail) {
+  if (!emailAddress || profile.data.verified_email !== true || !isGoogleEmailAllowed(emailAddress, config)) {
     await safelyRevoke(client);
-    throw new Error("Ce compte Google n’est pas autorisé pour cette version.");
+    throw new Error("Ce compte Google n’est pas autorisé par la politique serveur.");
   }
   if (!tokens.refresh_token) {
     await safelyRevoke(client);
     throw new Error("Google n’a pas fourni de jeton de renouvellement. Révoquez l’accès puis recommencez la connexion.");
   }
 
+  const connectedAt = new Date().toISOString();
   await googleTokenRepository.save({
+    key,
     emailAddress,
-    connectedAt: new Date().toISOString(),
+    connectedAt,
     lastSuccessfulSyncAt: null,
     lastError: null,
     tokens: toStoredTokens(tokens),
   });
-  return emailAddress;
+  return { emailAddress, connectedAt };
 }
 
-export async function getAuthorizedGoogleClient() {
+export async function getAuthorizedGoogleClient(key: GoogleTokenKey) {
   const config = getGoogleServerConfig();
-  const record = await googleTokenRepository.get();
-  if (!record?.tokens.refreshToken || record.emailAddress.toLowerCase() !== config.allowedEmail) {
-    throw new Error("Google Workspace n’est pas connecté.");
+  const record = await googleTokenRepository.get(key);
+  if (!record?.tokens.refreshToken || !isGoogleEmailAllowed(record.emailAddress, config)) {
+    throw new Error("Google Workspace n’est pas connecté pour ce compte.");
   }
 
   const client = createOAuthClient();
@@ -63,15 +71,47 @@ export async function getAuthorizedGoogleClient() {
     token_type: record.tokens.tokenType,
   });
   client.on("tokens", (tokens) => {
-    void googleTokenRepository.updateTokens(toStoredTokens(tokens)).catch(() => undefined);
+    void googleTokenRepository.updateTokens(key, toStoredTokens(tokens)).catch(() => undefined);
   });
-  await client.getAccessToken();
-  await googleTokenRepository.updateTokens(toStoredTokens(client.credentials));
+  try {
+    await client.getAccessToken();
+    await googleTokenRepository.updateTokens(key, toStoredTokens(client.credentials));
+  } catch {
+    await googleTokenRepository.updateError(
+      key,
+      "La session Google a expiré ou a été révoquée. Reconnectez ce compte.",
+    );
+    throw new Error("La session Google a expiré ou a été révoquée. Reconnectez ce compte.");
+  }
   return client;
 }
 
-export async function disconnectGoogleAccount(): Promise<void> {
-  const record = await googleTokenRepository.get();
+export async function testGoogleConnection(
+  key: GoogleTokenKey,
+): Promise<{ emailAddress: string }> {
+  const record = await googleTokenRepository.get(key);
+  if (!record) throw new Error("Google Workspace n’est pas connecté pour ce compte.");
+  const auth = await getAuthorizedGoogleClient(key);
+  try {
+    const oauth = google.oauth2({ version: "v2", auth: auth as never });
+    const profile = await oauth.userinfo.get();
+    const emailAddress = profile.data.email?.trim().toLowerCase();
+    if (!emailAddress || emailAddress !== record.emailAddress.toLowerCase()) {
+      throw new Error("L’identité Google reçue ne correspond pas au compte sélectionné.");
+    }
+    await googleTokenRepository.updateError(key, null);
+    return { emailAddress };
+  } catch (error) {
+    const message = error instanceof Error && error.message.includes("correspond pas")
+      ? error.message
+      : "La session Google a expiré ou a été révoquée. Reconnectez ce compte.";
+    await googleTokenRepository.updateError(key, message);
+    throw new Error(message);
+  }
+}
+
+export async function disconnectGoogleAccount(key: GoogleTokenKey): Promise<void> {
+  const record = await googleTokenRepository.get(key);
   if (!record) return;
   try {
     const client = createOAuthClient();
@@ -81,7 +121,7 @@ export async function disconnectGoogleAccount(): Promise<void> {
     });
     await safelyRevoke(client);
   } finally {
-    await googleTokenRepository.delete();
+    await googleTokenRepository.delete(key);
   }
 }
 
@@ -105,7 +145,7 @@ async function safelyRevoke(client: ReturnType<typeof createOAuthClient>): Promi
     const token = client.credentials.refresh_token ?? client.credentials.access_token;
     if (token) await client.revokeToken(token);
   } catch {
-    // La suppression locale reste obligatoire même si Google est temporairement indisponible.
+    // La suppression locale du compte ciblé reste obligatoire.
   }
 }
 

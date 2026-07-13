@@ -22,3 +22,8 @@ body { min-height: 100vh; margin: 0; background: var(--app-background); color: v
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--app-primary) 25%, transparent); outline-offset: 2px; }
+@media print {
+  aside, body > div header, .print\:hidden { display: none !important; }
+  main { padding: 0 !important; }
+  body { background: white; color: black; }
+}

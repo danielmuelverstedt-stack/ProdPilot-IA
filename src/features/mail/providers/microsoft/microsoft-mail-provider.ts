@@ -33,6 +33,10 @@ export class MicrosoftMailProvider implements MailProvider {
     };
   }
 
+  async testConnection(): Promise<MailConnectionStatus> {
+    return this.getConnectionStatus();
+  }
+
   async listMessages(): Promise<MailMessage[]> {
     return this.unavailable();
   }

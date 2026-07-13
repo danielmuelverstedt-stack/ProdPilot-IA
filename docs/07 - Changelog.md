@@ -4,6 +4,21 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Démonstration métier complète — 13/07/2026
+
+- Navigation centralisée vers onze modules et contrôle de visibilité/lecture selon le rôle de développement actif.
+- Dépôt mock unique et typé pour les actions, OF, opérations, planning, machines, maintenances, réunions, demandes, qualité ERP et notifications, avec persistance et réinitialisation locales.
+- Mon Espace alimenté par les compteurs partagés et assistant local déterministe sans appel OpenAI.
+- Modules Actions et OF avec recherche, filtres, détail, historique, mutations locales et liens croisés.
+- Planning par machine ou département, vues jour/semaine, déplacements confirmés, changement de machine/date, conflits de maintenance, surcharge et impression configurable.
+- Workflows QRQC et Réunion Production avec progression, minuteur, notes, parking lot, compte rendu et création d’actions globales.
+- Centre de demandes avec création, affectation, statuts, commentaires, chronologie et conversion en action.
+- Parc Machines et maintenance légère reliés aux avertissements du planning et de Mon Espace.
+- Qualité ERP avec filtres, score, e-mail mock copiable, résolution et création d’action, sans écriture ERP ni envoi réel.
+- Analyses décisionnelles sans dépendance graphique externe.
+- Centre de réglages complété avec Connexions, ERP, Notifications et réinitialisation des données de démonstration.
+- Guides de données de démonstration, de recette utilisateur et des intégrations restantes.
+
 ### Stabilisé — 13/07/2026
 
 - Validation structurelle complète et limitation de taille des sauvegardes de réglages avant import, avec gestion des erreurs de lecture.

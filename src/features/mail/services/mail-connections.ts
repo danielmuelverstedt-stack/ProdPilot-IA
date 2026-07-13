@@ -31,17 +31,39 @@ export async function activateMailAccount(accountId: string): Promise<MailAccoun
 export async function testMailAccount(accountId: string): Promise<MailAccount> {
   const account = await getRequiredAccount(accountId);
   const provider = getMailProviderForAccount(account);
-  const status = await provider.getConnectionStatus();
-  if (status.state !== "connected") {
-    throw new Error(status.error ?? "La connexion de ce compte n’est pas disponible.");
+  try {
+    const status = await provider.testConnection();
+    if (status.state !== "connected") {
+      throw new Error(status.error ?? "La connexion de ce compte n’est pas disponible.");
+    }
+    return mailAccountRepository.markConnectionTest(accountId, new Date().toISOString());
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Le test de connexion a échoué.";
+    await mailAccountRepository.markConnectionError(accountId, message);
+    throw new Error(message);
   }
-  return mailAccountRepository.markConnectionTest(accountId, new Date().toISOString());
 }
 
 export async function disconnectMailAccount(accountId: string): Promise<void> {
   const account = await getRequiredAccount(accountId);
   await getMailProviderForAccount(account).disconnect();
   await mailAccountRepository.delete(accountId);
+}
+
+export async function getGoogleAccountForOAuth(accountId: string): Promise<MailAccount> {
+  const account = await getRequiredAccount(accountId);
+  if (account.provider !== "google") {
+    throw new Error("Le compte ciblé n’est pas un compte Google Workspace.");
+  }
+  return account;
+}
+
+export async function connectGoogleMailAccount(input: {
+  accountId: string;
+  emailAddress: string;
+  connectedAt: string;
+}): Promise<MailAccount> {
+  return mailAccountRepository.connectGoogle(input);
 }
 
 async function getRequiredAccount(accountId: string): Promise<MailAccount> {

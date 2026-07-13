@@ -2,7 +2,18 @@
 
 ## Lecture du document
 
-Tous les modules ci-dessous sont planifiés. La présence d’une description ne signifie pas qu’ils sont déjà développés. Le MVP produit global est défini dans la feuille de route ; le « périmètre MVP » de chaque module décrit sa première version utile.
+Les modules ci-dessous possèdent une démonstration navigable lorsqu’ils sont indiqués « fonctionnel en mode démo ». Cela ne signifie pas que leurs intégrations ERP, Supabase, OpenAI ou Microsoft Graph sont réalisées. Le MVP produit global est défini dans la feuille de route.
+
+## État de la démonstration au 13/07/2026
+
+| Module | État | Source |
+|---|---|---|
+| Mon Espace | Fonctionnel en mode démo | Dépôts métier partagés + compte mail actif |
+| Mails | Fonctionnel Mock ; Google local configurable | Registre multi-comptes et adaptateurs serveur |
+| Actions, OF, Planning | Fonctionnels en mode démo | Dépôt local partagé |
+| Réunions, Suivi, Parc Machines | Fonctionnels en mode démo | Dépôt local partagé |
+| Qualité ERP, Analyses | Fonctionnels en mode démo | Calculs sur dépôts partagés |
+| Réglages et permissions | Fonctionnels localement | Dépôt de réglages versionné |
 
 ## Mon Espace
 

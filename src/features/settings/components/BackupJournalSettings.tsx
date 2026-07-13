@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { buttonClass, SettingsPanel } from "@/features/settings/components/SettingsUi";
 import { parseSettingsBackup } from "@/features/settings/services/settings-repository";
+import { resetDemoData } from "@/features/demo/services/demo-repository";
 
 const MAX_BACKUP_SIZE = 2 * 1024 * 1024;
 
@@ -51,6 +52,12 @@ export function BackupSettings() {
     setNotice("Réglages réinitialisés.");
   }
 
+  function restoreDemoData() {
+    if (!window.confirm("Réinitialiser toutes les données métier de démonstration ?")) return;
+    resetDemoData();
+    setNotice("Données de démonstration réinitialisées.");
+  }
+
   return (
     <SettingsPanel
       title="Sauvegardes"
@@ -70,6 +77,9 @@ export function BackupSettings() {
         />
         <button className={`${buttonClass} text-red-700`} onClick={restoreDefaults}>
           Rétablir les valeurs par défaut
+        </button>
+        <button className={`${buttonClass} text-red-700`} onClick={restoreDemoData}>
+          Réinitialiser les données de démonstration
         </button>
       </div>
       <p className="mt-4 text-sm text-slate-500" aria-live="polite">{notice}</p>

@@ -38,7 +38,7 @@ function isSettings(value: unknown): value is AppSettings {
   const cardsValid = Array.isArray(value.workspaceCards) && value.workspaceCards.every((item) =>
     isOrderedItem(
       item,
-      ["id", "label", "icon", "color", "size", "description", "status", "href"],
+      ["id", "label", "icon", "color", "size", "description", "status", "href", "priorityLevel"],
       ["visible"],
     ) && isRecord(item) && ["small", "medium", "wide"].includes(String(item.size)) &&
       typeof item.counter === "number" && Number.isFinite(item.counter),
@@ -103,6 +103,8 @@ function migrateSettings(value: unknown): AppSettings {
   const saved = value as Partial<AppSettings>;
   const defaults = cloneDefaults();
 
+  const savedNavigation = Array.isArray(saved.navigation) ? saved.navigation : [];
+  const savedCards = Array.isArray(saved.workspaceCards) ? saved.workspaceCards : [];
   return {
     ...defaults,
     ...saved,
@@ -112,9 +114,18 @@ function migrateSettings(value: unknown): AppSettings {
     production: { ...defaults.production, ...saved.production },
     print: { ...defaults.print, ...saved.print },
     templates: { ...defaults.templates, ...saved.templates },
-    navigation: Array.isArray(saved.navigation) ? saved.navigation : defaults.navigation,
-    workspaceCards: Array.isArray(saved.workspaceCards) ? saved.workspaceCards : defaults.workspaceCards,
-    roles: Array.isArray(saved.roles) ? saved.roles : defaults.roles,
+    navigation: defaults.navigation.map((item) => {
+      const previous = savedNavigation.find((entry) => entry.id === item.id);
+      return previous ? { ...item, ...previous, href: item.href } : item;
+    }),
+    workspaceCards: defaults.workspaceCards.map((item) => {
+      const previous = savedCards.find((entry) => entry.id === item.id);
+      return previous ? { ...item, ...previous, href: item.href, priorityLevel: item.priorityLevel } : item;
+    }),
+    roles: defaults.roles.map((role) => {
+      const previous = Array.isArray(saved.roles) ? saved.roles.find((entry) => entry.id === role.id) : undefined;
+      return previous ? { ...role, ...previous, permissions: { ...role.permissions, ...previous.permissions } } : role;
+    }),
     users: Array.isArray(saved.users) ? saved.users : defaults.users,
     journal: Array.isArray(saved.journal) ? saved.journal : defaults.journal,
   };

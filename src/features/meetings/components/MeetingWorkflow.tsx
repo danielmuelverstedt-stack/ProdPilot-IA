@@ -1,0 +1,47 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { fieldClass, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { updateDemoData, useDemoData } from "@/features/demo/services/demo-repository";
+
+const qrqcSteps = ["Actions du QRQC précédent", "OF en cours", "Prochains OF", "Points bloquants", "Besoins des départements", "Actions créées", "Synthèse", "Clôture"];
+const productionSteps = ["Actions précédentes", "Cinq projets critiques", "Vue planning", "OF urgents", "Demandes des départements", "Décisions", "Synthèse", "Compte rendu"];
+const needs = ["Qualité", "Planning", "Programme", "Outillage", "Matière", "Maintenance", "Achats", "Autre"];
+
+export function MeetingWorkflow({ type }: { type: "QRQC" | "Production" }) {
+  const data = useDemoData();
+  const steps = type === "QRQC" ? qrqcSteps : productionSteps;
+  const selectedMeeting = data.meetings.find((item) => item.type === type && item.status !== "Clôturée") ?? data.meetings.find((item) => item.type === type);
+  const [step, setStep] = useState(0);
+  const [seconds, setSeconds] = useState(0);
+  const [running, setRunning] = useState(false);
+  const [note, setNote] = useState("");
+  const [parking, setParking] = useState("");
+  const [actionTitle, setActionTitle] = useState("");
+  const [closed, setClosed] = useState(selectedMeeting?.status === "Clôturée");
+  useEffect(() => { if (!running) return; const timer = window.setInterval(() => setSeconds((value) => value + 1), 1000); return () => window.clearInterval(timer); }, [running]);
+  const criticalOrders = useMemo(() => data.workOrders.filter((item) => item.priority === "Urgente" || item.status === "Bloqué" || item.dueDate <= "2026-07-15").slice(0, 5), [data.workOrders]);
+  if (!selectedMeeting) return null;
+  const meeting = selectedMeeting;
+  function addNote() { if (!note.trim()) return; updateDemoData((draft) => { draft.meetings.find((item) => item.id === meeting.id)?.notes.push(note.trim()); }); setNote(""); }
+  function addParking() { if (!parking.trim()) return; updateDemoData((draft) => { draft.meetings.find((item) => item.id === meeting.id)?.parkingLot.push(parking.trim()); }); setParking(""); }
+  function createAction() { if (!actionTitle.trim()) return; updateDemoData((draft) => { const id = `ACT-${String(draft.actions.length + 1).padStart(3, "0")}`; draft.actions.unshift({ id, title: actionTitle.trim(), description: `Action créée pendant la réunion ${meeting.id}.`, responsible: "Daniel Mülverstedt", department: "Production", priority: "Haute", status: "Ouverte", dueDate: "2026-07-15", createdAt: "2026-07-13", sourceType: type === "QRQC" ? "QRQC" : "production_meeting", sourceId: meeting.id, workOrderId: null, machineId: null, project: null, comments: [], history: [{ id: crypto.randomUUID(), date: new Date().toISOString(), author: "Daniel Mülverstedt", description: `Action créée pendant ${type}` }] }); draft.meetings.find((item) => item.id === meeting.id)?.actionIds.push(id); }); setActionTitle(""); }
+  function closeMeeting() { if (!window.confirm(`Clôturer la réunion ${type} et générer le compte rendu de démonstration ?`)) return; updateDemoData((draft) => { const target = draft.meetings.find((item) => item.id === meeting.id); if (target) { target.status = "Clôturée"; target.decisions.push(`Réunion clôturée après ${Math.floor(seconds / 60)} minute(s).`); } }); setClosed(true); setRunning(false); }
+  return <div className="mx-auto max-w-6xl"><ModuleHeader eyebrow={`Réunion · ${meeting.id}`} title={type === "QRQC" ? "QRQC quotidien" : "Réunion Production"} description={`${meeting.participants.join(", ")} · chronomètre ${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`} actions={<><button className={secondaryButton} onClick={() => setRunning((value) => !value)}>{running ? "Pause" : "Démarrer le minuteur"}</button><Link className={secondaryButton} href="/reunions">Quitter</Link></>} />
+    <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200"><span className="block h-full bg-[var(--app-primary)] transition-all" style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div><p className="mt-2 text-xs text-slate-500">Étape {step + 1} sur {steps.length} · {steps[step]}</p>
+    {closed ? <section className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-6"><StatusPill tone="success">Réunion clôturée</StatusPill><h2 className="mt-3 text-xl font-semibold">Compte rendu généré</h2><p className="mt-2 text-sm text-emerald-900">{meeting.notes.length} notes, {meeting.actionIds.length} actions et {meeting.parkingLot.length} sujets au parking. Aucune donnée externe n’a été transmise.</p><button className={`${secondaryButton} mt-4`} onClick={() => window.print()}>Imprimer le compte rendu</button></section> : <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-white p-5 sm:p-6"><h2 className="text-xl font-semibold">{steps[step]}</h2><StepContent type={type} step={step} data={data} criticalOrders={criticalOrders} /><div className="mt-6 grid gap-4 lg:grid-cols-3"><QuickInput label="Note rapide" value={note} setValue={setNote} onAdd={addNote} /><QuickInput label="Créer une action" value={actionTitle} setValue={setActionTitle} onAdd={createAction} /><QuickInput label="Parking lot" value={parking} setValue={setParking} onAdd={addParking} /></div><div className="mt-6 flex flex-wrap justify-between gap-2"><button className={secondaryButton} disabled={step === 0} onClick={() => setStep((value) => value - 1)}>Précédent</button>{step < steps.length - 1 ? <button className={primaryButton} onClick={() => setStep((value) => value + 1)}>Suivant</button> : <button className={primaryButton} onClick={closeMeeting}>Clôturer la réunion</button>}</div></section>}
+  </div>;
+}
+
+function StepContent({ type, step, data, criticalOrders }: { type: "QRQC" | "Production"; step: number; data: ReturnType<typeof useDemoData>; criticalOrders: ReturnType<typeof useDemoData>["workOrders"] }) {
+  if (step === 0) return <List items={data.actions.filter((item) => item.status !== "Terminée").slice(0, 5).map((item) => `${item.id} · ${item.title} — ${item.responsible}`)} />;
+  if ((type === "QRQC" && [1, 2, 3, 4].includes(step)) || (type === "Production" && [1, 3].includes(step))) return <div className="mt-4 grid gap-3">{criticalOrders.map((order) => <article key={order.id} className="rounded-xl border border-[var(--app-border)] p-4"><div className="flex flex-wrap justify-between gap-2"><Link href={`/of/${order.id}`} className="font-semibold text-[var(--app-primary)]">{order.id} · {order.customer}</Link><StatusPill tone={order.status === "Bloqué" ? "danger" : "warning"}>{order.status}</StatusPill></div><p className="mt-2 text-sm">Cet OF a-t-il besoin de quelque chose ?</p><div className="mt-2 flex flex-wrap gap-1">{needs.map((need) => <button key={need} className="rounded-full border px-2.5 py-1 text-xs hover:bg-slate-50">{need}</button>)}</div></article>)}</div>;
+  if ((type === "Production" && step === 2)) return <List items={data.planning.map((item) => `${item.workOrderId} · ${item.machineId} · ${item.startAt.slice(0, 10)}`)} />;
+  if ((type === "Production" && step === 4)) return <List items={data.requests.filter((item) => item.status !== "Terminée").map((item) => `${item.id} · ${item.title} · ${item.status}`)} />;
+  if (step >= 5) return <List items={[`${data.actions.filter((item) => item.status !== "Terminée").length} actions ouvertes`, `${data.requests.filter((item) => item.status !== "Terminée").length} demandes actives`, `${data.machines.filter((item) => item.status === "En panne").length} machine en panne`]} />;
+  return <p className="mt-4 text-sm text-slate-600">Ajoutez les décisions et points à suivre dans les champs ci-dessous.</p>;
+}
+
+function List({ items }: { items: string[] }) { return <ul className="mt-4 grid gap-2">{items.map((item) => <li key={item} className="rounded-lg bg-slate-50 p-3 text-sm">{item}</li>)}</ul>; }
+function QuickInput({ label, value, setValue, onAdd }: { label: string; value: string; setValue: (value: string) => void; onAdd: () => void }) { return <div><label className="text-xs font-semibold uppercase text-slate-500">{label}</label><div className="mt-1 flex gap-1"><input className={`${fieldClass} min-w-0 flex-1`} value={value} onChange={(event) => setValue(event.target.value)} /><button className={secondaryButton} onClick={onAdd}>Ajouter</button></div></div>; }

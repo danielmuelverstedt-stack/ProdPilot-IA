@@ -5,6 +5,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   CreateMailAccountInput,
+  ConnectGoogleAccountInput,
   MailAccountRepository,
 } from "@/features/mail/server/accounts/mail-account-repository";
 import {
@@ -56,6 +57,33 @@ export class LocalMailAccountRepository implements MailAccountRepository {
     return structuredClone(account);
   }
 
+  async connectGoogle(input: ConnectGoogleAccountInput): Promise<MailAccount> {
+    const stored = await this.read();
+    const existingIndex = stored.accounts.findIndex((account) => account.id === input.accountId);
+    const existing = existingIndex >= 0 ? stored.accounts[existingIndex] : null;
+    if (existing && existing.provider !== "google") {
+      throw new Error("Le compte ciblé n’est pas un compte Google Workspace.");
+    }
+    const account: MailAccount = {
+      id: input.accountId,
+      provider: "google",
+      emailAddress: input.emailAddress,
+      displayName: existing?.displayName ?? `Google — ${input.emailAddress}`,
+      mode: "oauth",
+      status: "connected",
+      connectedAt: input.connectedAt,
+      lastSuccessfulSyncAt: existing?.lastSuccessfulSyncAt ?? null,
+      lastConnectionTestAt: existing?.lastConnectionTestAt ?? null,
+      isActive: true,
+      error: null,
+    };
+    stored.accounts = stored.accounts.map((item) => ({ ...item, isActive: false }));
+    if (existingIndex >= 0) stored.accounts[existingIndex] = account;
+    else stored.accounts.push(account);
+    await this.write(stored);
+    return structuredClone(account);
+  }
+
   async rename(accountId: string, displayName: string): Promise<MailAccount> {
     return this.updateAccount(accountId, (account) => ({ ...account, displayName }));
   }
@@ -86,6 +114,14 @@ export class LocalMailAccountRepository implements MailAccountRepository {
       ...account,
       lastSuccessfulSyncAt: synchronizedAt,
       error: null,
+    }));
+  }
+
+  async markConnectionError(accountId: string, message: string): Promise<MailAccount> {
+    return this.updateAccount(accountId, (account) => ({
+      ...account,
+      status: "error",
+      error: message,
     }));
   }
 

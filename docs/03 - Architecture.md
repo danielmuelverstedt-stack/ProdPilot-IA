@@ -123,21 +123,29 @@ L’authentification applicative et l’autorisation d’un fournisseur de messa
 
 Les composants d’interface utilisent uniquement les types communs et les services de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons et archivage. L’envoi est volontairement absent des premières versions. Une factory sélectionne un adaptateur lié au compte à partir du fournisseur (`google`, `microsoft` ou `mock`) et du mode du compte.
 
-L’état actuel comprend un registre local multi-comptes réservé au développement. Plusieurs comptes par fournisseur sont autorisés, exactement un compte est actif et les comptes Google Workspace ou Microsoft 365 utilisent un adaptateur de démonstration tant que leur mode reste `demo`. Le service `getActiveMailContext` est l’unique point de résolution pour l’espace Mails, Mon Espace et les futures fonctions IA liées aux e-mails. Un changement de compte actif ne nécessite donc aucun changement dans les consommateurs.
+L’état actuel comprend un registre local multi-comptes réservé au développement. Plusieurs comptes par fournisseur sont autorisés, exactement un compte est actif et les comptes en mode `demo` utilisent l’adaptateur Mock. Le service `getActiveMailContext` est l’unique point de résolution pour l’espace Mails, Mon Espace et les futures fonctions IA liées aux e-mails. Un changement de compte actif ne nécessite donc aucun changement dans les consommateurs.
 
-L’adaptateur Google Workspace réel et le placeholder Microsoft 365 sont conservés côté serveur pour les prochaines étapes. Le flux OAuth réel n’est pas exposé par l’écran multi-comptes actuel : il devra d’abord associer les jetons à l’identifiant du compte, à l’utilisateur et à l’entreprise.
+L’adaptateur Google Workspace réel est lié à l’`accountId` sélectionné. La clé de jeton contient l’utilisateur local, l’entreprise locale, le fournisseur et l’`accountId`. L’état OAuth est signé, expirant et lié à un nonce `HttpOnly`. Le placeholder Microsoft 365 reste inchangé.
 
-### Flux Google Workspace prévu
+### Flux Google Workspace local
 
 1. L’utilisateur choisit de connecter Gmail.
 2. Le serveur sélectionne le fournisseur Google puis lance Google OAuth avec les portées minimales.
 3. Google retourne un code au callback serveur.
-4. Le serveur échange le code, valide l’adresse autorisée et stocke localement les jetons pour cette phase de développement.
+4. Le serveur vérifie l’état signé, échange le code, valide la politique d’adresses ou de domaines et stocke localement les jetons associés au compte.
 5. Un service Gmail récupère les identifiants puis le détail des messages autorisés à la demande.
 6. L’utilisateur relit, modifie et confirme explicitement la création d’un brouillon Gmail.
 7. Aucun envoi ni archivage n’est disponible dans cette version.
 
 Ni les jetons de messagerie ni le contenu HTML non fiable ne sont exposés au rendu. Le dépôt local de jetons doit être remplacé par un stockage chiffré et multi-entreprise avant la production. Le futur flux Microsoft 365 suivra les mêmes frontières, avec Microsoft Graph encapsulé dans son propre adaptateur.
+
+## Architecture de la démonstration métier
+
+Les types partagés vivent dans `src/features/demo/types`. Les entités mock et leurs références croisées sont définies une seule fois dans `src/features/demo/mock`. Le dépôt `demo-repository` expose un instantané commun aux modules et persiste les mutations attendues dans une unique clé `localStorage`. Actions, OF, opérations, planning, machines, maintenances, réunions, demandes, anomalies ERP et notifications utilisent donc les mêmes identifiants.
+
+Cette persistance est strictement une infrastructure de démonstration. Le contrat de données permet de remplacer le dépôt par des implémentations Supabase ou serveur sans recopier les entités dans les composants. La fonction de réinitialisation est accessible depuis Réglages → Sauvegardes.
+
+Les permissions de développement sont centralisées dans les réglages. Le shell filtre le menu et bloque le rendu d’un module lorsque le rôle actif ne possède pas le droit de lecture. Il ne s’agit pas d’une authentification : les contrôles devront être reproduits côté serveur avant tout usage partagé.
 
 ## Flux d’import ERP
 

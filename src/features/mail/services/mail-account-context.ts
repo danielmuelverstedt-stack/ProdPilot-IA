@@ -16,9 +16,13 @@ export async function getActiveMailContext() {
 export async function listActiveMailMessages(options?: ListMessagesOptions) {
   const { account, provider } = await getActiveMailContext();
   if (account.status !== "connected") return { account, messages: [] };
-  const messages = await provider.listMessages(options);
-  if (account.mode === "demo" && process.env.NODE_ENV !== "production") {
+  try {
+    const messages = await provider.listMessages(options);
     await mailAccountRepository.markSynchronization(account.id, new Date().toISOString());
+    return { account, messages };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "La lecture des messages a échoué.";
+    await mailAccountRepository.markConnectionError(account.id, message);
+    throw error;
   }
-  return { account, messages };
 }

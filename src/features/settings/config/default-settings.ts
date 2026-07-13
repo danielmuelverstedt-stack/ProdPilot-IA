@@ -7,15 +7,15 @@ import {
 
 export const defaultNavigation: NavigationItemConfig[] = [
   { id: "workspace", label: "Mon Espace", icon: "home", href: "/", visible: true, order: 1 },
-  { id: "dashboard", label: "Tableau de bord", icon: "dashboard", href: "/modules/tableau-de-bord", visible: true, order: 2 },
-  { id: "planning", label: "Planning", icon: "calendar", href: "/modules/planning", visible: true, order: 3 },
-  { id: "work-orders", label: "OF", icon: "list", href: "/modules/of", visible: true, order: 4 },
-  { id: "meetings", label: "Réunions", icon: "meeting", href: "/modules/reunions", visible: true, order: 5 },
-  { id: "actions", label: "Actions", icon: "check", href: "/modules/actions", visible: true, order: 6 },
-  { id: "erp-quality", label: "Qualité ERP", icon: "quality", href: "/modules/qualite-erp", visible: true, order: 7 },
-  { id: "machines", label: "Parc Machines", icon: "factory", href: "/modules/parc-machines", visible: true, order: 8 },
-  { id: "tracking", label: "Suivi", icon: "tracking", href: "/modules/suivi", visible: true, order: 9 },
-  { id: "analytics", label: "Analyses", icon: "chart", href: "/modules/analyses", visible: true, order: 10 },
+  { id: "mails", label: "Mails", icon: "mail", href: "/mails", visible: true, order: 2 },
+  { id: "actions", label: "Actions", icon: "check", href: "/actions", visible: true, order: 3 },
+  { id: "planning", label: "Planning", icon: "calendar", href: "/planning", visible: true, order: 4 },
+  { id: "work-orders", label: "OF", icon: "list", href: "/of", visible: true, order: 5 },
+  { id: "meetings", label: "Réunions", icon: "meeting", href: "/reunions", visible: true, order: 6 },
+  { id: "tracking", label: "Suivi", icon: "tracking", href: "/suivi", visible: true, order: 7 },
+  { id: "machines", label: "Parc Machines", icon: "factory", href: "/machines", visible: true, order: 8 },
+  { id: "erp-quality", label: "Qualité ERP", icon: "quality", href: "/qualite-erp", visible: true, order: 9 },
+  { id: "analytics", label: "Analyses", icon: "chart", href: "/analyses", visible: true, order: 10 },
   { id: "settings", label: "Réglages", icon: "settings", href: "/reglages", visible: true, order: 11 },
 ];
 
@@ -57,7 +57,7 @@ function permissionsFor(mode: "admin" | "view" | "operator") {
     defaultNavigation.map((item) => {
       if (mode === "admin") return [item.id, { ...fullPermission }];
       if (item.id === "settings") return [item.id, { ...hiddenPermission }];
-      if (mode === "operator" && ["dashboard", "analytics", "erp-quality"].includes(item.id)) {
+      if (mode === "operator" && ["analytics", "erp-quality"].includes(item.id)) {
         return [item.id, { ...hiddenPermission }];
       }
       return [item.id, { ...viewPermission, create: mode === "operator" && item.id === "actions" }];
@@ -69,13 +69,14 @@ export const defaultSettings: AppSettings = {
   version: SETTINGS_VERSION,
   navigation: defaultNavigation,
   workspaceCards: [
-    { id: "mails", label: "Mails", icon: "mail", color: "#2563eb", size: "medium", description: "Consultez les messages récents et préparez les prochaines actions.", status: "À traiter", counter: 6, href: "/mails", visible: true, order: 1 },
-    { id: "open-actions", label: "Actions ouvertes", icon: "check", color: "#d97706", size: "medium", description: "Suivez les décisions, responsables et échéances en cours.", status: "Prioritaire", counter: 3, href: "/modules/actions", visible: true, order: 2 },
-    { id: "planning", label: "Planning", icon: "calendar", color: "#7c3aed", size: "medium", description: "Repérez les conflits et les arbitrages machines à préparer.", status: "À vérifier", counter: 2, href: "/modules/planning", visible: true, order: 3 },
-    { id: "qrqc", label: "QRQC", icon: "meeting", color: "#059669", size: "small", description: "Préparez les points critiques du rituel quotidien.", status: "Prêt", counter: 1, href: "/modules/reunions", visible: true, order: 4 },
-    { id: "production-meeting", label: "Réunion Production", icon: "dashboard", color: "#2563eb", size: "wide", description: "Rassemblez les décisions, les blocages et les actions à suivre.", status: "Demain à 09 h 30", counter: 0, href: "/modules/reunions", visible: true, order: 5 },
-    { id: "machines", label: "Parc Machines", icon: "factory", color: "#dc2626", size: "small", description: "Surveillez les indisponibilités et les maintenances planifiées.", status: "1 alerte", counter: 1, href: "/modules/parc-machines", visible: true, order: 6 },
-    { id: "requests", label: "Centre de demandes", icon: "inbox", color: "#0d9488", size: "medium", description: "Centralisez les demandes internes qui nécessitent une décision.", status: "En attente", counter: 4, href: "/modules/suivi", visible: true, order: 7 },
+    { id: "mails", label: "Mails", icon: "mail", color: "#2563eb", size: "medium", description: "Consultez les messages récents et préparez les prochaines actions.", status: "À traiter", counter: 6, priorityLevel: "Haute", href: "/mails", visible: true, order: 1 },
+    { id: "open-actions", label: "Actions ouvertes", icon: "check", color: "#d97706", size: "medium", description: "Suivez les décisions, responsables et échéances en cours.", status: "Prioritaire", counter: 3, priorityLevel: "Urgente", href: "/actions", visible: true, order: 2 },
+    { id: "planning", label: "Planning", icon: "calendar", color: "#7c3aed", size: "medium", description: "Repérez les conflits et les arbitrages machines à préparer.", status: "À vérifier", counter: 2, priorityLevel: "Haute", href: "/planning", visible: true, order: 3 },
+    { id: "qrqc", label: "QRQC", icon: "meeting", color: "#059669", size: "small", description: "Préparez les points critiques du rituel quotidien.", status: "Prêt", counter: 1, priorityLevel: "Normale", href: "/reunions/qrqc", visible: true, order: 4 },
+    { id: "production-meeting", label: "Réunion Production", icon: "dashboard", color: "#2563eb", size: "wide", description: "Rassemblez les décisions, les blocages et les actions à suivre.", status: "Demain à 09 h 30", counter: 0, priorityLevel: "Normale", href: "/reunions/production", visible: true, order: 5 },
+    { id: "machines", label: "Parc Machines", icon: "factory", color: "#dc2626", size: "small", description: "Surveillez les indisponibilités et les maintenances planifiées.", status: "1 alerte", counter: 1, priorityLevel: "Urgente", href: "/machines", visible: true, order: 6 },
+    { id: "requests", label: "Centre de demandes", icon: "inbox", color: "#0d9488", size: "medium", description: "Centralisez les demandes internes qui nécessitent une décision.", status: "En attente", counter: 4, priorityLevel: "Haute", href: "/suivi", visible: true, order: 7 },
+    { id: "erp-quality", label: "Qualité ERP", icon: "quality", color: "#9333ea", size: "medium", description: "Traitez les incohérences qui fragilisent le planning.", status: "À corriger", counter: 4, priorityLevel: "Haute", href: "/qualite-erp", visible: true, order: 8 },
   ],
   company: {
     name: "ProdPilot IA",
@@ -114,7 +115,7 @@ export const defaultSettings: AppSettings = {
     { id: "administrator", name: "Administrateur", permissions: permissionsFor("admin") },
     { id: "production-manager", name: "Responsable de production", permissions: permissionsFor("admin") },
     { id: "planner", name: "Planificateur", permissions: permissionsFor("view") },
-    { id: "supervisor", name: "Superviseur", permissions: permissionsFor("view") },
+    { id: "supervisor", name: "Chef d’équipe", permissions: permissionsFor("view") },
     { id: "operator", name: "Opérateur", permissions: permissionsFor("operator") },
     { id: "quality", name: "Qualité", permissions: permissionsFor("view") },
     { id: "direction", name: "Direction", permissions: permissionsFor("view") },
@@ -132,7 +133,7 @@ export const defaultSettings: AppSettings = {
     columns: [
       ["logo", "Logo"], ["company", "Nom société"], ["machine", "Machine"], ["datetime", "Date et heure"],
       ["work-order", "Numéro d’OF"], ["customer", "Client"], ["article", "Référence article"], ["description", "Description"],
-      ["quantity", "Quantité"], ["operation", "Opération"], ["planned-time", "Temps planifié"], ["priority", "Priorité"],
+      ["quantity", "Quantité"], ["operation", "Opération"], ["planned-time", "Temps planifié"], ["planned-date", "Date planifiée"], ["priority", "Priorité"],
       ["delivery-date", "Date de livraison"], ["comments", "Commentaires"], ["completed", "Case terminé"], ["problem", "Case problème"],
     ].map(([id, label], order) => ({ id, label, visible: true, order })),
   },

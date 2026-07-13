@@ -9,17 +9,17 @@
 
 ## État actuel
 
-Le dépôt utilise Next.js 16.2.10, React 19, TypeScript strict et Tailwind CSS 4. L’App Router est organisé sous `src/app`. « Mon Espace » propose un shell responsive, des cartes configurables, un assistant temporaire et un espace Mails. Un registre local de démonstration gère plusieurs comptes Google Workspace, Microsoft 365 ou Mock avec un compte actif unique. Toutes les lectures de messagerie passent par ce contexte actif. L’adaptateur Gmail OAuth historique reste côté serveur mais n’est pas raccordé au registre multi-comptes dans cette étape ; aucun compte réel ni envoi d’e-mail n’est activé.
+Le dépôt utilise Next.js 16.2.10, React 19, TypeScript strict et Tailwind CSS 4. La démonstration couvre Mon Espace, Mails, Actions, OF, Planning, Réunions, Suivi, Parc Machines, Qualité ERP, Analyses et Réglages. Les modules métier partagent un dépôt local typé et des données industrielles cohérentes ; ils ne sont pas reliés à l’ERP, Supabase ou OpenAI. La messagerie conserve son architecture indépendante des fournisseurs, son registre multi-comptes et l’adaptateur Google OAuth côté serveur. Aucun envoi d’e-mail n’est disponible.
 
 | Phase | Statut | Résultat attendu |
 |---|---|---|
 | 0 — Fondations techniques | En cours | Socle fiable, conventions, qualité et sécurité minimales |
-| 1 — Mon Espace | En cours | Poste de pilotage quotidien et navigation |
+| 1 — Mon Espace | Terminé (démo) | Poste de pilotage quotidien et navigation |
 | 2 — Messagerie | En cours | Google Workspace en premier, puis Microsoft 365 |
 | 3 — Import ERP | À faire | Import CSV/Excel contrôlé et données nettoyées |
-| 4 — Planning | À faire | Planning machines issu des données ERP |
-| 5 — Actions et réunions | À faire | Suivi coordonné des décisions et rituels |
-| 6 — Parc machines | À faire | Vision machines et maintenance future |
+| 4 — Planning | Terminé (démo) | Planning machines issu des données ERP |
+| 5 — Actions et réunions | Terminé (démo) | Suivi coordonné des décisions et rituels |
+| 6 — Parc machines | Terminé (démo) | Vision machines et maintenance future |
 | 7 — IA avancée | À faire | Assistant transversal, explicable et contrôlé |
 
 Les phases indiquent l’ordre de priorité, pas des échéances calendaires. Les dates seront définies à partir de la capacité de l’équipe, des retours pilotes et des dépendances externes.

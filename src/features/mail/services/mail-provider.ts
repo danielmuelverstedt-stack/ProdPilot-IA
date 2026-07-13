@@ -19,6 +19,7 @@ export interface MailProvider {
   connect(): Promise<MailAccount>;
   disconnect(accountId?: string): Promise<void>;
   getConnectionStatus(accountId?: string): Promise<MailConnectionStatus>;
+  testConnection(): Promise<MailConnectionStatus>;
   listMessages(options?: ListMessagesOptions): Promise<MailMessage[]>;
   getMessage(messageId: string): Promise<MailMessage | null>;
   getThread(threadId: string): Promise<MailThread | null>;

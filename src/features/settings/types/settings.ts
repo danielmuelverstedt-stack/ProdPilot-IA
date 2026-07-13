@@ -1,4 +1,4 @@
-export const SETTINGS_VERSION = 1;
+export const SETTINGS_VERSION = 2;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -20,6 +20,7 @@ export interface WorkspaceCardConfig {
   description: string;
   status: string;
   counter: number;
+  priorityLevel: "Basse" | "Normale" | "Haute" | "Urgente";
   href: string;
   visible: boolean;
   order: number;

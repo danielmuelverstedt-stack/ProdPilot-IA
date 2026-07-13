@@ -1,5 +1,14 @@
 import "server-only";
 
+import type { MailProviderType } from "@/features/mail/types/mail";
+
+export interface GoogleTokenKey {
+  userId: string;
+  companyId: string;
+  accountId: string;
+  provider: Extract<MailProviderType, "google">;
+}
+
 export interface StoredGoogleTokens {
   accessToken?: string;
   refreshToken?: string;
@@ -9,6 +18,7 @@ export interface StoredGoogleTokens {
 }
 
 export interface GoogleConnectionRecord {
+  key: GoogleTokenKey;
   emailAddress: string;
   connectedAt: string;
   lastSuccessfulSyncAt: string | null;
@@ -17,10 +27,10 @@ export interface GoogleConnectionRecord {
 }
 
 export interface GoogleTokenRepository {
-  get(): Promise<GoogleConnectionRecord | null>;
+  get(key: GoogleTokenKey): Promise<GoogleConnectionRecord | null>;
   save(record: GoogleConnectionRecord): Promise<void>;
-  updateTokens(tokens: StoredGoogleTokens): Promise<void>;
-  updateSynchronization(lastSuccessfulSyncAt: string): Promise<void>;
-  updateError(message: string | null): Promise<void>;
-  delete(): Promise<void>;
+  updateTokens(key: GoogleTokenKey, tokens: StoredGoogleTokens): Promise<void>;
+  updateSynchronization(key: GoogleTokenKey, lastSuccessfulSyncAt: string): Promise<void>;
+  updateError(key: GoogleTokenKey, message: string | null): Promise<void>;
+  delete(key: GoogleTokenKey): Promise<void>;
 }

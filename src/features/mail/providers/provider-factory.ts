@@ -6,12 +6,11 @@ import { MockMailProvider } from "@/features/mail/providers/mock/mock-mail-provi
 import type { MailProvider } from "@/features/mail/services/mail-provider";
 import type { MailAccount } from "@/features/mail/types/mail";
 
-const googleProvider = new GoogleMailProvider();
 const microsoftProvider = new MicrosoftMailProvider();
 
 export function getMailProviderForAccount(account: MailAccount): MailProvider {
   if (account.mode === "demo" || account.provider === "mock") {
     return new MockMailProvider(account);
   }
-  return account.provider === "google" ? googleProvider : microsoftProvider;
+  return account.provider === "google" ? new GoogleMailProvider(account) : microsoftProvider;
 }

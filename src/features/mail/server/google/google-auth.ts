@@ -102,7 +102,8 @@ function toStoredTokens(tokens: GoogleLibraryCredentials): StoredGoogleTokens {
 
 async function safelyRevoke(client: ReturnType<typeof createOAuthClient>): Promise<void> {
   try {
-    await client.revokeCredentials();
+    const token = client.credentials.refresh_token ?? client.credentials.access_token;
+    if (token) await client.revokeToken(token);
   } catch {
     // La suppression locale reste obligatoire même si Google est temporairement indisponible.
   }

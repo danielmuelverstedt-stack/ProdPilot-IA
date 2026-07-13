@@ -1,0 +1,52 @@
+.planningCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 1rem;
+  background: var(--app-card);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.gridScroller { overflow-x: auto; }
+.grid { min-width: 1650px; width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+.grid th, .grid td { border-bottom: 1px solid var(--app-border); }
+.machineColumn {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  min-width: 170px;
+  width: 170px;
+  border-right: 1px solid var(--app-border);
+  background: var(--app-card);
+  text-align: left;
+}
+.grid thead .machineColumn { z-index: 8; }
+.weekHeader { border-right: 2px solid var(--app-border); background: #f1f5f9; padding: 0.4rem; text-align: center; font-size: 0.625rem; }
+.dayHeader { min-width: 68px; padding: 0.45rem 0.2rem; text-align: center; }
+.friday { border-right: 2px solid var(--app-border); }
+.cell { min-width: 68px; padding: 0.25rem 0.2rem; vertical-align: top; }
+.cellInner { display: flex; min-height: 52px; flex-direction: column; gap: 0.25rem; border-radius: 0.5rem; }
+.dragOver { background: #eff6ff; outline: 2px dashed #93c5fd; outline-offset: -1px; }
+.cellFooter { margin-top: auto; display: flex; min-height: 1.1rem; align-items: center; justify-content: space-between; gap: 0.2rem; }
+.cellAdd { display: inline-flex; height: 1.1rem; width: 1.1rem; flex: none; align-items: center; justify-content: center; border: 1px dashed var(--app-border); border-radius: 0.35rem; color: #64748b; }
+.cellAdd:hover { border-color: var(--app-primary); background: #eff6ff; color: var(--app-primary); }
+.chargeColumn { min-width: 82px; padding: 0.5rem 0.75rem; text-align: right; }
+.block { position: relative; width: 100%; border: 1px solid; border-radius: 0.5rem; padding: 0.25rem 0.35rem; text-align: left; font-size: 0.625rem; line-height: 1.25; }
+.block strong { display: block; font-size: 0.625rem; }
+.blockControls { margin-top: 0.2rem; display: flex; justify-content: flex-end; gap: 0.15rem; }
+.blockControl { display: inline-flex; min-height: 1rem; min-width: 1rem; align-items: center; justify-content: center; border-radius: 0.2rem; background: rgb(255 255 255 / 72%); padding: 0 0.15rem; color: #334155; font-weight: 700; }
+.ongoing { border-color: color-mix(in srgb, var(--app-primary) 80%, black); background: var(--app-primary); color: white; }
+.planned { border-color: #cbd5e1; background: #e2e8f0; color: #334155; }
+.setup { border-color: #f59e0b; background: #fbbf24; color: #451a03; }
+.blocked { cursor: not-allowed; border-color: #fca5a5; background: #fee2e2; color: #991b1b; }
+.maintenance { border-color: #6d28d9; background: #7c3aed; color: white; }
+.misc { border-color: #0f766e; background: #0d9488; color: white; }
+.unplanned { border-color: #cbd5e1; background: #f8fafc; color: #475569; }
+.priority { position: absolute; right: 0.22rem; top: 0.18rem; height: 0.4rem; width: 0.4rem; border-radius: 999px; background: #fef08a; box-shadow: 0 0 0 1px rgb(120 53 15 / 35%); }
+.printSheet { break-after: page; }
+.printSheet:last-child { break-after: auto; }
+
+@media print {
+  .planningCard { border: 0; box-shadow: none; }
+  .gridScroller { overflow: visible; }
+}

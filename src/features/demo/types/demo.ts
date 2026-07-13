@@ -95,6 +95,7 @@ export interface MaintenanceEvent {
   responsible: string;
   status: "Prévue" | "En cours" | "Terminée" | "Reportée";
   comment: string;
+  planningKind?: "Maintenance" | "Divers";
 }
 
 export interface Meeting {

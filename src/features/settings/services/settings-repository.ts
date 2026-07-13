@@ -1,5 +1,5 @@
 import { defaultSettings } from "@/features/settings/config/default-settings";
-import { SETTINGS_VERSION, type AppSettings } from "@/features/settings/types/settings";
+import { SETTINGS_VERSION, type AppSettings, type MachineSettings } from "@/features/settings/types/settings";
 
 const STORAGE_KEY = "prodpilot.settings";
 
@@ -95,7 +95,7 @@ function isSettings(value: unknown): value is AppSettings {
 
 export function parseSettingsBackup(value: unknown): AppSettings | null {
   if (!isSettings(value)) return null;
-  return { ...structuredClone(value), version: SETTINGS_VERSION };
+  return migrateSettings(value);
 }
 
 function migrateSettings(value: unknown): AppSettings {
@@ -105,13 +105,18 @@ function migrateSettings(value: unknown): AppSettings {
 
   const savedNavigation = Array.isArray(saved.navigation) ? saved.navigation : [];
   const savedCards = Array.isArray(saved.workspaceCards) ? saved.workspaceCards : [];
+  const savedMachines = Array.isArray(saved.production?.machines) ? saved.production.machines : [];
   return {
     ...defaults,
     ...saved,
     version: SETTINGS_VERSION,
     company: { ...defaults.company, ...saved.company },
     theme: { ...defaults.theme, ...saved.theme },
-    production: { ...defaults.production, ...saved.production },
+    production: {
+      ...defaults.production,
+      ...saved.production,
+      machines: migrateProductionMachines(saved.version, savedMachines, defaults.production.machines),
+    },
     print: { ...defaults.print, ...saved.print },
     templates: { ...defaults.templates, ...saved.templates },
     navigation: defaults.navigation.map((item) => {
@@ -129,6 +134,24 @@ function migrateSettings(value: unknown): AppSettings {
     users: Array.isArray(saved.users) ? saved.users : defaults.users,
     journal: Array.isArray(saved.journal) ? saved.journal : defaults.journal,
   };
+}
+
+const PREVIOUS_DEFAULT_MACHINE_IDS = ["TOU-01", "FRA-01", "FRA-10", "FIL-01"];
+
+function migrateProductionMachines(
+  savedVersion: number | undefined,
+  savedMachines: MachineSettings[],
+  defaultMachines: MachineSettings[],
+): MachineSettings[] {
+  if (!savedMachines.length) return defaultMachines;
+  if ((savedVersion ?? 0) >= 3) return savedMachines;
+
+  const isPreviousDefaultList = savedMachines.length === PREVIOUS_DEFAULT_MACHINE_IDS.length &&
+    savedMachines.every((machine, index) => machine.id === PREVIOUS_DEFAULT_MACHINE_IDS[index]);
+  if (!isPreviousDefaultList) return savedMachines;
+
+  const savedById = new Map(savedMachines.map((machine) => [machine.id, machine]));
+  return defaultMachines.map((machine) => ({ ...machine, ...savedById.get(machine.id) }));
 }
 
 export const settingsRepository = {

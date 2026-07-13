@@ -4,6 +4,19 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Planning historique migré — 13/07/2026
+
+- Audit de la référence historique et plan de migration détaillé dans `docs/17 - Legacy Planning Migration.md`.
+- Remplacement de la liste de cartes du Planning par la grille mensuelle historique : machines en lignes, jours ouvrés et semaines en colonnes, charges journalières et période, colonne machine figée et défilement horizontal responsive.
+- Restauration de la hiérarchie des filtres, de la légende et des couleurs d’état En cours, Planifiée, Bloquée, Maintenance et Divers.
+- Déplacement par glisser-déposer ou dialogue explicite, changement de machine/date, réordonnancement confirmé, contrôle des conflits maintenance et persistance dans le dépôt mock partagé.
+- Ajout d’OF compatibles depuis une cellule et planification de maintenances ou tâches libres, sans dupliquer les données de démonstration.
+- Impression globale ou par machine reliée à l’identité société, aux colonnes et aux droits configurés dans les réglages.
+- Référentiel Production complété avec les 28 machines historiques dans leur ordre d’affichage : 9 tours, 17 fraiseuses et 2 machines de découpe fil.
+- Migration de l’ancien jeu initial de quatre machines vers le référentiel complet, tout en conservant les modifications locales et les listes volontairement personnalisées.
+- Planning, filtres, onglets et impressions alimentés directement par les machines actives des Réglages ; ajout, modification, désactivation ou suppression pris en compte sans changement dans le Planning.
+- Route `/planning` vérifiée localement ; TypeScript, ESLint et build de production validés.
+
 ### Démonstration métier complète — 13/07/2026
 
 - Navigation centralisée vers onze modules et contrôle de visibilité/lecture selon le rôle de développement actif.

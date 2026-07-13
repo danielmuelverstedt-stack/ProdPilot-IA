@@ -16,6 +16,8 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Créer les routes fonctionnelles Actions, OF, Planning, Réunions, Suivi, Parc Machines, Qualité ERP et Analyses.
 - [x] Relier les actions créées depuis les réunions, demandes et anomalies ERP au dépôt Actions global.
 - [x] Ajouter l’impression configurable du planning, les confirmations de déplacement et les alertes de conflits.
+- [x] Reproduire le Planning mensuel historique avec grille machines/jours, charges, filtres, déplacements, tâches libres et impression par machine.
+- [x] Alimenter le Planning et son impression avec les 28 machines actives du référentiel centralisé des Réglages.
 - [x] Faire respecter la visibilité et le droit de lecture du rôle de développement dans le shell et sur les routes rendues.
 - [x] Ajouter la réinitialisation des données métier de démonstration depuis Réglages.
 

@@ -1,4 +1,4 @@
-export const SETTINGS_VERSION = 2;
+export const SETTINGS_VERSION = 3;
 
 export type CardSize = "small" | "medium" | "wide";
 

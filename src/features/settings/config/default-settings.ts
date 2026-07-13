@@ -1,9 +1,29 @@
 import {
   SETTINGS_VERSION,
   type AppSettings,
+  type MachineSettings,
   type ModulePermission,
   type NavigationItemConfig,
 } from "@/features/settings/types/settings";
+
+function productionMachine(
+  id: string,
+  name: string,
+  department: "Tournage" | "Fraisage" | "Découpe fil",
+  machineType: string,
+  capacityHours = 8,
+): MachineSettings {
+  return {
+    id,
+    active: true,
+    name,
+    displayName: name,
+    department,
+    machineType,
+    photoDataUrl: "",
+    technicalInformation: `Capacité standard : ${capacityHours} h/jour`,
+  };
+}
 
 export const defaultNavigation: NavigationItemConfig[] = [
   { id: "workspace", label: "Mon Espace", icon: "home", href: "/", visible: true, order: 1 },
@@ -101,10 +121,34 @@ export const defaultSettings: AppSettings = {
   },
   production: {
     machines: [
-      { id: "TOU-01", active: true, name: "MAZAK INTEGREX 300", displayName: "Integrex 300", department: "Tournage", machineType: "Tournage / Fraisage", photoDataUrl: "", technicalInformation: "Capacité standard : 8 h/jour" },
-      { id: "FRA-01", active: true, name: "MAZAK VTC-200C-II", displayName: "VTC-200C-II", department: "Fraisage", machineType: "Fraisage 3 axes", photoDataUrl: "", technicalInformation: "Capacité standard : 8 h/jour" },
-      { id: "FRA-10", active: true, name: "HEDELIUS ACURA 65 EL", displayName: "Acura 65", department: "Fraisage", machineType: "Fraisage 5 axes", photoDataUrl: "", technicalInformation: "Chargement automatisable" },
-      { id: "FIL-01", active: true, name: "MITSUBISHI FA30S", displayName: "FA30S", department: "Découpe fil", machineType: "Découpe fil", photoDataUrl: "", technicalInformation: "Capacité standard : 16 h/jour" },
+      productionMachine("TOU-01", "MAZAK INTEGREX 300", "Tournage", "Tournage / Fraisage"),
+      productionMachine("TOU-02", "MAZAK NEXUS 200MSY", "Tournage", "Tournage / Fraisage"),
+      productionMachine("TOU-03", "GRAZIANO GT300", "Tournage", "Tournage / Fraisage"),
+      productionMachine("TOU-04", "MAZAK INTEGREX 150", "Tournage", "Tournage / Fraisage"),
+      productionMachine("TOU-05", "OKUMA LB15 II-C", "Tournage", "Tournage"),
+      productionMachine("TOU-06", "Tour CNC HYUNDAI-KIA SKT 250", "Tournage", "Tournage"),
+      productionMachine("TOU-07", "OKUMA LB25 II-C", "Tournage", "Tournage"),
+      productionMachine("TOU-08", "Mazak Quick Turn Smart 350", "Tournage", "Tournage"),
+      productionMachine("TOU-09", "TOUR trad. Pinacho", "Tournage", "Tournage"),
+      productionMachine("FRA-01", "MAZAK VTC-200C-II", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-02", "MAZAK NEXUS 410 A II", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-03", "HEDELIUS CB70", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-04", "AKIRA SEIKI V4.5", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-05", "Fraiseuse DMC 1035 (B)", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-06", "Mikron VCE 800 PRO", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-07", "DMG DMC 635", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-08", "DECKEL MAHO DMC 1035V", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-09", "DECKEL MAHO DMC 64V linear", "Fraisage", "Fraisage 3 axes"),
+      productionMachine("FRA-10", "HEDELIUS ACURA 65 EL", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-11", "MAZAK CV5-500 + robot", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-12", "DMG MORI CMX50 U + PH150", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-13", "DMG MORI DMU50 + Robot", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-14", "DECKEL MAHO DMU 60 (1)", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-15", "DECKEL MAHO DMU 60 (2)", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-16", "DMG MORI SEIKI DMU50 (Ecoline)", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FRA-17", "MAZAK VTC 800", "Fraisage", "Fraisage 5 axes"),
+      productionMachine("FIL-01", "MITSUBISHI FA30S", "Découpe fil", "Découpe fil", 16),
+      productionMachine("FIL-02", "MV 2400R connect", "Découpe fil", "Découpe fil", 16),
     ],
     departments: ["Tournage", "Fraisage", "Découpe fil", "Qualité", "Maintenance"],
     capacities: ["Tournage · 8 h/jour", "Fraisage · 8 h/jour", "Découpe fil · 16 h/jour"],

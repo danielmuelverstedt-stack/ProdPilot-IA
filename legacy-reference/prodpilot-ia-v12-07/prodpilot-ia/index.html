@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProdPilot IA — Pilotage de production</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-badge" id="logoIcon"></div>
+      <div><b>ProdPilot <span>IA</span></b><small>Pilotage de production</small></div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      <div id="rolePreviewBox" class="role-preview-box"></div>
+      <button class="btn-ai" onclick="openAI()"><span id="aiIcon1"></span> Assistant IA</button>
+      <div class="side-note">Prototype avec données de démonstration. ERP : import CSV/API en lecture seule.</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="search">
+        <span class="ic" id="searchIcon"></span>
+        <input id="searchInput" placeholder="Rechercher un OF, un client, une machine…" autocomplete="off">
+        <div id="searchResults"></div>
+      </div>
+      <div class="top-right">
+        <div style="position:relative">
+          <button class="icon-btn" onclick="toggleNotif()"><span id="bellIcon"></span><span class="dot"></span></button>
+          <div id="notifPanel"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;padding-left:10px;border-left:1px solid var(--border)">
+          <div class="avatar">DA</div>
+          <div class="user-meta"><b>Daniel</b><br><small>Responsable flux &amp; production</small></div>
+        </div>
+      </div>
+    </header>
+    <div class="mobile-nav" id="mobileNav"></div>
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<div class="ai-panel" id="aiPanel">
+  <div class="ai-head">
+    <div class="badge-ai" id="aiIcon2"></div>
+    <div style="flex:1"><b style="font-size:13.5px">Assistant IA</b><div style="font-size:11px;color:var(--ink-3)">Répond uniquement sur vos données de production</div></div>
+    <button class="icon-btn" onclick="closeAI()">✕</button>
+  </div>
+  <div class="ai-msgs" id="aiMsgs"></div>
+  <div class="ai-input">
+    <input id="aiInput" placeholder="Posez une question sur la production…">
+    <button id="aiSend" onclick="askAI()">➤</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

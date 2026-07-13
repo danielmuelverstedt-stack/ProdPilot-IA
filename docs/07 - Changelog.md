@@ -6,6 +6,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ### Ajouté — 13/07/2026
 
+- Audit complet du prototype historique et plan de migration dans `docs/08 - Legacy Migration.md`.
+- Centre de réglages en dix catégories avec navigation détaillée de Personnalisation.
+- Designers configurables du menu principal et des cartes de Mon Espace.
+- Identité société avec logo local, thème centralisé et aperçu immédiat des couleurs.
+- Gestion locale des machines et référentiels de production, sans écriture ERP.
+- Utilisateurs, huit rôles, matrice complète de droits par module et sélecteur de rôle de démonstration.
+- Réglages d’impression A4/A3, portrait/paysage, seize colonnes ordonnables et aperçu.
+- Sauvegarde, restauration, réinitialisation et journal local des réglages.
+- Service TypeScript centralisé, versionné et migrable pour les réglages persistés dans `localStorage`.
+
 - Page d’accueil « Mon Espace » avec navigation responsive, en-tête, six cartes métier et zone assistant temporaire.
 - Pages « Module en préparation » pour le Planning, les OF, les Réunions, les Actions, le QRQC et le Parc Machines.
 - Espace Mails responsive avec messages récents, urgents, à répondre, informatifs et à convertir en action.
@@ -19,6 +29,12 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 - Route serveur générique pour consulter, connecter et déconnecter les fournisseurs simulés.
 
 ### Modifié — 13/07/2026
+
+- Identité visuelle alignée sur le prototype historique : sidebar bleu nuit, surfaces claires, cartes compactes et tokens de thème.
+- Shell applicatif rendu configurable, repliable et adapté aux écrans mobiles.
+- Mon Espace rendu dynamique à partir de la configuration locale tout en conservant les indicateurs de messagerie simulés.
+- Navigation étendue aux onze modules cibles avec placeholders propres pour les écrans non migrés.
+- Référence legacy exclue du lint applicatif ; elle reste disponible uniquement pour l’audit.
 
 - Contrat `MailProvider` recentré sur la connexion, la lecture, la recherche, les brouillons et l’archivage ; toute méthode d’envoi simulé a été retirée.
 - Fournisseur Google Workspace simulé et adaptateur Microsoft 365 temporaire sélectionnés par la factory commune.

@@ -4,6 +4,12 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 
 ## Maintenant
 
+- [x] Auditer le prototype historique et documenter la stratégie de migration dans `docs/08 - Legacy Migration.md`.
+- [x] Migrer l’identité visuelle historique vers un shell responsive avec menu configurable, en-tête, profil et notifications.
+- [x] Rendre les cartes de Mon Espace configurables : ordre, visibilité, libellé, icône, couleur et taille.
+- [x] Créer le centre de réglages local avec identité société, thème, production, utilisateurs, rôles, impression, sauvegardes et journal.
+- [x] Centraliser les réglages dans un service TypeScript versionné basé sur `localStorage` et remplaçable par Supabase.
+
 - [x] Finaliser la documentation initiale du projet.
 - [x] Créer les instructions opérationnelles de contribution dans `AGENTS.md`.
 - [ ] Créer le shell de « Mon Espace » avec ses états vide, chargement et erreur.
@@ -20,6 +26,10 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [ ] Générer des brouillons Gmail modifiables avec confirmation explicite avant envoi.
 
 ## Ensuite
+
+- [ ] Remplacer la persistance locale des réglages par un dépôt Supabase après validation de l’authentification et du modèle multi-entreprise.
+- [ ] Relier les permissions aux actions métier en plus de la visibilité de la navigation.
+- [ ] Remplacer les placeholders par les modules prioritaires après validation fonctionnelle.
 
 - [ ] Valider le besoin puis intégrer Supabase pour l’authentification et/ou la persistance.
 - [ ] Créer l’import ERP CSV/Excel sécurisé.

@@ -35,6 +35,10 @@ const modules: Record<
     description: "Le suivi structuré des problèmes QRQC sera disponible dans une prochaine version.",
     activeSection: "workspace",
   },
+  "tableau-de-bord": { title: "Tableau de bord", description: "Les indicateurs consolidés seront disponibles prochainement.", activeSection: "dashboard" },
+  "qualite-erp": { title: "Qualité ERP", description: "Les contrôles de cohérence ERP seront ajoutés sans écriture directe dans la première version.", activeSection: "erp-quality" },
+  suivi: { title: "Suivi", description: "Le centre de suivi transversal est en préparation.", activeSection: "tracking" },
+  analyses: { title: "Analyses", description: "Les analyses de charge et de performance seront disponibles prochainement.", activeSection: "analytics" },
 };
 
 export default async function ModulePage({

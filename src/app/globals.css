@@ -1,47 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f7f5;
-  --foreground: #17211d;
-  --surface: #ffffff;
-  --muted: #64736c;
-  --border: #dfe6e2;
-  --brand: #195c45;
-  --brand-strong: #104432;
+  --app-primary: #1d4ed8;
+  --app-secondary: #020617;
+  --app-success: #059669;
+  --app-warning: #d97706;
+  --app-danger: #dc2626;
+  --app-information: #2563eb;
+  --app-background: #f8fafc;
+  --app-card: #ffffff;
+  --app-border: #e2e8f0;
+  --app-text: #0f172a;
+  --background: var(--app-background);
+  --foreground: var(--app-text);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html {
-  background: var(--background);
-}
-
-body {
-  min-height: 100vh;
-  margin: 0;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(204, 229, 218, 0.55), transparent 32rem),
-    var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-
-button:focus-visible,
-a:focus-visible {
-  outline: 3px solid rgba(25, 92, 69, 0.28);
-  outline-offset: 3px;
-}
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --font-sans: var(--font-geist-sans); --font-mono: var(--font-geist-mono); }
+* { box-sizing: border-box; }
+html { background: var(--app-background); }
+body { min-height: 100vh; margin: 0; background: var(--app-background); color: var(--app-text); font-family: Arial, Helvetica, sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--app-primary) 25%, transparent); outline-offset: 2px; }

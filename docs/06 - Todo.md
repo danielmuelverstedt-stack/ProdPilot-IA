@@ -4,6 +4,9 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 
 ## Maintenant
 
+- [x] Créer le registre multi-comptes de messagerie avec Google Workspace, Microsoft 365 et Mock, plusieurs comptes par fournisseur et un compte actif unique.
+- [x] Faire dépendre Mon Espace, Mails et le futur contexte IA uniquement du compte de messagerie actif.
+- [x] Stabiliser le socle existant : audit global, validation stricte des sauvegardes de réglages, nettoyage du code mort et contrôles qualité complets.
 - [x] Auditer le prototype historique et documenter la stratégie de migration dans `docs/08 - Legacy Migration.md`.
 - [x] Migrer l’identité visuelle historique vers un shell responsive avec menu configurable, en-tête, profil et notifications.
 - [x] Rendre les cartes de Mon Espace configurables : ordre, visibilité, libellé, icône, couleur et taille.
@@ -25,10 +28,15 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [ ] Créer les résumés d’e-mails avec l’IA et afficher leur provenance.
 - [x] Créer des brouillons Gmail modifiables après confirmation explicite, sans fonctionnalité d’envoi.
 - [ ] Remplacer le dépôt local de jetons Google par un stockage chiffré associé à l’utilisateur et à l’entreprise.
+- [ ] Raccorder Google OAuth et Microsoft OAuth au registre multi-comptes avec des jetons strictement associés à chaque `accountId`.
 - [ ] Ajouter l’authentification applicative avant tout déploiement partagé de l’intégration Gmail.
+- [ ] Protéger toutes les routes de messagerie par une session applicative et une autorisation liée à l’entreprise.
+- [ ] Ajouter des tests automatisés ciblés pour les réglages, le parseur Gmail, la génération MIME et les Route Handlers.
 
 ## Ensuite
 
+- [ ] Réduire le nombre d’appels Gmail nécessaires au compteur de Mon Espace et mettre en place une stratégie de synchronisation/cache maîtrisée.
+- [ ] Signaler proprement à l’utilisateur un dépassement du quota `localStorage`, notamment pour les logos et photos de machines.
 - [ ] Remplacer la persistance locale des réglages par un dépôt Supabase après validation de l’authentification et du modèle multi-entreprise.
 - [ ] Relier les permissions aux actions métier en plus de la visibilité de la navigation.
 - [ ] Remplacer les placeholders par les modules prioritaires après validation fonctionnelle.

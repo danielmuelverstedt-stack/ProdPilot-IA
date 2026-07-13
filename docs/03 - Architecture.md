@@ -121,9 +121,11 @@ L’authentification applicative et l’autorisation d’un fournisseur de messa
 
 ## Architecture et flux de messagerie
 
-Les composants d’interface utilisent uniquement les types communs et les services de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons et archivage. L’envoi est volontairement absent des premières versions. Une factory sélectionne l’adaptateur à partir du type du compte connecté (`google` ou `microsoft`).
+Les composants d’interface utilisent uniquement les types communs et les services de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons et archivage. L’envoi est volontairement absent des premières versions. Une factory sélectionne un adaptateur lié au compte à partir du fournisseur (`google`, `microsoft` ou `mock`) et du mode du compte.
 
-L’état actuel comprend un adaptateur Google Workspace réel côté serveur et un adaptateur Microsoft 365 temporaire et indisponible qui implémentent le même contrat. Le fournisseur Google utilise `googleapis`, des Route Handlers, un dépôt de jetons local réservé au développement et un fallback de démonstration explicitement activé par l’utilisateur.
+L’état actuel comprend un registre local multi-comptes réservé au développement. Plusieurs comptes par fournisseur sont autorisés, exactement un compte est actif et les comptes Google Workspace ou Microsoft 365 utilisent un adaptateur de démonstration tant que leur mode reste `demo`. Le service `getActiveMailContext` est l’unique point de résolution pour l’espace Mails, Mon Espace et les futures fonctions IA liées aux e-mails. Un changement de compte actif ne nécessite donc aucun changement dans les consommateurs.
+
+L’adaptateur Google Workspace réel et le placeholder Microsoft 365 sont conservés côté serveur pour les prochaines étapes. Le flux OAuth réel n’est pas exposé par l’écran multi-comptes actuel : il devra d’abord associer les jetons à l’identifiant du compte, à l’utilisateur et à l’entreprise.
 
 ### Flux Google Workspace prévu
 

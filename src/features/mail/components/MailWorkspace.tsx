@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type {
+  MailAccount,
   MailMessage,
   MailMessageCategory,
   MailPriority,
@@ -11,8 +12,14 @@ type MailView = "all" | MailMessageCategory;
 
 interface MailWorkspaceProps {
   initialMessages: MailMessage[];
-  source: "google" | "mock";
+  account: MailAccount;
 }
+
+const providerLabels: Record<MailAccount["provider"], string> = {
+  google: "Google Workspace",
+  microsoft: "Microsoft 365",
+  mock: "Mock",
+};
 
 const views: { id: MailView; label: string }[] = [
   { id: "all", label: "Tous" },
@@ -48,7 +55,7 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "Europe/Brussels",
 });
 
-export function MailWorkspace({ initialMessages, source }: MailWorkspaceProps) {
+export function MailWorkspace({ initialMessages, account }: MailWorkspaceProps) {
   const [messages, setMessages] = useState(initialMessages);
   const [activeView, setActiveView] = useState<MailView>("all");
   const [openedMessageId, setOpenedMessageId] = useState<string | null>(null);
@@ -87,16 +94,16 @@ export function MailWorkspace({ initialMessages, source }: MailWorkspaceProps) {
   }
 
   async function handleCreateDraft(message: MailMessage) {
-    if (!draftConfirmed || source === "mock") return;
+    if (!draftConfirmed || account.mode === "demo") return;
     setIsCreatingDraft(true);
     try {
       const response = await fetch("/api/mail/drafts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ confirmed: true, to: message.from.email, subject: message.subject.toLowerCase().startsWith("re:") ? message.subject : `Re: ${message.subject}`, bodyText: draftBody, replyToMessageId: message.id, replyToThreadId: message.threadId }) });
       const result = await response.json() as { draft?: { id: string }; message?: string };
-      if (!response.ok || !result.draft) throw new Error(result.message ?? "Le brouillon Gmail n’a pas pu être créé.");
-      setNotice("Le brouillon a été créé dans Gmail. Aucun e-mail n’a été envoyé.");
+      if (!response.ok || !result.draft) throw new Error(result.message ?? "Le brouillon n’a pas pu être créé.");
+      setNotice("Le brouillon a été créé chez le fournisseur actif. Aucun e-mail n’a été envoyé.");
       setDraftConfirmed(false);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Le brouillon Gmail n’a pas pu être créé.");
+      setNotice(error instanceof Error ? error.message : "Le brouillon n’a pas pu être créé.");
     } finally { setIsCreatingDraft(false); }
   }
 
@@ -108,11 +115,12 @@ export function MailWorkspace({ initialMessages, source }: MailWorkspaceProps) {
     setMessages((current) => current.filter((item) => item.id !== message.id));
     setOpenedMessageId(null);
     setDraftMessageId(null);
-    setNotice(source === "mock" ? `Le message « ${message.subject} » a été ignoré dans cette démonstration.` : `Le message « ${message.subject} » est masqué uniquement dans cette vue. Il n’a pas été archivé dans Gmail.`);
+    setNotice(account.mode === "demo" ? `Le message « ${message.subject} » a été ignoré dans cette démonstration.` : `Le message « ${message.subject} » est masqué uniquement dans cette vue. Il n’a pas été archivé chez le fournisseur.`);
   }
 
   return (
     <section aria-label="Espace de travail des mails" className="mt-8">
+      <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-[#d7e4de] bg-[#f7faf8] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><p><strong className="text-[#263b32]">Compte actif :</strong> {account.displayName} · {account.emailAddress}</p><span className="w-fit rounded-full bg-[#eef1ff] px-2.5 py-1 text-xs font-semibold text-[#575d9b]">{providerLabels[account.provider]} · {account.mode === "demo" ? "Démonstration" : "Connecté"}</span></div>
       <div className="rounded-2xl border border-[#dce5e0] bg-white p-3 shadow-sm sm:p-4">
         <div className="overflow-x-auto pb-1 sm:pb-0">
           <div className="flex min-w-max gap-1" role="tablist" aria-label="Catégories de messages">
@@ -163,7 +171,7 @@ export function MailWorkspace({ initialMessages, source }: MailWorkspaceProps) {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${category.className}`}>{category.label}</span>
-                      <span className="text-xs font-medium text-[#7a8982]">Google Workspace · {source === "mock" ? "Démonstration" : "Gmail"}</span>
+                      <span className="text-xs font-medium text-[#7a8982]">{providerLabels[account.provider]} · {account.displayName}</span>
                       {!message.isRead ? <span className="size-2 rounded-full bg-[#278a63]" aria-label="Non lu" /> : null}
                     </div>
                     <div className="mt-4 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
@@ -210,7 +218,7 @@ export function MailWorkspace({ initialMessages, source }: MailWorkspaceProps) {
                           onChange={(event) => setDraftBody(event.target.value)}
                           className="mt-3 min-h-36 w-full resize-y rounded-xl border border-[#cad7d1] bg-white p-3 text-sm leading-6 text-[#34483f]"
                         />
-                        {source === "google" ? <><label className="mt-4 flex items-start gap-2 text-sm text-[#4f6259]"><input type="checkbox" checked={draftConfirmed} onChange={(event) => setDraftConfirmed(event.target.checked)} className="mt-1" /><span>J’ai vérifié le destinataire, l’objet et le contenu. Je confirme la création du brouillon Gmail.</span></label><button type="button" disabled={!draftConfirmed || isCreatingDraft || !draftBody.trim()} onClick={() => void handleCreateDraft(message)} className="mt-3 min-h-11 rounded-xl bg-[var(--app-primary)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">{isCreatingDraft ? "Création…" : "Créer le brouillon Gmail"}</button></> : <p className="mt-3 text-xs text-[#7a8982]">Mode démonstration : aucun brouillon Gmail ne sera créé.</p>}
+                        {account.mode === "oauth" ? <><label className="mt-4 flex items-start gap-2 text-sm text-[#4f6259]"><input type="checkbox" checked={draftConfirmed} onChange={(event) => setDraftConfirmed(event.target.checked)} className="mt-1" /><span>J’ai vérifié le destinataire, l’objet et le contenu. Je confirme la création du brouillon chez le fournisseur actif.</span></label><button type="button" disabled={!draftConfirmed || isCreatingDraft || !draftBody.trim()} onClick={() => void handleCreateDraft(message)} className="mt-3 min-h-11 rounded-xl bg-[var(--app-primary)] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">{isCreatingDraft ? "Création…" : "Créer le brouillon"}</button></> : <p className="mt-3 text-xs text-[#7a8982]">Mode démonstration : aucun brouillon externe ne sera créé.</p>}
                       </div>
                     ) : null}
                   </div>

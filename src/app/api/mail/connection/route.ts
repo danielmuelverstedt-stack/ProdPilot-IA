@@ -1,9 +1,9 @@
-import { getMailProvider } from "@/features/mail/providers/provider-factory";
+import { getActiveMailContext } from "@/features/mail/services/mail-account-context";
 import { apiJson } from "@/features/mail/server/mail-api-response";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  const connection = await getMailProvider("google").getConnectionStatus();
-  return apiJson({ connection });
+  const { account } = await getActiveMailContext();
+  return apiJson({ account });
 }

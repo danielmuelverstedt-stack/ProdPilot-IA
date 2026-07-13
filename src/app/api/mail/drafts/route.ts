@@ -1,5 +1,5 @@
-import { getMailProvider } from "@/features/mail/providers/provider-factory";
 import { apiError, apiJson, getSafeMailError, isTrustedSameOriginRequest } from "@/features/mail/server/mail-api-response";
+import { getActiveMailContext } from "@/features/mail/services/mail-account-context";
 import type { CreateMailDraftInput } from "@/features/mail/types/mail";
 
 export const runtime = "nodejs";
@@ -29,7 +29,11 @@ export async function POST(request: Request) {
     replyToThreadId: body.replyToThreadId,
   };
   try {
-    const draft = await getMailProvider("google").createDraft(input);
+    const { account, provider } = await getActiveMailContext();
+    if (account.mode !== "oauth") {
+      return apiError("Un compte de démonstration ne crée pas de brouillon externe.", 409);
+    }
+    const draft = await provider.createDraft(input);
     return apiJson({ draft }, 201);
   } catch (error) {
     const safe = getSafeMailError(error);

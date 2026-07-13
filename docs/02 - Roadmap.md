@@ -9,7 +9,7 @@
 
 ## État actuel
 
-Le dépôt utilise Next.js 16.2.10, React 19, TypeScript strict et Tailwind CSS 4. L’App Router est organisé sous `src/app`. « Mon Espace » propose un shell responsive, des cartes configurables, un assistant temporaire et un espace Mails. Google Workspace est intégré côté serveur avec OAuth 2.0 et Gmail API pour la lecture des messages récents et la création confirmée de brouillons. Le stockage des jetons reste local au développement et doit être remplacé avant la production. L’architecture demeure indépendante du fournisseur et réserve un adaptateur à Microsoft 365 ; aucun envoi d’e-mail n’est implémenté.
+Le dépôt utilise Next.js 16.2.10, React 19, TypeScript strict et Tailwind CSS 4. L’App Router est organisé sous `src/app`. « Mon Espace » propose un shell responsive, des cartes configurables, un assistant temporaire et un espace Mails. Un registre local de démonstration gère plusieurs comptes Google Workspace, Microsoft 365 ou Mock avec un compte actif unique. Toutes les lectures de messagerie passent par ce contexte actif. L’adaptateur Gmail OAuth historique reste côté serveur mais n’est pas raccordé au registre multi-comptes dans cette étape ; aucun compte réel ni envoi d’e-mail n’est activé.
 
 | Phase | Statut | Résultat attendu |
 |---|---|---|

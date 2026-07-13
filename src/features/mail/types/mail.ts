@@ -1,6 +1,8 @@
-export const MAIL_PROVIDER_TYPES = ["google", "microsoft"] as const;
+export const MAIL_PROVIDER_TYPES = ["google", "microsoft", "mock"] as const;
 
 export type MailProviderType = (typeof MAIL_PROVIDER_TYPES)[number];
+
+export type MailAccountMode = "demo" | "oauth";
 
 export type MailMessageCategory =
   | "urgent"
@@ -24,10 +26,15 @@ export interface MailAddress {
 export interface MailAccount {
   id: string;
   provider: MailProviderType;
-  emailAddress: string | null;
-  displayName: string | null;
+  emailAddress: string;
+  displayName: string;
+  mode: MailAccountMode;
   status: MailConnectionState;
   connectedAt: string | null;
+  lastSuccessfulSyncAt: string | null;
+  lastConnectionTestAt: string | null;
+  isActive: boolean;
+  error: string | null;
 }
 
 export interface MailAttachment {
@@ -108,12 +115,6 @@ export interface MailConnectionStatus {
   connectedAt: string | null;
   lastSuccessfulSyncAt?: string | null;
   error?: string | null;
-}
-
-export interface MailConnectionSummary extends MailConnectionStatus {
-  providerName: string;
-  description: string;
-  isMock: boolean;
 }
 
 export function isMailProviderType(value: unknown): value is MailProviderType {

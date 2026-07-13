@@ -2,6 +2,8 @@
 
 ## Périmètre de cette version
 
+> **Important :** le nouvel écran multi-comptes fonctionne actuellement uniquement en mode démonstration et ne lance plus ce flux OAuth. Le guide ci-dessous documente l’adaptateur Google historique conservé côté serveur. Avant de le réactiver, les jetons devront être associés à un `accountId` du registre multi-comptes.
+
 ProdPilot IA utilise un flux OAuth 2.0 « application Web » côté serveur avec la bibliothèque officielle `googleapis`. La première version autorise uniquement `daniel.muelverstedt@tkmi.be`, lit les messages reçus depuis la veille et crée des brouillons Gmail après confirmation explicite.
 
 Aucun e-mail n’est envoyé. L’archivage n’est pas disponible, car la portée `gmail.modify` n’est pas demandée. Microsoft Graph reste hors périmètre.
@@ -97,7 +99,7 @@ Avant toute mise en production, remplacer ce dépôt local par un stockage en ba
 
 ## Limitations connues
 
-- Un seul compte autorisé, contrôlé par `GOOGLE_ALLOWED_EMAIL`.
+- L’adaptateur OAuth historique reste limité à un seul compte autorisé par `GOOGLE_ALLOWED_EMAIL` et n’est pas encore raccordé au registre multi-comptes.
 - Stockage de jetons uniquement adapté au développement local et à un seul processus.
 - Pas d’authentification applicative ni de gestion multi-entreprise.
 - Messages limités à la veille et au jour courant, avec un maximum configurable entre 1 et 100 par appel API.

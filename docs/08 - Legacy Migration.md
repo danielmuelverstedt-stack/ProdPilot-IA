@@ -106,7 +106,7 @@ La nouvelle application centralise ces valeurs dans des tokens configurables et 
 - KPI réels et graphiques Chart.js.
 - Génération effective de fichiers ou impression métier complète.
 - Sauvegarde serveur, authentification et isolation multi-entreprise.
-- Appels IA réels, Gmail API, Microsoft Graph et envoi d’e-mails.
+- Appels IA réels, Microsoft Graph et envoi d’e-mails.
 
 ## Éléments obsolètes ou dupliqués à ne pas migrer
 

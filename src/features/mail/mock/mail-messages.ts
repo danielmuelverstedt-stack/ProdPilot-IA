@@ -1,4 +1,4 @@
-import type { MailMessage } from "@/features/mail/types/mail";
+import type { MailAccount, MailMessage } from "@/features/mail/types/mail";
 
 export const mockMailMessages: MailMessage[] = [
   {
@@ -136,3 +136,14 @@ export const mockMailMessages: MailMessage[] = [
     attachments: [],
   },
 ];
+
+export function getMockMailMessages(account: MailAccount): MailMessage[] {
+  return mockMailMessages.map((message, index) => ({
+    ...structuredClone(message),
+    id: `${account.id}-message-${index + 1}`,
+    accountId: account.id,
+    provider: account.provider,
+    threadId: `${account.id}-thread-${index + 1}`,
+    to: [{ name: account.displayName, email: account.emailAddress }],
+  }));
+}

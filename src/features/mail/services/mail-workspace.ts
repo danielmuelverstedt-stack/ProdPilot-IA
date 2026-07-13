@@ -1,24 +1,17 @@
 import "server-only";
 
-import { getMailProviders } from "@/features/mail/providers/provider-factory";
+import { listActiveMailMessages } from "@/features/mail/services/mail-account-context";
 import type { MailMessage } from "@/features/mail/types/mail";
 
 export async function getMailWorkspaceMessages(): Promise<MailMessage[]> {
-  const messageGroups = await Promise.all(
-    getMailProviders().map(async (provider) => {
-      try {
-        const status = await provider.getConnectionStatus();
-        return status.state === "connected" ? provider.listMessages() : [];
-      } catch {
-        return [];
-      }
-    }),
-  );
-
-  return messageGroups
-    .flat()
-    .sort(
+  try {
+    const { account, messages } = await listActiveMailMessages();
+    if (account.status !== "connected") return [];
+    return messages.sort(
       (first, second) =>
         new Date(second.receivedAt).getTime() - new Date(first.receivedAt).getTime(),
     );
+  } catch {
+    return [];
+  }
 }

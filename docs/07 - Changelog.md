@@ -4,7 +4,24 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Stabilisé — 13/07/2026
+
+- Validation structurelle complète et limitation de taille des sauvegardes de réglages avant import, avec gestion des erreurs de lecture.
+- Repli sécurisé vers les réglages par défaut lorsqu’une valeur persistée est corrompue ou incompatible.
+- Neutralisation des retours à la ligne dans les métadonnées MIME de réponse afin d’éviter toute injection d’en-tête.
+- Protection de même origine et réponses non mises en cache appliquées à la route générique de connexion messagerie.
+- Suppression du fournisseur Gmail simulé devenu inutilisé et des ressources SVG de démarrage non référencées.
+- Libellés de Mon Espace et du centre de réglages alignés sur la coexistence des données locales et de la connexion Gmail réelle.
+- README remplacé par des instructions opérationnelles propres au projet et un rappel des prérequis avant déploiement partagé.
+- Routes principales et états sans identifiants Google vérifiés ; lint, TypeScript et build de production relancés en fin de session.
+
 ### Ajouté — 13/07/2026
+
+- Registre local multi-comptes avec plusieurs comptes Google Workspace, Microsoft 365 ou Mock par utilisateur et invariant d’un compte actif unique.
+- Gestion des comptes dans Réglages avec ajout, renommage, activation, test et déconnexion, sans lancement d’un flux OAuth réel.
+- Adaptateur Mock lié au compte, capable de fournir immédiatement des messages isolés par `accountId` pour les trois fournisseurs de démonstration.
+- Point d’entrée serveur `getActiveMailContext` utilisé par les listes, détails, brouillons et compteurs de Mon Espace afin que le changement de compte reste transparent pour les consommateurs et les futures fonctions IA.
+- États et libellés du workspace Mails enrichis avec le nom, l’adresse et le fournisseur du compte actif.
 
 - Flux Google OAuth 2.0 côté serveur avec contrôle d’état, restriction du compte autorisé, renouvellement des jetons et déconnexion.
 - Routes serveur pour l’état Gmail, la liste, le détail des messages et la création confirmée de brouillons.

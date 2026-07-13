@@ -19,9 +19,9 @@ Tous les modules ci-dessous sont planifiés. La présence d’une description ne
 - **Objectif** : repérer et traiter les messages importants sans quitter le contexte de production.
 - **Utilisateurs principaux** : responsables de production et planificateurs.
 - **Écrans principaux** : connexions de messagerie, boîte récente, détail, résumé et éditeur de brouillon.
-- **Fonctions clés** : fournisseurs Google Workspace puis Microsoft 365, OAuth, lecture, recherche/filtres, synthèse IA, création d’action et brouillon avec confirmation.
+- **Fonctions clés** : plusieurs comptes Google Workspace, Microsoft 365 ou Mock, compte actif unique, OAuth futur, lecture, recherche/filtres, synthèse IA, création d’action et brouillon avec confirmation.
 - **Liens** : Mon Espace, Actions, OF, Demandes internes et Assistant IA.
-- **Périmètre MVP** : abstraction indépendante du fournisseur, connexion Google Workspace, messages récents, résumé, proposition de réponse et confirmation avant envoi.
+- **Périmètre MVP** : abstraction indépendante du fournisseur, registre multi-comptes de démonstration, sélection du compte actif, messages récents, résumé, proposition de réponse et confirmation avant toute action externe.
 - **Périmètre futur** : catégorisation avancée, rattachement suggéré aux objets métier et règles personnalisées.
 
 ## Actions

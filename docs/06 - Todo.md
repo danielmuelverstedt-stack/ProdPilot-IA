@@ -85,7 +85,17 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Ajouter les limites internes mensuelles, quotidiennes et par opération, désactivables uniquement par un dépassement administrateur explicitement autorisé.
 - [x] Ajouter le tableau d’usage, les alertes internes, le registre de prix vide par défaut, le diagnostic sûr et le test de connexion OpenAI.
 - [x] Documenter l’activation, la séparation ChatGPT/API, le budget prudent et les limites des estimations internes.
+- [x] Corriger le transport Gmail utilisé par Mon Espace afin d’éviter l’échec de clonage binaire pendant le rendu Server Component.
 - [ ] Remplacer cache, métriques et coordination IA locaux par des dépôts distribués, chiffrés, transactionnels et multi-tenant avant production.
 - [ ] Ajouter l’authentification applicative et l’autorisation administrateur serveur avant un déploiement partagé.
 - [ ] Valider les prix officiels des modèles choisis avant d’activer les seuils monétaires.
 - [ ] Ajouter des évaluations opt-in des modèles sur les fixtures synthétiques.
+
+## Assistant mails conversationnel — 14/07/2026
+
+- [x] Ajouter la session conversationnelle explicitement démarrée, le brief, les groupes, les références numérotées et les propositions de réponse.
+- [x] Ajouter les commandes typées, les trois niveaux d’approbation, la création contrôlée de brouillons et l’interdiction d’envoyer sur « OK ».
+- [x] Ajouter la dictée navigateur, le mode démonstration, l’audit sûr, les lots idempotents et le résumé de fin de session.
+- [ ] Raccorder les actions, QRQC et réunions à leurs services centraux après validation explicite de ces domaines.
+- [ ] Remplacer le dépôt de session mémoire par une persistance durable, chiffrée et multi-instance avant production.
+- [ ] Concevoir séparément un éventuel envoi réel avec portée OAuth et relecture dédiée ; aucun envoi n’est disponible actuellement.

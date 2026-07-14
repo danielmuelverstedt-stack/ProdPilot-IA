@@ -4,6 +4,19 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Assistant mails conversationnel — 14/07/2026
+
+- Ajout de `/mails/assistant` avec démarrage explicite, brief déterministe, conversation, groupes expliqués, propositions versionnées et résumé de fin.
+- Ajout d’une couche de commandes strictement typée, d’un résolveur de références naturelles et d’un moteur d’approbation séparant « OK » de l’intention explicite « Envoie ».
+- Création de brouillons réels via le fournisseur actif ou simulés en démonstration, avec contrôle du compte, idempotence, synthèse partielle et garantie qu’aucun message n’est envoyé.
+- Ajout de la dictée navigateur déclenchée par l’utilisateur, modifiable avant soumission et dégradée proprement lorsqu’elle est indisponible.
+- Documentation des parcours, commandes, approbations, voix, recette, limites et protections de coût/confidentialité.
+
+### Correctif du rendu de Mon Espace — 14/07/2026
+
+- Correction du transport HTTP Gmail pendant le rendu Server Component : utilisation explicite du `fetch` serveur sans cache, évitant le chargement dynamique de `node-fetch` qui interrompait le flux RSC avec une erreur de clonage d’`ArrayBuffer`.
+- Vérification de la page d’accueil avec le compte Google actif, sans modification du layout, des providers React, des écrans IA ou du comportement fonctionnel.
+
 ### Configuration, budget et diagnostic OpenAI — 14/07/2026
 
 - Centralisation de la politique de budget IA avec limites mensuelles, quotidiennes, par utilisateur, par message et par brouillon ; dépassement administrateur désactivé par défaut et jamais automatique.

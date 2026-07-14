@@ -8,7 +8,7 @@ import { useDemoData } from "@/features/demo/services/demo-repository";
 export function WorkspaceDashboard({ urgentMailCount, replyMailCount, date }: { urgentMailCount: number; replyMailCount: number; date: string }) {
   const { settings } = useSettings();
   const demo = useDemoData();
-  const cards = [...settings.workspaceCards].filter((item) => item.visible).sort((a, b) => a.order - b.order);
+  const cards = [...settings.workspaceCards].filter((item) => item.visible).sort((a, b) => a.order - b.order).map((item) => item.id === "mails" ? { ...item, href: "/mails/assistant", description: "Démarrez votre synthèse conversationnelle, préparez les réponses et gardez la liste traditionnelle accessible." } : item);
   const user = settings.users.find((item) => item.active) ?? settings.users[0];
   return <div className="mx-auto max-w-7xl">
     <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-widest text-[var(--app-primary)]">Votre journée</p><h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Bonjour {user?.firstName ?? "Daniel"}</h1><p className="mt-2 text-slate-600">Voici les sujets qui demandent votre attention aujourd’hui.</p></div><time className="w-fit rounded-full border border-[var(--app-border)] bg-white px-4 py-2 text-sm capitalize shadow-sm">{date}</time></header>

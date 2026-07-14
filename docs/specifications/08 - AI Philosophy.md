@@ -46,6 +46,8 @@ L’IA peut préparer une action, un brouillon, une décision ou une modificatio
 
 Pour un e-mail, la confirmation affiche au minimum le destinataire, l’objet et le contenu. La préparation d’un brouillon et l’envoi sont deux décisions distinctes. Aucun consentement général ne remplace la confirmation de l’action précise.
 
+Dans une conversation, « OK » peut confirmer l’action non destructive explicitement proposée juste avant, telle que la création de brouillons. L’envoi exige toujours une intention d’envoi spécifique et non ambiguë. Lorsque l’envoi n’est pas disponible, l’assistant prépare les brouillons et indique sans ambiguïté qu’aucun message n’a été envoyé.
+
 ## Sources et contexte
 
 L’IA accède uniquement aux sources nécessaires à la demande et autorisées pour l’utilisateur actif. Elle privilégie les données les plus récentes et signale les divergences. Elle ne conserve pas un second référentiel métier à partir de ses conversations.

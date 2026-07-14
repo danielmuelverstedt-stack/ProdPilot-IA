@@ -39,6 +39,8 @@ Les messages sont présentés selon leur importance opérationnelle, pas seuleme
 
 Pour un message à traiter, l’assistant peut préparer un résumé, identifier les références métier et proposer un brouillon. Avant toute transmission, l’utilisateur relit le destinataire, l’objet et le contenu, puis confirme séparément l’envoi lorsqu’il sera disponible.
 
+Le parcours Mails principal peut prendre la forme d’une session conversationnelle explicitement démarrée. Le brief regroupe les messages sans les masquer définitivement, numérote les références de la session et permet de corriger les propositions en langage naturel ou par dictée déclenchée par l’utilisateur. Un accord général peut autoriser un brouillon, mais jamais un envoi.
+
 ## Arbitrage de production
 
 Au cours de la journée, l’utilisateur consulte une situation de planning ou de flux pour comprendre un risque, non pour administrer un logiciel de planning complet. ProdPilot IA présente les contraintes, la capacité disponible, les dépendances et les informations manquantes.

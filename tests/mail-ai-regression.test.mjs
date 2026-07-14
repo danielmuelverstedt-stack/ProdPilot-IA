@@ -58,6 +58,12 @@ test("aucune opération d’envoi Gmail n’est implémentée", async () => {
   assert.match(provider, /drafts\.create/);
 });
 
+test("le transport Gmail utilise le fetch serveur sans cache pendant le rendu RSC", async () => {
+  const provider = await read("src/features/mail/providers/google/google-mail-provider.ts");
+  assert.match(provider, /fetchImplementation: globalThis\.fetch/);
+  assert.match(provider, /cache: "no-store"/);
+});
+
 test("la clé de cache varie avec le contenu, le compte, le modèle, le prompt et les réglages", async () => {
   const service = await read("src/features/ai/services/mail-ai-service.ts");
   assert.match(service, /companyId:[\s\S]*userId:[\s\S]*accountId:[\s\S]*messageId:[\s\S]*content:[\s\S]*provider,[\s\S]*model,[\s\S]*promptVersion,[\s\S]*configuration/);

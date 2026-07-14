@@ -241,7 +241,12 @@ export class GoogleMailProvider implements MailProvider {
     if (!record) throw new Error("Google Workspace n’est pas connecté pour ce compte.");
     try {
       const auth = await getAuthorizedGoogleClient(this.key);
-      const result = await operation(google.gmail({ version: "v1", auth: auth as never }), record.emailAddress);
+      const result = await operation(google.gmail({
+        version: "v1",
+        auth: auth as never,
+        fetchImplementation: globalThis.fetch,
+        cache: "no-store",
+      }), record.emailAddress);
       await googleTokenRepository.updateError(this.key, null);
       return result;
     } catch (error) {

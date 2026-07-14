@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { AiOperationType } from "@/features/ai/types/ai";
+import type { MailAiOperationType } from "@/features/ai/types/ai";
 import { getOpenAiServerConfig } from "@/features/ai/config/openai-config";
 
 export interface AiModelRoute {
@@ -9,7 +9,7 @@ export interface AiModelRoute {
   reasoningEffort: "none" | "low";
 }
 
-export function getAiModelRoute(operation: AiOperationType): AiModelRoute {
+export function getAiModelRoute(operation: MailAiOperationType): AiModelRoute {
   const fallback = getOpenAiServerConfig().model;
   const configured = operation === "mail_analysis"
     ? process.env.OPENAI_MAIL_ANALYSIS_MODEL
@@ -23,7 +23,7 @@ export function getAiModelRoute(operation: AiOperationType): AiModelRoute {
   };
 }
 
-export function getPromptCacheKey(operation: AiOperationType): string | undefined {
+export function getPromptCacheKey(operation: MailAiOperationType): string | undefined {
   const prefix = process.env.OPENAI_PROMPT_CACHE_KEY_PREFIX?.trim() || "prodpilot-mail-ai-v1";
   return `${prefix}:${operation}`;
 }

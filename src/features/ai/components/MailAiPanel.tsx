@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { MailAiAnalysisView } from "@/features/ai/components/MailAiAnalysisView";
+import { MailAiBudgetNotice } from "@/features/ai/components/MailAiBudgetNotice";
 import { MailAiReplyEditor } from "@/features/ai/components/MailAiReplyEditor";
 import { createMailAiConfiguration } from "@/features/ai/components/mail-ai-client-config";
 import type { MailAiAnalysis } from "@/features/ai/types/mail-ai";
@@ -55,6 +56,7 @@ export function MailAiPanel({ account, message, replyRequested, onNotice }: {
 
   if (!settings.ai.enabled) return <p className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">L’assistance IA est désactivée dans Réglages → IA.</p>;
   return <section aria-label="Assistance IA pour le message" className="mt-5 border-t border-[#e8eeeb] pt-5">
+    <MailAiBudgetNotice />
     <div className="flex flex-wrap items-center gap-2">
       <button type="button" disabled={pending} onClick={() => void analyze(false)} className="min-h-10 rounded-xl bg-[#195c45] px-4 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-45">{pending ? "Analyse…" : analysis ? "Afficher l’analyse en cache" : "Analyser avec l’IA"}</button>
       {analysis ? <button type="button" disabled={pending} onClick={() => void analyze(true)} className="min-h-10 rounded-xl border border-[#cbd7d1] bg-white px-3 text-sm font-semibold text-[#40554b] disabled:opacity-45">Actualiser explicitement</button> : null}

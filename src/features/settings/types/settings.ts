@@ -1,4 +1,6 @@
-export const SETTINGS_VERSION = 5;
+import type { AiBudgetPolicy, AiPricingEntry } from "@/features/ai/types/ai";
+
+export const SETTINGS_VERSION = 6;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -196,16 +198,21 @@ export interface AiSettings {
   allowSending: false;
   retainLocalAnalysisCache: boolean;
   analysisExpirationMinutes: number;
-  dailyRequestWarning: number;
-  dailyHardLimit: number;
   longThreadWarningThreshold: number;
   allowStrongerModelEscalation: boolean;
-  pricing: Array<{ model: string; inputPerMillion: number; cachedInputPerMillion: number; outputPerMillion: number }>;
+  budgetPolicy: AiBudgetPolicy;
+  pricingRegistry: AiPricingEntry[];
+  firstUseChecklist: {
+    platformAccountCreated: boolean;
+    billingConfigured: boolean;
+    applicationRestarted: boolean;
+  };
   privacyAcknowledgedAt: string | null;
   categories: AiCategorySettings[];
   showCachedResultBadge: boolean;
   showTokenUsage: boolean;
   automaticAnalysis: false;
+  automaticDraftCreation: false;
 }
 
 export interface AppSettings {

@@ -4,6 +4,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Configuration, budget et diagnostic OpenAI — 14/07/2026
+
+- Centralisation de la politique de budget IA avec limites mensuelles, quotidiennes, par utilisateur, par message et par brouillon ; dépassement administrateur désactivé par défaut et jamais automatique.
+- Ajout d’un registre de prix administrable, vide par défaut, et d’estimations explicites par opération, période et cache uniquement lorsqu’un tarif officiel a été validé.
+- Ajout du tableau Utilisation et budget avec filtres, jetons, appels, blocages, cache, états visuels et alertes internes.
+- Ajout d’un diagnostic sans secret, d’une checklist de première utilisation et d’un test de connexion OpenAI minimal exécuté côté serveur.
+- Journalisation centralisée de métadonnées sûres, blocage avant fournisseur et repli déterministe quand la configuration ou le budget ne permet pas l’appel.
+- Documentation de la configuration OpenAI, de la séparation avec ChatGPT, de la facturation externe et des limites du stockage local de développement.
+- Maintien forcé de l’analyse automatique, de la création automatique de brouillons et de l’envoi automatique à l’état désactivé.
+
 ### Configuration Google Workspace sécurisée — 14/07/2026
 
 - Remplacement des anciennes listes d’autorisation Google par la variable serveur unique et obligatoire `GOOGLE_ALLOWED_EMAIL`.

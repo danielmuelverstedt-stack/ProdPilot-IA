@@ -1,5 +1,5 @@
 import type { MailAiMessageContext } from "@/features/ai/types/mail-ai";
-import type { AiOperationType, MailAiTokenBudget } from "@/features/ai/types/ai";
+import type { MailAiOperationType, MailAiTokenBudget } from "@/features/ai/types/ai";
 import { estimateTokens } from "@/features/ai/config/ai-token-budget";
 
 export type MailThreadContextMode = "selected_message_only" | "recent_thread_messages" | "full_thread_when_short";
@@ -22,7 +22,7 @@ export interface ReducedMailContext {
 }
 
 export function reduceMailContext(input: {
-  operation: AiOperationType;
+  operation: MailAiOperationType;
   selected: MailAiMessageContext;
   thread: MailAiMessageContext[];
   budget: MailAiTokenBudget;

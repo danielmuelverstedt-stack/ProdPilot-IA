@@ -1,18 +1,18 @@
 import "server-only";
 
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { getAiModelRoute } from "@/features/ai/config/ai-model-routing";
 import { estimateTokens, getMailAiTokenBudget } from "@/features/ai/config/ai-token-budget";
+import { recordSafeAiUsage } from "@/features/ai/services/ai-usage-recorder";
 import { MAIL_ANALYSIS_PROMPT_VERSION } from "@/features/ai/prompts/mail-ai-prompts";
 import { aiRequestCoordinator } from "@/features/ai/server/ai-request-coordinator";
 import { aiAnalysisCacheRepository } from "@/features/ai/server/repositories/local-ai-analysis-cache-repository";
-import { aiUsageRepository } from "@/features/ai/server/repositories/local-ai-usage-repository";
 import { enforceAiUsageLimit } from "@/features/ai/server/ai-usage-guard";
 import { getCurrentMailOwnerContext } from "@/features/mail/server/accounts/mail-owner-context";
 import { getActiveMailContext } from "@/features/mail/services/mail-account-context";
 import { resolveAiProvider } from "@/features/ai/services/ai-provider-factory";
 import { reduceMailContext, type ReducedMailContext } from "@/features/ai/services/mail-context-reducer";
-import { AiServiceError, type AiError, type AiOperationType, type AiUsageRecord } from "@/features/ai/types/ai";
+import { AiServiceError, type AiError, type AiOperationType, type AiUsageRecord, type MailAiOperationType } from "@/features/ai/types/ai";
 import type {
   MailAiAnalysis,
   MailAiConfiguration,
@@ -54,8 +54,9 @@ export async function analyzeActiveMail(input: {
         provider.type,
         model,
         hash(`${prepared.account.id}:${prepared.message.id}`),
-        null,
+        cached.analysis.usage,
         0,
+        false,
         true,
         null,
         "hit",
@@ -110,29 +111,7 @@ export async function rewriteActiveMailReply(input: {
   return operationResult(result, provider.type, status, prepared.reduced);
 }
 
-export async function getAiUsageSummary() {
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const entries = await aiUsageRepository.listSince(start.toISOString());
-  const successful = entries.filter((entry) => entry.success);
-  const providerCalls = successful.filter((entry) => entry.provider === "openai" && entry.cacheStatus !== "hit");
-  const localHits = successful.filter((entry) => entry.cacheStatus === "hit").length;
-  const cacheDenominator = providerCalls.length + localHits;
-  return {
-    requestsToday: providerCalls.length,
-    inputTokens: sum(providerCalls, "inputTokens"),
-    cachedInputTokens: sum(providerCalls, "cachedInputTokens"),
-    outputTokens: sum(providerCalls, "outputTokens"),
-    totalTokens: sum(providerCalls, "totalTokens"),
-    localCacheHits: localHits,
-    cacheHitPercentage: cacheDenominator ? Math.round((localHits / cacheDenominator) * 100) : 0,
-    errors: entries.filter((entry) => !entry.success).length,
-    lastSuccessfulCallAt: providerCalls.at(-1)?.createdAt ?? null,
-    lastSafeErrorCategory: entries.filter((entry) => !entry.success).at(-1)?.errorCode ?? null,
-  };
-}
-
-async function prepareOperation(operation: AiOperationType, messageId: string, configuration: MailAiConfiguration) {
+async function prepareOperation(operation: MailAiOperationType, messageId: string, configuration: MailAiConfiguration) {
   const { account, provider } = await getActiveMailContext();
   if (account.status !== "connected") throw serviceError("message_unavailable", "Le compte de messagerie actif n’est pas connecté.", 409);
   const message = await provider.getMessage(messageId);
@@ -167,12 +146,22 @@ async function executePaidAware<T extends MailAiAnalysis | MailAiReply>(
   prepared: Awaited<ReturnType<typeof prepareOperation>>,
   providerType: "openai" | "mock",
   model: string,
-  operation: AiOperationType,
+  operation: MailAiOperationType,
   requestKey: string,
   execute: () => Promise<T>,
 ): Promise<T> {
   const safeReference = hash(`${prepared.account.id}:${prepared.message.id}`);
-  if (providerType === "openai") await enforceAiUsageLimit({ ...prepared.owner, messageReference: safeReference, operation, requestedDailyLimit: prepared.providerInput.configuration.dailyHardLimit });
+  if (providerType === "openai") {
+    try {
+      const configuration = prepared.providerInput.configuration;
+      const maximumOutputTokens = operation === "mail_analysis" ? configuration.maximumAnalysisOutputTokens : operation === "mail_reply" ? configuration.maximumReplyOutputTokens : configuration.maximumRewriteOutputTokens;
+      await enforceAiUsageLimit({ ...prepared.owner, messageReference: safeReference, operation, model, budgetPolicy: configuration.budgetPolicy, pricingRegistry: configuration.pricingRegistry, projectedUsage: { inputTokens: configuration.maximumInputContextTokens, cachedInputTokens: 0, outputTokens: maximumOutputTokens, totalTokens: configuration.maximumInputContextTokens + maximumOutputTokens } });
+    } catch (error) {
+      const detail = error instanceof AiServiceError ? error.detail : serviceError("provider_unavailable", "Le contrôle du budget IA est indisponible.", 502).detail;
+      await recordUsage(prepared, operation, providerType, model, safeReference, null, 0, false, false, detail.code, "not_applicable");
+      throw error;
+    }
+  }
   return aiRequestCoordinator.run(`${prepared.account.id}:${requestKey}`, async () => {
     const startedAt = Date.now();
     try {
@@ -181,18 +170,18 @@ async function executePaidAware<T extends MailAiAnalysis | MailAiReply>(
       if (currentContext.account.id !== prepared.account.id) {
         throw serviceError("account_changed", "Le compte actif a changé pendant l’opération. Le résultat a été écarté pour éviter tout mélange de comptes.", 409);
       }
-      await recordUsage(prepared, operation, providerType, model, safeReference, result.usage, Date.now() - startedAt, true, null, "miss");
+      await recordUsage(prepared, operation, providerType, model, safeReference, result.usage, Date.now() - startedAt, providerType === "openai", true, null, "miss");
       return result;
     } catch (error) {
       const detail = error instanceof AiServiceError ? error.detail : serviceError("provider_unavailable", "Le service IA est indisponible.", 502).detail;
-      await recordUsage(prepared, operation, providerType, model, safeReference, null, Date.now() - startedAt, false, detail.code, "miss");
+      await recordUsage(prepared, operation, providerType, model, safeReference, null, Date.now() - startedAt, providerType === "openai", false, detail.code, "miss");
       throw error;
     }
   });
 }
 
-async function recordUsage(prepared: Awaited<ReturnType<typeof prepareOperation>>, operation: AiOperationType, provider: "openai" | "mock", model: string, messageReference: string, usage: MailAiAnalysis["usage"], durationMs: number, success: boolean, errorCode: AiError["code"] | null, cacheStatus: AiUsageRecord["cacheStatus"]) {
-  await aiUsageRepository.record({ id: randomUUID(), operation, provider, model, accountId: prepared.account.id, companyId: prepared.owner.companyId, userId: prepared.owner.userId, messageReference, inputTokens: usage?.inputTokens ?? null, cachedInputTokens: usage?.cachedInputTokens ?? null, outputTokens: usage?.outputTokens ?? null, totalTokens: usage?.totalTokens ?? null, durationMs, cacheStatus, success, errorCode, createdAt: new Date().toISOString() });
+async function recordUsage(prepared: Awaited<ReturnType<typeof prepareOperation>>, operation: AiOperationType, provider: "openai" | "mock", model: string, messageReference: string, usage: MailAiAnalysis["usage"], durationMs: number, providerRequestAttempted: boolean, success: boolean, errorCode: AiError["code"] | null, cacheStatus: AiUsageRecord["cacheStatus"]) {
+  await recordSafeAiUsage({ operation, provider, model, accountId: prepared.account.id, companyId: prepared.owner.companyId, userId: prepared.owner.userId, messageReference, usage, durationMs, providerRequestAttempted, cacheStatus, success, errorCode, budgetPolicy: prepared.providerInput.configuration.budgetPolicy, pricingRegistry: prepared.providerInput.configuration.pricingRegistry });
 }
 
 function operationResult<T>(result: T, provider: "openai" | "mock", status: Awaited<ReturnType<typeof resolveAiProvider>>["status"], reduced: ReducedMailContext): MailAiOperationResult<T> {
@@ -208,4 +197,3 @@ function ensurePrivacy(provider: "openai" | "mock", acknowledged: boolean) { if 
 function serviceError(code: AiError["code"], message: string, status: number) { return new AiServiceError({ code, message, recoverable: status >= 429, status }); }
 function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }
 function createCacheKey(prepared: Awaited<ReturnType<typeof prepareOperation>>, provider: string, model: string, promptVersion: string, configuration: MailAiConfiguration) { return hash(JSON.stringify({ companyId: prepared.owner.companyId, userId: prepared.owner.userId, accountId: prepared.account.id, messageId: prepared.message.id, content: prepared.reduced, provider, model, promptVersion, configuration })); }
-function sum(entries: AiUsageRecord[], key: "inputTokens" | "cachedInputTokens" | "outputTokens" | "totalTokens") { return entries.reduce((total, entry) => total + (entry[key] ?? 0), 0); }

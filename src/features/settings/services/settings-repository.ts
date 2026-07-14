@@ -1,4 +1,5 @@
 import { defaultSettings } from "@/features/settings/config/default-settings";
+import { parseAiBudgetPolicy, parseAiPricingRegistry } from "@/features/ai/validation/ai-budget-input";
 import {
   SETTINGS_VERSION,
   type AppSettings,
@@ -59,17 +60,19 @@ function isSettings(value: unknown): value is AppSettings {
   const printValid = isRecord(value.print) && ["A4", "A3"].includes(String(value.print.paperSize)) && ["portrait", "landscape"].includes(String(value.print.orientation)) && Array.isArray(value.print.columns) && value.print.columns.every((column) => isOrderedItem(column, ["id", "label", "placement"], ["visible"]) && isRecord(column) && ["header", "table"].includes(String(column.placement)));
   const aiValid = isRecord(value.ai)
     && hasBooleans(value.ai, ["enabled", "includeSignature", "includeAttachmentMetadata", "displayConfidence", "displayJustification", "allowDraftCreation", "retainLocalAnalysisCache", "showCachedResultBadge", "showTokenUsage", "allowStrongerModelEscalation"])
-    && value.ai.allowSending === false && value.ai.automaticAnalysis === false
+    && value.ai.allowSending === false && value.ai.automaticAnalysis === false && value.ai.automaticDraftCreation === false
     && ["openai", "mock"].includes(String(value.ai.provider))
     && ["fr", "nl", "en", "de"].includes(String(value.ai.preferredResponseLanguage))
     && ["professional", "concise", "diplomatic", "direct", "technical", "internal", "customer", "supplier"].includes(String(value.ai.defaultTone))
     && ["short", "medium", "long"].includes(String(value.ai.defaultLength))
     && typeof value.ai.maximumThreadMessages === "number" && Number.isInteger(value.ai.maximumThreadMessages)
-    && ["maximumInputContextTokens", "maximumAnalysisOutputTokens", "maximumReplyOutputTokens", "maximumRewriteOutputTokens", "dailyRequestWarning", "dailyHardLimit", "longThreadWarningThreshold"].every((key) => isRecord(value.ai) && typeof value.ai[key] === "number" && Number.isInteger(value.ai[key]))
+    && ["maximumInputContextTokens", "maximumAnalysisOutputTokens", "maximumReplyOutputTokens", "maximumRewriteOutputTokens", "longThreadWarningThreshold"].every((key) => isRecord(value.ai) && typeof value.ai[key] === "number" && Number.isInteger(value.ai[key]))
     && typeof value.ai.analysisExpirationMinutes === "number" && Number.isInteger(value.ai.analysisExpirationMinutes)
     && (value.ai.privacyAcknowledgedAt === null || typeof value.ai.privacyAcknowledgedAt === "string")
     && Array.isArray(value.ai.categories) && value.ai.categories.every(isStandard)
-    && Array.isArray(value.ai.pricing) && value.ai.pricing.every((price) => isRecord(price) && typeof price.model === "string" && [price.inputPerMillion, price.cachedInputPerMillion, price.outputPerMillion].every((number) => typeof number === "number" && Number.isFinite(number)));
+    && parseAiBudgetPolicy(value.ai.budgetPolicy) !== null
+    && parseAiPricingRegistry(value.ai.pricingRegistry) !== null
+    && isRecord(value.ai.firstUseChecklist) && hasBooleans(value.ai.firstUseChecklist, ["platformAccountCreated", "billingConfigured", "applicationRestarted"]);
   const templatesValid = isRecord(value.templates) && Object.values(value.templates).every((template) => typeof template === "string");
   const journalValid = Array.isArray(value.journal) && value.journal.every((entry) => isRecord(entry) && hasStrings(entry, ["id", "date", "description"]));
   return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && rolesValid && usersValid && printValid && aiValid && templatesValid && journalValid;
@@ -98,6 +101,13 @@ function migrateSettings(value: unknown): AppSettings {
       ...(isRecord(saved.ai) ? saved.ai : {}),
       allowSending: false,
       automaticAnalysis: false,
+      automaticDraftCreation: false,
+      budgetPolicy: parseAiBudgetPolicy(isRecord(saved.ai) ? saved.ai.budgetPolicy : undefined) ?? defaults.ai.budgetPolicy,
+      pricingRegistry: parseAiPricingRegistry(isRecord(saved.ai) ? saved.ai.pricingRegistry : undefined) ?? defaults.ai.pricingRegistry,
+      firstUseChecklist: {
+        ...defaults.ai.firstUseChecklist,
+        ...(isRecord(saved.ai) && isRecord(saved.ai.firstUseChecklist) ? saved.ai.firstUseChecklist : {}),
+      },
       categories: migrateStandards(isRecord(saved.ai) ? saved.ai.categories : undefined, defaults.ai.categories),
     },
     production: migrateProductionSettings(saved.version, saved.production, defaults.production),

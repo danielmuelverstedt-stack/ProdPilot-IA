@@ -1,5 +1,7 @@
 import type {
+  AiBudgetPolicy,
   AiConfidence,
+  AiPricingEntry,
   AiProviderType,
   AiRequestContext,
   AiSourceReference,
@@ -93,8 +95,9 @@ export interface MailAiConfiguration {
   maximumAnalysisOutputTokens: number;
   maximumReplyOutputTokens: number;
   maximumRewriteOutputTokens: number;
-  dailyHardLimit: number;
   longThreadWarningThreshold: number;
+  budgetPolicy: AiBudgetPolicy;
+  pricingRegistry: AiPricingEntry[];
   includeAttachmentMetadata: boolean;
   privacyAcknowledged: boolean;
   allowDraftCreation: boolean;

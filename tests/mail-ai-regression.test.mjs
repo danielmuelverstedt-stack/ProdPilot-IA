@@ -46,7 +46,10 @@ test("la réécriture utilise le budget le plus compact", async () => {
 
 test("les journaux d’usage n’enregistrent pas le corps du message", async () => {
   const repository = await read("src/features/ai/server/repositories/local-ai-usage-repository.ts");
+  const recorder = await read("src/features/ai/services/ai-usage-recorder.ts");
   assert.doesNotMatch(repository, /bodyText|messageBody|prompt:/);
+  assert.match(recorder, /providerRequestAttempted/);
+  assert.doesNotMatch(recorder, /bodyText|messageBody|fullReply|prompt:/);
 });
 
 test("aucune opération d’envoi Gmail n’est implémentée", async () => {
@@ -74,6 +77,60 @@ test("les doublons en vol et les limites précèdent l’appel fournisseur", asy
   const coordinator = service.indexOf("return aiRequestCoordinator.run");
   const providerCall = service.indexOf("const result = await execute()", coordinator);
   assert.ok(guard >= 0 && coordinator > guard && providerCall > coordinator);
+});
+
+test("le plafond mensuel projeté précède aussi tout appel fournisseur", async () => {
+  const guard = await read("src/features/ai/server/ai-usage-guard.ts");
+  const service = await read("src/features/ai/services/mail-ai-service.ts");
+  assert.match(guard, /estimatedMonthCost \+ projectedCost >= input\.budgetPolicy\.monthlyHardStopAmount/);
+  assert.match(guard, /allowAdministratorOverride && input\.budgetPolicy\.administratorOverrideActive/);
+  assert.match(service, /await enforceAiUsageLimit[\s\S]*const result = await execute\(\)/);
+});
+
+test("le dépassement administrateur et les automatismes sont désactivés par défaut", async () => {
+  const policy = await read("src/features/ai/config/ai-budget-policy.ts");
+  const defaults = await read("src/features/settings/config/default-settings.ts");
+  assert.match(policy, /allowAdministratorOverride: false/);
+  assert.match(policy, /administratorOverrideActive: false/);
+  assert.match(defaults, /automaticAnalysis: false/);
+  assert.match(defaults, /automaticDraftCreation: false/);
+  assert.match(defaults, /allowSending: false/);
+});
+
+test("le test OpenAI est minimal, serveur et sans contenu Mail", async () => {
+  const provider = await read("src/features/ai/providers/openai/openai-ai-provider.ts");
+  const route = await read("src/app/api/ai/test-connection/route.ts");
+  const method = provider.slice(provider.indexOf("async testConnection"), provider.indexOf("private async createReply"));
+  assert.match(method, /input: "Réponds uniquement par OK\."/);
+  assert.match(method, /store: false/);
+  assert.doesNotMatch(method, /bodyText|selectedMessage|thread/);
+  assert.match(route, /isTrustedSameOriginRequest/);
+});
+
+test("les erreurs OpenAI sensibles sont converties en messages français sûrs", async () => {
+  const provider = await read("src/features/ai/providers/openai/openai-ai-provider.ts");
+  assert.match(provider, /AuthenticationError[\s\S]*La clé OpenAI est invalide/);
+  assert.match(provider, /insufficient_quota[\s\S]*facturation ou le quota OpenAI/);
+  assert.match(provider, /NotFoundError[\s\S]*modèle OpenAI configuré n’est pas disponible/);
+  assert.doesNotMatch(provider, /console\.(log|error|warn)/);
+});
+
+test("les secrets et fichiers locaux restent hors du client et de Git", async () => {
+  const settingsPanel = await read("src/features/settings/components/AiConfigurationPanel.tsx");
+  const statusRoute = await read("src/app/api/ai/mail/status/route.ts");
+  const gitignore = await read(".gitignore");
+  assert.doesNotMatch(settingsPanel, /OPENAI_API_KEY|apiKeyValue|secretFragment/);
+  assert.match(statusRoute, /apiKeyPresent: Boolean\(process\.env\.OPENAI_API_KEY\?\.trim\(\)\)/);
+  assert.doesNotMatch(statusRoute, /apiKeyValue|secretFragment|apiKey:\s*process\.env|OPENAI_API_KEY\?\.slice/);
+  assert.match(gitignore, /\.env\*/);
+  assert.match(gitignore, /!\.env\.example/);
+});
+
+test("la création du brouillon Gmail exige toujours une confirmation", async () => {
+  const editor = await read("src/features/ai/components/MailAiReplyEditor.tsx");
+  assert.match(editor, /if \(!reply \|\| !confirmed\) return/);
+  assert.match(editor, /confirmed: true/);
+  assert.match(editor, /Aucun e-mail ne sera envoyé/);
 });
 
 test("le changement de compte écarte le résultat", async () => {

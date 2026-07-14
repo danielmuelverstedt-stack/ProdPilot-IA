@@ -10,6 +10,7 @@ const FILE = path.join(DIRECTORY, "mail-ai-usage.json");
 let writeQueue = Promise.resolve();
 
 class LocalAiUsageRepository implements AiUsageRepository {
+  isOperational() { return process.env.NODE_ENV !== "production"; }
   async record(entry: AiUsageRecord) {
     if (process.env.NODE_ENV === "production") return;
     const entries = await readEntries();

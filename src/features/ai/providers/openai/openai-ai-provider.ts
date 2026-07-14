@@ -13,7 +13,7 @@ import {
   MAIL_REWRITE_PROMPT,
   MAIL_REWRITE_PROMPT_VERSION,
 } from "@/features/ai/prompts/mail-ai-prompts";
-import { AiServiceError, type AiOperationType, type AiUsageMetadata } from "@/features/ai/types/ai";
+import { AiServiceError, type AiUsageMetadata, type MailAiOperationType } from "@/features/ai/types/ai";
 import type { MailAiAnalysis, MailAiAnalysisInput, MailAiReply, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
 import { createMailAnalysisJsonSchema, MAIL_REPLY_JSON_SCHEMA, validateMailAiAnalysis, validateMailAiReply } from "@/features/ai/validation/mail-ai-schema";
 
@@ -57,6 +57,15 @@ export class OpenAiProvider implements AiProvider {
     return this.createReply("mail_rewrite", MAIL_REWRITE_PROMPT, MAIL_REWRITE_PROMPT_VERSION, buildRewritePayload(input), input.configuration.maximumRewriteOutputTokens);
   }
 
+  async testConnection(): Promise<{ model: string; usage: AiUsageMetadata }> {
+    try {
+      const response = await this.client.responses.create({ model: this.model, input: "Réponds uniquement par OK.", max_output_tokens: 32, store: false });
+      return { model: this.model, usage: usageFrom(response) };
+    } catch (error) {
+      throw mapOpenAiError(error);
+    }
+  }
+
   private async createReply(
     operation: "mail_reply" | "mail_rewrite",
     instructions: string,
@@ -82,7 +91,7 @@ export class OpenAiProvider implements AiProvider {
     }
   }
 
-  private async createStructuredResponse(operation: AiOperationType, request: {
+  private async createStructuredResponse(operation: MailAiOperationType, request: {
     instructions: string;
     input: string;
     name: string;
@@ -175,9 +184,14 @@ function invalidOutput() {
 function mapOpenAiError(error: unknown): AiServiceError {
   if (error instanceof AiServiceError) return error;
   if (error instanceof OpenAI.AuthenticationError) return new AiServiceError({ code: "authentication", message: "La clé OpenAI est invalide. Vérifiez la configuration serveur.", recoverable: false, status: 503 });
+  if (error instanceof OpenAI.RateLimitError && getProviderErrorCode(error) === "insufficient_quota") return new AiServiceError({ code: "quota", message: "La facturation ou le quota OpenAI ne permet pas cet appel.", recoverable: false, status: 503 });
   if (error instanceof OpenAI.RateLimitError) return new AiServiceError({ code: "rate_limit", message: "La limite de requêtes OpenAI est atteinte. Réessayez plus tard.", recoverable: true, status: 429 });
   if (error instanceof OpenAI.APIConnectionTimeoutError) return new AiServiceError({ code: "timeout", message: "OpenAI n’a pas répondu dans le délai prévu. Réessayez.", recoverable: true, status: 504 });
   if (error instanceof OpenAI.PermissionDeniedError) return new AiServiceError({ code: "quota", message: "L’accès OpenAI est indisponible pour ce projet. Vérifiez les droits et la facturation.", recoverable: false, status: 503 });
   if (error instanceof OpenAI.NotFoundError || error instanceof OpenAI.BadRequestError) return new AiServiceError({ code: "model_unavailable", message: "Le modèle OpenAI configuré n’est pas disponible ou ne prend pas en charge cette opération.", recoverable: false, status: 503 });
   return new AiServiceError({ code: "provider_unavailable", message: "Le service OpenAI est temporairement indisponible. Réessayez plus tard.", recoverable: true, status: 502 });
+}
+
+function getProviderErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error && typeof error.code === "string" ? error.code : null;
 }

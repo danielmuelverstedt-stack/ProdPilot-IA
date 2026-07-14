@@ -82,5 +82,10 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 
 - [x] Créer l’analyse structurée et les réponses assistées avec provenance, consentement et appels exclusivement explicites.
 - [x] Centraliser les budgets, réduire le contexte, dédupliquer les appels, mettre les analyses en cache et afficher des métriques sûres.
-- [ ] Remplacer cache, métriques et coordination IA locaux par des dépôts distribués, chiffrés et multi-tenant avant production.
-- [ ] Ajouter une limite mensuelle durable, une tarification validée et des évaluations opt-in des modèles sur les fixtures synthétiques.
+- [x] Ajouter les limites internes mensuelles, quotidiennes et par opération, désactivables uniquement par un dépassement administrateur explicitement autorisé.
+- [x] Ajouter le tableau d’usage, les alertes internes, le registre de prix vide par défaut, le diagnostic sûr et le test de connexion OpenAI.
+- [x] Documenter l’activation, la séparation ChatGPT/API, le budget prudent et les limites des estimations internes.
+- [ ] Remplacer cache, métriques et coordination IA locaux par des dépôts distribués, chiffrés, transactionnels et multi-tenant avant production.
+- [ ] Ajouter l’authentification applicative et l’autorisation administrateur serveur avant un déploiement partagé.
+- [ ] Valider les prix officiels des modèles choisis avant d’activer les seuils monétaires.
+- [ ] Ajouter des évaluations opt-in des modèles sur les fixtures synthétiques.

@@ -3,6 +3,7 @@ import "server-only";
 export interface MailOwnerContext {
   userId: string;
   companyId: string;
+  isAdministrator: boolean;
 }
 
 /**
@@ -13,5 +14,6 @@ export function getCurrentMailOwnerContext(): MailOwnerContext {
   return {
     userId: "local-development-user",
     companyId: "local-development-company",
+    isAdministrator: true,
   };
 }

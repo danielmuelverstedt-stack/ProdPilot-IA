@@ -1,6 +1,35 @@
 export type AiProviderType = "openai" | "mock";
 export type AiConfidence = "low" | "medium" | "high";
-export type AiOperationType = "mail_analysis" | "mail_reply" | "mail_rewrite";
+export type AiOperationType = "mail_analysis" | "mail_reply" | "mail_rewrite" | "connection_test";
+export type MailAiOperationType = Exclude<AiOperationType, "connection_test">;
+
+export type AiCurrency = "EUR" | "USD";
+
+export interface AiBudgetPolicy {
+  monthlyBudgetAmount: number;
+  monthlyWarningAmount: number;
+  monthlyHardStopAmount: number;
+  dailyRequestLimit: number;
+  perUserDailyRequestLimit: number;
+  perMessageAnalysisLimit: number;
+  perDraftRewriteLimit: number;
+  allowAdministratorOverride: boolean;
+  administratorOverrideActive: boolean;
+  currencyDisplay: AiCurrency;
+}
+
+export interface AiPricingEntry {
+  id: string;
+  provider: "openai";
+  model: string;
+  inputPricePerMillionTokens: number;
+  cachedInputPricePerMillionTokens: number;
+  outputPricePerMillionTokens: number;
+  currency: AiCurrency;
+  effectiveDate: string;
+  sourceNote: string;
+  enabled: boolean;
+}
 
 export interface AiTokenBudget {
   maximumInputTokens: number;
@@ -50,9 +79,13 @@ export interface AiUsageRecord {
   outputTokens: number | null;
   totalTokens: number | null;
   durationMs: number;
+  providerRequestAttempted: boolean;
   cacheStatus: "hit" | "miss" | "not_applicable";
   success: boolean;
   errorCode: AiError["code"] | null;
+  estimatedCost: number | null;
+  estimatedCostAvoided: number | null;
+  estimatedCostCurrency: AiCurrency | null;
   createdAt: string;
 }
 
@@ -64,6 +97,7 @@ export interface AiError {
     | "authentication"
     | "quota"
     | "rate_limit"
+    | "budget_blocked"
     | "timeout"
     | "model_unavailable"
     | "invalid_output"

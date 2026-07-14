@@ -1,8 +1,8 @@
 import "server-only";
 
-import type { AiOperationType, MailAiTokenBudget } from "@/features/ai/types/ai";
+import type { MailAiOperationType, MailAiTokenBudget } from "@/features/ai/types/ai";
 
-const CONSERVATIVE_LOCAL_BUDGETS: Record<AiOperationType, MailAiTokenBudget> = {
+const CONSERVATIVE_LOCAL_BUDGETS: Record<MailAiOperationType, MailAiTokenBudget> = {
   mail_analysis: {
     maximumInputTokens: 6_000,
     maximumOutputTokens: 1_200,
@@ -32,7 +32,7 @@ const CONSERVATIVE_LOCAL_BUDGETS: Record<AiOperationType, MailAiTokenBudget> = {
   },
 };
 
-export function getMailAiTokenBudget(operation: AiOperationType, requested?: { maximumInputTokens?: number; maximumOutputTokens?: number }): MailAiTokenBudget {
+export function getMailAiTokenBudget(operation: MailAiOperationType, requested?: { maximumInputTokens?: number; maximumOutputTokens?: number }): MailAiTokenBudget {
   const budget = CONSERVATIVE_LOCAL_BUDGETS[operation];
   const globalOutputLimit = parseInteger(process.env.OPENAI_MAX_OUTPUT_TOKENS);
   const outputLimit = globalOutputLimit ? Math.min(globalOutputLimit, budget.maximumOutputTokens) : budget.maximumOutputTokens;

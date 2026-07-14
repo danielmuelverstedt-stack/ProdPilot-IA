@@ -10,6 +10,7 @@ import {
   type StatusSettings,
   type TaskTypeSettings,
 } from "@/features/settings/types/settings";
+import { DEFAULT_AI_BUDGET_POLICY } from "@/features/ai/config/ai-budget-policy";
 
 function productionMachine(
   id: string,
@@ -272,11 +273,11 @@ export const defaultSettings: AppSettings = {
     allowSending: false,
     retainLocalAnalysisCache: true,
     analysisExpirationMinutes: 1_440,
-    dailyRequestWarning: 80,
-    dailyHardLimit: 100,
     longThreadWarningThreshold: 3_000,
     allowStrongerModelEscalation: false,
-    pricing: [],
+    budgetPolicy: { ...DEFAULT_AI_BUDGET_POLICY },
+    pricingRegistry: [],
+    firstUseChecklist: { platformAccountCreated: false, billingConfigured: false, applicationRestarted: false },
     privacyAcknowledgedAt: null,
     categories: [
       standard("mail-category-reply", "reply_required", "Réponse nécessaire", "#d97706", "#ffffff", 0),
@@ -290,6 +291,7 @@ export const defaultSettings: AppSettings = {
     showCachedResultBadge: true,
     showTokenUsage: true,
     automaticAnalysis: false,
+    automaticDraftCreation: false,
   },
   templates: {
     mail: "Bonjour {responsable},\n\nVoici le point à traiter : {sujet}.\n\nMerci,\nDaniel",

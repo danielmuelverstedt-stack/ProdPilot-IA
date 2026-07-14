@@ -3,29 +3,33 @@ import { fieldClass, formatEuropeanDate, primaryButton, secondaryButton } from "
 import type { DemoData } from "@/features/demo/types/demo";
 import { PlanningDialogShell } from "@/features/planning/components/PlanningDialogShell";
 import type { PlanningMachine } from "@/features/planning/types/planning";
+import type { PrioritySettings, StatusSettings } from "@/features/settings/types/settings";
 
 export interface PlanningCellTarget { machineId: string; date: string; }
 
-export function PlanningOperationDialog({ target, machine, data, currentHours, onConfirm, onTask, onClose }: {
+export function PlanningOperationDialog({ target, machine, data, currentHours, priorities, statuses, onConfirm, onTask, onClose }: {
   target: PlanningCellTarget;
   machine: PlanningMachine;
   data: DemoData;
   currentHours: number;
+  priorities: PrioritySettings[];
+  statuses: StatusSettings[];
   onConfirm: (orderId: string, operationId: string, durationHours: number) => void;
   onTask: () => void;
   onClose: () => void;
 }) {
   const candidates = useMemo(() => data.workOrders.flatMap((order) => order.operations
-    .filter((operation) => operation.status !== "Terminée" && (operation.department === machine.department || operation.machineId === machine.id))
-    .map((operation) => ({ order, operation }))), [data.workOrders, machine.department, machine.id]);
+    .filter((operation) => statuses.find((status) => status.value === operation.status)?.behavior !== "completed" && (operation.department === machine.departmentValue || operation.machineId === machine.id))
+    .map((operation) => ({ order, operation }))), [data.workOrders, machine.departmentValue, machine.id, statuses]);
   const [selection, setSelection] = useState(candidates[0] ? `${candidates[0].order.id}|${candidates[0].operation.id}` : "");
   const selected = candidates.find(({ order, operation }) => `${order.id}|${operation.id}` === selection);
   const [hours, setHours] = useState(selected?.operation.plannedDurationHours ?? 1);
-  return <PlanningDialogShell title={`Ajouter un OF — ${machine.id}`} description={`${formatEuropeanDate(`${target.date}T12:00:00.000Z`)} · charge actuelle ${currentHours.toLocaleString("fr-BE")}/${machine.capacityHours} h`} onClose={onClose} actions={<><button type="button" className={secondaryButton} onClick={onClose}>Annuler</button><button type="button" className={primaryButton} disabled={!selected} onClick={() => selected && onConfirm(selected.order.id, selected.operation.id, Math.max(0.5, hours))}>Ajouter au planning</button></>}>
+  const capacity = machine.capacityByDate[target.date] ?? 0;
+  return <PlanningDialogShell title={`Ajouter un OF — ${machine.id}`} description={`${formatEuropeanDate(`${target.date}T12:00:00.000Z`)} · charge actuelle ${currentHours.toLocaleString("fr-BE")}/${capacity.toLocaleString("fr-BE")} h`} onClose={onClose} actions={<><button type="button" className={secondaryButton} onClick={onClose}>Annuler</button><button type="button" className={primaryButton} disabled={!selected} onClick={() => selected && onConfirm(selected.order.id, selected.operation.id, Math.max(0.5, hours))}>Ajouter au planning</button></>}>
     {candidates.length ? <div className="grid gap-4">
       <label className="grid gap-1 text-sm font-semibold">OF et opération
         <select className={fieldClass} value={selection} onChange={(event) => { setSelection(event.target.value); const next = candidates.find(({ order, operation }) => `${order.id}|${operation.id}` === event.target.value); if (next) setHours(next.operation.plannedDurationHours); }}>
-          {candidates.map(({ order, operation }) => <option key={operation.id} value={`${order.id}|${operation.id}`}>{order.id} · {order.priority} · OP{operation.number} {operation.description}</option>)}
+          {candidates.sort((a, b) => priorityOrder(a.order.priority, priorities) - priorityOrder(b.order.priority, priorities)).map(({ order, operation }) => <option key={operation.id} value={`${order.id}|${operation.id}`}>{order.id} · {priorities.find((item) => item.value === order.priority)?.label ?? order.priority} · OP{operation.number} {operation.description}</option>)}
         </select>
       </label>
       {selected ? <div className="rounded-xl border border-[var(--app-border)] bg-slate-50 p-4 text-sm"><strong>{selected.order.customer}</strong><p>{selected.order.article} · {selected.order.quantity} pièces</p><p className="mt-1 text-xs text-slate-500">Échéance {formatEuropeanDate(`${selected.order.dueDate}T12:00:00.000Z`)} · {selected.order.description}</p></div> : null}
@@ -37,3 +41,5 @@ export function PlanningOperationDialog({ target, machine, data, currentHours, o
     <p className="mt-3 text-xs text-slate-500">Plusieurs OF peuvent partager la journée. La charge sera recalculée et signalée en rouge au-delà de la capacité.</p>
   </PlanningDialogShell>;
 }
+
+function priorityOrder(value: string, priorities: PrioritySettings[]): number { return priorities.find((item) => item.value === value)?.order ?? Number.MAX_SAFE_INTEGER; }

@@ -1,5 +1,6 @@
 # Instructions pour Codex
 
+- Avant toute modification du projet, lire intégralement les dix documents de `docs/specifications/` dans leur ordre numérique. Ils constituent la Constitution produit et prévalent sur toute documentation historique contradictoire.
 - Avant toute modification majeure, lire `AGENTS.md` et tous les fichiers pertinents de `docs/`, inspecter l’état Git et préserver les fonctionnalités ainsi que les changements utilisateur existants.
 - Avant d’utiliser ou de modifier une API ou convention Next.js, lire le guide correspondant dans `node_modules/next/dist/docs/` et respecter les dépréciations de la version installée.
 - Demander une confirmation avant tout changement architectural majeur, migration structurante ou dépendance importante.

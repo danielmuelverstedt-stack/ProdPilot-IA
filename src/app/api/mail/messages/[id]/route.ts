@@ -6,8 +6,11 @@ export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: RouteContext<"/api/mail/messages/[id]">) {
   const { id } = await params;
   try {
-    const { provider } = await getActiveMailContext();
-    const message = await provider.getMessage(id);
+    const { account, provider } = await getActiveMailContext();
+    const result = await provider.getMessage(id);
+    const message = result && !account.settings.includeAttachmentMetadata
+      ? { ...result, attachments: [] }
+      : result;
     return message
       ? apiJson({ message })
       : apiError("Le message demandé est introuvable pour le compte actif.", 404);

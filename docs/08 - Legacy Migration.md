@@ -1,5 +1,7 @@
 # Migration de l’application historique
 
+Ce document conserve l’audit et les décisions prises au début de la migration. Il ne décrit pas l’état fonctionnel courant. La [Constitution produit](specifications/00%20-%20Vision.md) gouverne les évolutions futures, tandis que `docs/04 - Modules.md`, `docs/06 - Todo.md` et les guides de migration plus récents décrivent ce qui est désormais livré. Les éléments indiqués « à différer » ci-dessous doivent donc être lus comme un instantané historique.
+
 ## Périmètre audité
 
 Le prototype historique situé dans `legacy-reference/prodpilot-ia-v12-07/prodpilot-ia` a été audité intégralement : structure HTML, feuille de styles, données de démonstration, logique applicative et documentation. Il sert de référence fonctionnelle et visuelle uniquement. Son JavaScript n’est ni importé ni exécuté par l’application Next.js.

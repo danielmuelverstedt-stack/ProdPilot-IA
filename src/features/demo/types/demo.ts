@@ -35,7 +35,7 @@ export interface WorkOperation {
   machineId: string | null;
   plannedDurationHours: number;
   plannedDate: string | null;
-  status: "À planifier" | "Planifiée" | "En cours" | "Terminée" | "Bloquée";
+  status: string;
   completedQuantity: number;
   blockingIssue: string | null;
 }
@@ -89,13 +89,15 @@ export interface Machine {
 export interface MaintenanceEvent {
   id: string;
   machineId: string;
-  type: "Préventive" | "Nettoyage" | "Lubrification" | "Étalonnage" | "Inspection" | "Intervention" | "Autre";
+  type: string;
   date: string;
   durationHours: number;
   responsible: string;
-  status: "Prévue" | "En cours" | "Terminée" | "Reportée";
+  status: string;
   comment: string;
-  planningKind?: "Maintenance" | "Divers";
+  planningKind?: string;
+  planningTypeId?: string;
+  maintenanceTypeId?: string;
 }
 
 export interface Meeting {

@@ -4,7 +4,9 @@ import {
   disconnectMailAccount,
   getMailAccounts,
   renameMailAccount,
+  synchronizeMailAccount,
   testMailAccount,
+  updateMailAccountSettings,
 } from "@/features/mail/services/mail-connections";
 import {
   apiError,
@@ -15,7 +17,7 @@ import { isMailProviderType } from "@/features/mail/types/mail";
 
 export const runtime = "nodejs";
 
-type AccountAction = "add" | "rename" | "activate" | "test" | "disconnect";
+type AccountAction = "add" | "rename" | "settings" | "activate" | "synchronize" | "test" | "disconnect";
 
 interface AccountRequestBody {
   action?: unknown;
@@ -23,11 +25,16 @@ interface AccountRequestBody {
   provider?: unknown;
   emailAddress?: unknown;
   displayName?: unknown;
+  settings?: unknown;
 }
 
 export async function GET() {
-  const accounts = await getMailAccounts();
-  return apiJson({ accounts, activeAccount: accounts.find((account) => account.isActive) });
+  try {
+    const accounts = await getMailAccounts();
+    return apiJson({ accounts, activeAccount: accounts.find((account) => account.isActive) });
+  } catch {
+    return apiError("Les comptes de messagerie ne peuvent pas être chargés.", 500);
+  }
 }
 
 export async function POST(request: Request) {
@@ -67,7 +74,14 @@ export async function POST(request: Request) {
         }
         await renameMailAccount(body.accountId, body.displayName);
       }
+      if (body.action === "settings") {
+        if (typeof body.displayName !== "string") {
+          return apiError("Le nom du compte est invalide.", 400);
+        }
+        await updateMailAccountSettings(body.accountId, body.displayName, body.settings);
+      }
       if (body.action === "activate") await activateMailAccount(body.accountId);
+      if (body.action === "synchronize") await synchronizeMailAccount(body.accountId);
       if (body.action === "test") await testMailAccount(body.accountId);
       if (body.action === "disconnect") await disconnectMailAccount(body.accountId);
     }
@@ -83,5 +97,5 @@ export async function POST(request: Request) {
 }
 
 function isAccountAction(value: unknown): value is AccountAction {
-  return ["add", "rename", "activate", "test", "disconnect"].includes(String(value));
+  return ["add", "rename", "settings", "activate", "synchronize", "test", "disconnect"].includes(String(value));
 }

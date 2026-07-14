@@ -1,6 +1,6 @@
 # Règles produit et de développement pour Codex
 
-Ces règles s’appliquent à toute intervention sur ProdPilot IA. En cas de conflit avec une demande explicite, signaler le conflit et demander une décision avant toute modification risquée.
+Ces règles opérationnelles appliquent la [Constitution produit](specifications/00%20-%20Vision.md). Avant toute modification, lire les dix documents de `docs/specifications/` dans leur ordre numérique. En cas de conflit avec une documentation historique ou une demande qui enfreint la Constitution, signaler le conflit et demander une décision avant toute modification risquée.
 
 ## Avant de modifier le projet
 

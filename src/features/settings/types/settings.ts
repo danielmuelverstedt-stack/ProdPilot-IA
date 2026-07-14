@@ -1,4 +1,4 @@
-export const SETTINGS_VERSION = 3;
+export const SETTINGS_VERSION = 5;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -55,16 +55,77 @@ export interface MachineSettings {
   name: string;
   displayName: string;
   department: string;
+  departmentId: string;
   machineType: string;
+  color: string;
+  order: number;
   photoDataUrl: string;
   technicalInformation: string;
 }
 
+export interface OrderedStandardSettings {
+  id: string;
+  value: string;
+  label: string;
+  color: string;
+  textColor: string;
+  active: boolean;
+  order: number;
+}
+
+export interface DepartmentSettings extends OrderedStandardSettings {
+  value: string;
+}
+
+export interface PrioritySettings extends OrderedStandardSettings {
+  highlight: boolean;
+}
+
+export interface StatusSettings extends OrderedStandardSettings {
+  behavior: "planned" | "in-progress" | "blocked" | "completed" | "neutral";
+}
+
+export interface TaskTypeSettings extends OrderedStandardSettings {
+  category: "maintenance" | "other";
+}
+
+export interface CapacityExceptionSettings {
+  date: string;
+  hours: number;
+}
+
+export interface CapacitySettings {
+  id: string;
+  label: string;
+  active: boolean;
+  order: number;
+  scope: "department" | "machine";
+  targetId: string;
+  hoursPerDay: number;
+  workingDays: number[];
+  exceptions: CapacityExceptionSettings[];
+}
+
+export interface PlanningSettings {
+  allDepartmentsLabel: string;
+  defaultCapacityHours: number;
+  workingDays: number[];
+  weekStartsOn: number;
+  visibleWeeks: number;
+  loadWarningPercent: number;
+  loadCriticalPercent: number;
+}
+
 export interface ProductionSettings {
   machines: MachineSettings[];
-  departments: string[];
-  capacities: string[];
-  priorities: string[];
+  departments: DepartmentSettings[];
+  capacities: CapacitySettings[];
+  priorities: PrioritySettings[];
+  statuses: StatusSettings[];
+  maintenanceStatuses: StatusSettings[];
+  taskTypes: TaskTypeSettings[];
+  maintenanceTypes: OrderedStandardSettings[];
+  planning: PlanningSettings;
   workOrderTypes: string[];
 }
 
@@ -99,6 +160,7 @@ export interface PrintColumnSettings {
   label: string;
   visible: boolean;
   order: number;
+  placement: "header" | "table";
 }
 
 export interface PrintSettings {
@@ -113,6 +175,39 @@ export interface SettingsJournalEntry {
   description: string;
 }
 
+export type AiCategorySettings = OrderedStandardSettings;
+
+export interface AiSettings {
+  enabled: boolean;
+  provider: "openai" | "mock";
+  preferredResponseLanguage: "fr" | "nl" | "en" | "de";
+  defaultTone: "professional" | "concise" | "diplomatic" | "direct" | "technical" | "internal" | "customer" | "supplier";
+  defaultLength: "short" | "medium" | "long";
+  includeSignature: boolean;
+  maximumThreadMessages: number;
+  maximumInputContextTokens: number;
+  maximumAnalysisOutputTokens: number;
+  maximumReplyOutputTokens: number;
+  maximumRewriteOutputTokens: number;
+  includeAttachmentMetadata: boolean;
+  displayConfidence: boolean;
+  displayJustification: boolean;
+  allowDraftCreation: boolean;
+  allowSending: false;
+  retainLocalAnalysisCache: boolean;
+  analysisExpirationMinutes: number;
+  dailyRequestWarning: number;
+  dailyHardLimit: number;
+  longThreadWarningThreshold: number;
+  allowStrongerModelEscalation: boolean;
+  pricing: Array<{ model: string; inputPerMillion: number; cachedInputPerMillion: number; outputPerMillion: number }>;
+  privacyAcknowledgedAt: string | null;
+  categories: AiCategorySettings[];
+  showCachedResultBadge: boolean;
+  showTokenUsage: boolean;
+  automaticAnalysis: false;
+}
+
 export interface AppSettings {
   version: number;
   navigation: NavigationItemConfig[];
@@ -124,6 +219,7 @@ export interface AppSettings {
   users: UserSettings[];
   activeRoleId: string;
   print: PrintSettings;
+  ai: AiSettings;
   templates: Record<string, string>;
   journal: SettingsJournalEntry[];
 }

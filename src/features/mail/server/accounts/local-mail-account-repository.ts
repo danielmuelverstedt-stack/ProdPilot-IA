@@ -3,25 +3,24 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { createDefaultMailAccountSettings } from "@/features/mail/config/mail-account-defaults";
+import {
+  createDefaultDemoAccount,
+  createDefaultStoredMailAccounts,
+  normalizeStoredMailAccounts,
+  parseStoredMailAccounts,
+  type StoredMailAccounts,
+} from "@/features/mail/server/accounts/local-mail-account-storage";
 import type {
   CreateMailAccountInput,
   ConnectGoogleAccountInput,
   MailAccountRepository,
 } from "@/features/mail/server/accounts/mail-account-repository";
-import {
-  isMailProviderType,
-  type MailAccount,
-} from "@/features/mail/types/mail";
+import type { MailAccount } from "@/features/mail/types/mail";
 
 const STORAGE_DIRECTORY = path.join(process.cwd(), ".local-data");
 const STORAGE_FILE = path.join(STORAGE_DIRECTORY, "mail-accounts.json");
-const STORAGE_VERSION = 1;
 let writeQueue: Promise<void> = Promise.resolve();
-
-interface StoredMailAccounts {
-  version: number;
-  accounts: MailAccount[];
-}
 
 export class LocalMailAccountRepository implements MailAccountRepository {
   async list(): Promise<MailAccount[]> {
@@ -51,6 +50,8 @@ export class LocalMailAccountRepository implements MailAccountRepository {
       lastConnectionTestAt: null,
       isActive: stored.accounts.length === 0,
       error: null,
+      organizationId: null,
+      settings: createDefaultMailAccountSettings(),
     };
     stored.accounts.push(account);
     await this.write(stored);
@@ -76,6 +77,8 @@ export class LocalMailAccountRepository implements MailAccountRepository {
       lastConnectionTestAt: existing?.lastConnectionTestAt ?? null,
       isActive: true,
       error: null,
+      organizationId: existing?.organizationId ?? null,
+      settings: existing?.settings ?? createDefaultMailAccountSettings(),
     };
     stored.accounts = stored.accounts.map((item) => ({ ...item, isActive: false }));
     if (existingIndex >= 0) stored.accounts[existingIndex] = account;
@@ -86,6 +89,18 @@ export class LocalMailAccountRepository implements MailAccountRepository {
 
   async rename(accountId: string, displayName: string): Promise<MailAccount> {
     return this.updateAccount(accountId, (account) => ({ ...account, displayName }));
+  }
+
+  async updateSettings(
+    accountId: string,
+    displayName: string,
+    settings: MailAccount["settings"],
+  ): Promise<MailAccount> {
+    return this.updateAccount(accountId, (account) => ({
+      ...account,
+      displayName,
+      settings: { ...settings, sendingEnabled: false },
+    }));
   }
 
   async activate(accountId: string): Promise<MailAccount> {
@@ -130,7 +145,7 @@ export class LocalMailAccountRepository implements MailAccountRepository {
     const deleted = stored.accounts.find((account) => account.id === accountId);
     if (!deleted) throw new Error("Le compte de messagerie est introuvable.");
     stored.accounts = stored.accounts.filter((account) => account.id !== accountId);
-    if (stored.accounts.length === 0) stored.accounts = [createDefaultMockAccount()];
+    if (stored.accounts.length === 0) stored.accounts = [createDefaultDemoAccount()];
     if (deleted.isActive) {
       stored.accounts = stored.accounts.map((account, index) => ({
         ...account,
@@ -156,9 +171,9 @@ export class LocalMailAccountRepository implements MailAccountRepository {
     try {
       const raw = await readFile(STORAGE_FILE, "utf8");
       const value: unknown = JSON.parse(raw);
-      return isStoredMailAccounts(value) ? normalizeActiveAccount(value) : createDefaults();
+      return parseStoredMailAccounts(value) ?? createDefaultStoredMailAccounts();
     } catch (error) {
-      if (isFileMissing(error)) return createDefaults();
+      if (isFileMissing(error)) return createDefaultStoredMailAccounts();
       throw new Error("Le registre local des comptes de messagerie est illisible.");
     }
   }
@@ -169,7 +184,7 @@ export class LocalMailAccountRepository implements MailAccountRepository {
     }
     writeQueue = writeQueue.catch(() => undefined).then(async () => {
       await mkdir(STORAGE_DIRECTORY, { recursive: true });
-      await writeFile(STORAGE_FILE, JSON.stringify(normalizeActiveAccount(value), null, 2), {
+      await writeFile(STORAGE_FILE, JSON.stringify(normalizeStoredMailAccounts(value), null, 2), {
         encoding: "utf8",
         mode: 0o600,
       });
@@ -178,81 +193,8 @@ export class LocalMailAccountRepository implements MailAccountRepository {
   }
 }
 
-function createDefaults(): StoredMailAccounts {
-  return {
-    version: STORAGE_VERSION,
-    accounts: [
-      createDefaultMockAccount(),
-      createDemoAccount("google-demo", "google", "Google Production", "production@google.example"),
-      createDemoAccount("microsoft-demo", "microsoft", "Microsoft Planification", "planning@microsoft.example"),
-    ],
-  };
-}
-
-function createDefaultMockAccount(): MailAccount {
-  return {
-    ...createDemoAccount("mock-demo", "mock", "Boîte de démonstration", "production@demo.example"),
-    isActive: true,
-  };
-}
-
-function createDemoAccount(
-  id: string,
-  provider: MailAccount["provider"],
-  displayName: string,
-  emailAddress: string,
-): MailAccount {
-  return {
-    id,
-    provider,
-    emailAddress,
-    displayName,
-    mode: "demo",
-    status: "connected",
-    connectedAt: "2026-07-13T08:00:00.000Z",
-    lastSuccessfulSyncAt: "2026-07-13T08:00:00.000Z",
-    lastConnectionTestAt: null,
-    isActive: false,
-    error: null,
-  };
-}
-
-function normalizeActiveAccount(value: StoredMailAccounts): StoredMailAccounts {
-  const accounts = value.accounts.length ? value.accounts : [createDefaultMockAccount()];
-  const activeIndex = accounts.findIndex((account) => account.isActive);
-  return {
-    version: STORAGE_VERSION,
-    accounts: accounts.map((account, index) => ({
-      ...account,
-      isActive: index === (activeIndex >= 0 ? activeIndex : 0),
-    })),
-  };
-}
-
-function isStoredMailAccounts(value: unknown): value is StoredMailAccounts {
-  if (!isRecord(value) || !Array.isArray(value.accounts)) return false;
-  return value.accounts.every((account) =>
-    isRecord(account) &&
-    typeof account.id === "string" &&
-    isMailProviderType(account.provider) &&
-    typeof account.emailAddress === "string" &&
-    typeof account.displayName === "string" &&
-    (account.mode === "demo" || account.mode === "oauth") &&
-    ["connected", "disconnected", "unavailable", "error"].includes(String(account.status)) &&
-    isNullableString(account.connectedAt) &&
-    isNullableString(account.lastSuccessfulSyncAt) &&
-    isNullableString(account.lastConnectionTestAt) &&
-    typeof account.isActive === "boolean" &&
-    isNullableString(account.error),
-  );
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === "string";
 }
 
 function isFileMissing(error: unknown): boolean {

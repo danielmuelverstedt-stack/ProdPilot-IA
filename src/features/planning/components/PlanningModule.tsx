@@ -10,13 +10,13 @@ import { PlanningMoveDialog } from "@/features/planning/components/PlanningMoveD
 import { PlanningOperationDialog, type PlanningCellTarget } from "@/features/planning/components/PlanningOperationDialog";
 import { PlanningPrintView } from "@/features/planning/components/PlanningPrintView";
 import { PlanningSummary } from "@/features/planning/components/PlanningSummary";
-import { PlanningTaskDialog } from "@/features/planning/components/PlanningTaskDialog";
+import { PlanningTaskDialog, type PlanningTaskInput } from "@/features/planning/components/PlanningTaskDialog";
 import { PlanningToolbar } from "@/features/planning/components/PlanningToolbar";
 import { buildPlanningView } from "@/features/planning/services/planning-view";
 import type { PlanningFiltersState, PlanningMoveTarget, WorkOrderPlanningBlock } from "@/features/planning/types/planning";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
 
-const INITIAL_FILTERS: PlanningFiltersState = { department: "Tous", machineId: "all", customer: "", workOrder: "", week: "all" };
+const INITIAL_FILTERS: PlanningFiltersState = { department: "all", machineId: "all", customer: "", workOrder: "", week: "all" };
 
 export function PlanningModule() {
   const data = useDemoData();
@@ -36,7 +36,7 @@ export function PlanningModule() {
 
   const days = filters.week === "all" ? view.days : view.days.filter((day) => day.week === filters.week);
   const machines = view.machines.filter((machine) =>
-    (filters.department === "Tous" || machine.department === filters.department) &&
+    (filters.department === "all" || machine.departmentId === filters.department) &&
     (filters.machineId === "all" || machine.id === filters.machineId),
   );
   const blocks = view.blocks.filter((block) => {
@@ -45,7 +45,7 @@ export function PlanningModule() {
     return block.order.customer.toLocaleLowerCase("fr").includes(filters.customer.trim().toLocaleLowerCase("fr")) &&
       block.order.id.toLocaleLowerCase("fr").includes(filters.workOrder.trim().toLocaleLowerCase("fr"));
   });
-  const departments = settings.production.departments.filter((department) => view.machines.some((machine) => machine.department === department));
+  const departments = view.departments;
 
   if (printTarget) return <PlanningPrintView target={printTarget} machines={view.machines} blocks={view.blocks} settings={settings} onBack={() => setPrintTarget(null)} />;
 
@@ -53,7 +53,7 @@ export function PlanningModule() {
     const block = view.blocks.find((item) => item.id === draggedId);
     setDragOver(null);
     setDraggedId(null);
-    if (!block || block.source !== "work-order" || block.status === "Bloquée" || (block.machineId === machineId && block.date === date)) return;
+    if (!block || block.source !== "work-order" || block.isBlocked || (block.machineId === machineId && block.date === date)) return;
     setMoveTarget({ block, machineId, date });
   }
 
@@ -83,29 +83,33 @@ export function PlanningModule() {
       machineId: addTarget.machineId,
       startAt: `${addTarget.date}T06:00:00.000Z`,
       endAt: new Date(Date.parse(`${addTarget.date}T06:00:00.000Z`) + durationHours * 3_600_000).toISOString(),
-      status: "Planifiée",
-      comments: "Ajouté depuis le planning",
+      status: view.plannedStatus.value,
+      comments: "",
     };
     updateDemoData((draft) => {
       draft.planning.push(plan);
       const order = draft.workOrders.find((item) => item.id === orderId);
       const operation = order?.operations.find((item) => item.id === operationId);
-      if (operation) { operation.machineId = addTarget.machineId; operation.plannedDate = addTarget.date; operation.status = "Planifiée"; }
+      if (operation) { operation.machineId = addTarget.machineId; operation.plannedDate = addTarget.date; operation.status = view.plannedStatus.value; }
     });
     setAddTarget(null);
   }
 
-  function handleTaskConfirm(value: { kind: "Maintenance" | "Divers"; machineId: string; date: string; label: string; durationHours: number; responsible: string }) {
+  function handleTaskConfirm(value: PlanningTaskInput) {
+    const taskType = view.taskTypes.find((item) => item.id === value.taskTypeId);
+    const maintenanceType = view.maintenanceTypes.find((item) => item.id === value.maintenanceTypeId);
+    if (!taskType) return;
     const event: MaintenanceEvent = {
       id: `MAINT-${Date.now()}`,
       machineId: value.machineId,
-      type: value.kind === "Maintenance" ? "Préventive" : "Autre",
+      type: maintenanceType?.value ?? taskType.value,
       date: `${value.date}T06:00:00.000Z`,
       durationHours: value.durationHours,
       responsible: value.responsible,
-      status: "Prévue",
+      status: view.plannedMaintenanceStatus.value,
       comment: value.label,
-      planningKind: value.kind,
+      planningTypeId: taskType.id,
+      maintenanceTypeId: maintenanceType?.id,
     };
     updateDemoData((draft) => { draft.maintenance.push(event); });
     setTaskTarget(null);
@@ -131,24 +135,26 @@ export function PlanningModule() {
   }
 
   function maintenanceConflict(machineId: string, date: string): string | null {
-    const event = data.maintenance.find((item) => item.machineId === machineId && item.date.slice(0, 10) === date && item.status !== "Terminée");
-    return event ? `${event.type} · ${event.durationHours.toLocaleString("fr-BE")} h · ${event.responsible || "responsable à définir"}` : null;
+    const completedValues = new Set(view.maintenanceStatuses.filter((item) => item.behavior === "completed").map((item) => item.value));
+    const event = data.maintenance.find((item) => item.machineId === machineId && item.date.slice(0, 10) === date && !completedValues.has(item.status));
+    const typeLabel = event ? view.maintenanceTypes.find((item) => item.id === event.maintenanceTypeId || item.value === event.type)?.label ?? event.type : "";
+    return event ? `${typeLabel} · ${event.durationHours.toLocaleString("fr-BE")} h · ${event.responsible || "responsable à définir"}` : null;
   }
 
   const defaultTaskTarget = { machineId: machines[0]?.id ?? view.machines[0]?.id ?? "", date: days[0]?.date ?? view.days[0]?.date ?? "" };
   return <div className="mx-auto max-w-[1500px]">
     <ModuleHeader eyebrow="Ordonnancement local" title="Planning" description="Planifiez les OF par machine et par jour, surveillez la charge et conservez les ajustements localement." actions={canPrint ? <button type="button" className={secondaryButton} onClick={() => setPrintTarget("all")}>Aperçu avant impression</button> : undefined} />
     <section className="mt-6 space-y-3 rounded-2xl border border-[var(--app-border)] bg-white p-4 shadow-sm print:hidden">
-      <PlanningToolbar departments={departments} department={filters.department} weeks={view.weeks} week={filters.week} canCreate={canCreate} canPrint={canPrint} onDepartmentChange={(department) => setFilters((current) => ({ ...current, department, machineId: "all" }))} onWeekChange={(week) => setFilters((current) => ({ ...current, week }))} onTask={() => setTaskTarget(defaultTaskTarget)} onPrint={() => setPrintTarget("all")} />
-      <PlanningFilters filters={filters} machines={view.machines.filter((machine) => filters.department === "Tous" || machine.department === filters.department)} onChange={(next) => setFilters((current) => ({ ...current, ...next }))} />
+      <PlanningToolbar departments={departments} allDepartmentsLabel={view.allDepartmentsLabel} legend={[...view.statuses, ...view.taskTypes]} department={filters.department} weeks={view.weeks} week={filters.week} canCreate={canCreate} canPrint={canPrint} onDepartmentChange={(department) => setFilters((current) => ({ ...current, department, machineId: "all" }))} onWeekChange={(week) => setFilters((current) => ({ ...current, week }))} onTask={() => setTaskTarget(defaultTaskTarget)} onPrint={() => setPrintTarget("all")} />
+      <PlanningFilters filters={filters} machines={view.machines.filter((machine) => filters.department === "all" || machine.departmentId === filters.department)} onChange={(next) => setFilters((current) => ({ ...current, ...next }))} />
     </section>
-    <div className="mt-4"><PlanningSummary blocks={blocks} machines={machines} days={days.length} /></div>
+    <div className="mt-4"><PlanningSummary blocks={blocks} machines={machines} dates={days.map((day) => day.date)} warningColor={view.loadColors.warning} /></div>
     <div className="mt-4">
-      {machines.length ? <PlanningGrid machines={machines} days={days} blocks={blocks} canCreate={canCreate} canEdit={canEdit} canPrint={canPrint} draggedId={draggedId} dragOver={dragOver} onDragStart={setDraggedId} onDragEnd={() => { setDraggedId(null); setDragOver(null); }} onDragOver={(key) => setDragOver(key || null)} onDrop={handleDrop} onAdd={(machineId, date) => setAddTarget({ machineId, date })} onMove={(block) => setMoveTarget({ block, machineId: block.machineId, date: block.date })} onReorder={handleReorder} onPrint={setPrintTarget} /> : <p className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white p-10 text-center text-sm text-slate-500">Aucune machine ne correspond aux filtres.</p>}
+      {machines.length ? <PlanningGrid machines={machines} days={days} blocks={blocks} canCreate={canCreate} canEdit={canEdit} canPrint={canPrint} draggedId={draggedId} dragOver={dragOver} loadWarningPercent={view.loadWarningPercent} loadCriticalPercent={view.loadCriticalPercent} loadColors={view.loadColors} onDragStart={setDraggedId} onDragEnd={() => { setDraggedId(null); setDragOver(null); }} onDragOver={(key) => setDragOver(key || null)} onDrop={handleDrop} onAdd={(machineId, date) => setAddTarget({ machineId, date })} onMove={(block) => setMoveTarget({ block, machineId: block.machineId, date: block.date })} onReorder={handleReorder} onPrint={setPrintTarget} /> : <p className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white p-10 text-center text-sm text-slate-500">Aucune machine ne correspond aux filtres.</p>}
     </div>
     <p className="mt-2 text-xs text-slate-500">Glissez un bloc vers une autre case pour le replanifier, ou utilisez le bouton ↗. Les opérations bloquées ne sont pas déplaçables.</p>
-    {moveTarget ? <PlanningMoveDialog target={moveTarget} machines={view.machines} days={view.days} currentLoad={currentLoad} maintenanceConflict={maintenanceConflict} onConfirm={handleMoveConfirm} onClose={() => setMoveTarget(null)} /> : null}
-    {addTarget ? <PlanningOperationDialog target={addTarget} machine={view.machines.find((machine) => machine.id === addTarget.machineId)!} data={data} currentHours={currentLoad(addTarget.machineId, addTarget.date)} onConfirm={handleAddOperation} onTask={() => { setTaskTarget(addTarget); setAddTarget(null); }} onClose={() => setAddTarget(null)} /> : null}
-    {taskTarget ? <PlanningTaskDialog initialTarget={taskTarget} machines={view.machines} days={view.days} onConfirm={handleTaskConfirm} onClose={() => setTaskTarget(null)} /> : null}
+    {moveTarget ? <PlanningMoveDialog target={moveTarget} machines={view.machines} days={view.days} currentLoad={currentLoad} maintenanceConflict={maintenanceConflict} loadColors={view.loadColors} onConfirm={handleMoveConfirm} onClose={() => setMoveTarget(null)} /> : null}
+    {addTarget ? <PlanningOperationDialog target={addTarget} machine={view.machines.find((machine) => machine.id === addTarget.machineId)!} data={data} currentHours={currentLoad(addTarget.machineId, addTarget.date)} priorities={view.priorities} statuses={view.statuses} onConfirm={handleAddOperation} onTask={() => { setTaskTarget(addTarget); setAddTarget(null); }} onClose={() => setAddTarget(null)} /> : null}
+    {taskTarget ? <PlanningTaskDialog initialTarget={taskTarget} machines={view.machines} days={view.days} taskTypes={view.taskTypes} maintenanceTypes={view.maintenanceTypes} onConfirm={handleTaskConfirm} onClose={() => setTaskTarget(null)} /> : null}
   </div>;
 }

@@ -1,5 +1,7 @@
 # Vision produit — ProdPilot IA
 
+Ce document résume le cadrage initial. La [Constitution produit](specifications/00%20-%20Vision.md) est désormais la source fonctionnelle de référence et prévaut en cas de contradiction.
+
 ## Mission
 
 ProdPilot IA aide les responsables et planificateurs de production des PME industrielles à piloter leur journée à partir d’une vue fiable, priorisée et directement exploitable. Le produit rapproche les informations dispersées entre l’ERP, les e-mails et les données internes afin de transformer les signaux opérationnels en décisions et en actions suivies.
@@ -43,6 +45,7 @@ ProdPilot IA est une couche de pilotage opérationnel au-dessus des outils exist
 ## Ce que ProdPilot IA n’est pas
 
 - Un ERP complet ou un système destiné à remplacer l’ERP de l’entreprise.
+- Un logiciel de planning autonome ; le planning est une source et une vue d’aide à la décision.
 - Une GMAO complète, sauf demande explicite ultérieure.
 - Un outil qui modifie directement les données ERP dans ses premières versions.
 - Un agent autonome qui envoie des e-mails ou prend des décisions engageantes sans confirmation.

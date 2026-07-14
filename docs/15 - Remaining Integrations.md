@@ -1,5 +1,7 @@
 # Intégrations restantes
 
+Ces éléments sont des prérequis transversaux de sécurité et de mise en production. Leur ordre technique ne remplace pas l’ordre fonctionnel défini par la [Constitution produit](specifications/09%20-%20Product%20Roadmap.md).
+
 ## Priorité production
 
 1. Ajouter l’authentification applicative et dériver utilisateur, entreprise et rôle depuis une session serveur.
@@ -11,6 +13,9 @@
 ## Hors périmètre actuel
 
 - Microsoft Graph et OAuth Microsoft 365.
+- Connecteur IMAP, uniquement après qualification des contraintes de sécurité et de synchronisation.
+- Remplacement des services d’analyse Mails déterministes par des implémentations IA sourcées, évaluées et limitées aux permissions du compte actif.
+- Aperçu et téléchargement sécurisé des pièces jointes, puis OCR et analyse documentaire après validation produit.
 - Connexion SQL ou API ERP et toute écriture directe dans l’ERP.
 - OpenAI et traitements IA distants.
 - Envoi ou archivage d’e-mails.

@@ -30,7 +30,8 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files — tous les fichiers contenant des secrets restent hors du dépôt
+# Cela couvre notamment .env, .env.local, .env.development et .env.production.
 .env*
 !.env.example
 

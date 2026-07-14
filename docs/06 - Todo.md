@@ -1,8 +1,12 @@
 # Backlog — ProdPilot IA
 
+La [Constitution produit](specifications/00%20-%20Vision.md) gouverne ce backlog. L’ordre des nouveaux développements suit [09 - Product Roadmap.md](specifications/09%20-%20Product%20Roadmap.md) : Assistant Mails, Conversation IA, Import ERP, Planning, Actions, Réunions, Parc Machines, Maintenance, puis Analyses.
+
 Les cases cochées correspondent uniquement à un travail effectivement présent et relu dans le dépôt au 13/07/2026. L’ordre à l’intérieur de chaque section indique la priorité pratique ; il ne constitue pas un calendrier.
 
 ## Maintenant
+
+- [x] Créer la Constitution produit complète dans `docs/specifications` et aligner Roadmap, Architecture, Modules et backlog sur cette référence.
 
 - [x] Créer le registre multi-comptes de messagerie avec Google Workspace, Microsoft 365 et Mock, plusieurs comptes par fournisseur et un compte actif unique.
 - [x] Faire dépendre Mon Espace, Mails et le futur contexte IA uniquement du compte de messagerie actif.
@@ -18,6 +22,7 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Ajouter l’impression configurable du planning, les confirmations de déplacement et les alertes de conflits.
 - [x] Reproduire le Planning mensuel historique avec grille machines/jours, charges, filtres, déplacements, tâches libres et impression par machine.
 - [x] Alimenter le Planning et son impression avec les 28 machines actives du référentiel centralisé des Réglages.
+- [x] Piloter le Planning par les départements, capacités, priorités, statuts, types de tâches, types de maintenance, couleurs et modèle d’impression configurables.
 - [x] Faire respecter la visibilité et le droit de lecture du rôle de développement dans le shell et sur les routes rendues.
 - [x] Ajouter la réinitialisation des données métier de démonstration depuis Réglages.
 
@@ -32,15 +37,20 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Remplacer le fournisseur Gmail simulé par l’intégration Google Workspace côté serveur.
 - [x] Créer une interface simulée pour les e-mails, clairement signalée comme telle.
 - [x] Implémenter Google OAuth côté serveur avec les portées minimales et la restriction du compte autorisé.
+- [x] Centraliser et valider au démarrage les quatre variables Google serveur, avec erreur explicite et configuration locale documentée.
 - [x] Lister les messages Gmail reçus depuis la veille avec leur contenu texte et leurs métadonnées.
 - [ ] Créer les résumés d’e-mails avec l’IA et afficher leur provenance.
 - [x] Créer des brouillons Gmail modifiables après confirmation explicite, sans fonctionnalité d’envoi.
 - [ ] Remplacer le dépôt local de jetons Google par un stockage chiffré associé à l’utilisateur et à l’entreprise.
 - [x] Raccorder Google OAuth au registre multi-comptes avec des jetons strictement associés à chaque `accountId`.
+- [x] Transformer Réglages → Connexions → Messagerie en cartes responsive avec résumé du compte actif, synchronisation, test et préférences centralisées par compte.
+- [x] Structurer la recherche, les filtres, les pièces jointes, brouillons, conversations, notifications et services IA déterministes du domaine Mails derrière des contrats indépendants des fournisseurs.
+- [x] Découper l’espace Mails en composants focalisés et documenter son architecture complète dans `docs/18 - Mail Architecture.md`.
 - [ ] Implémenter Microsoft OAuth et Microsoft Graph.
 - [ ] Ajouter l’authentification applicative avant tout déploiement partagé de l’intégration Gmail.
 - [ ] Protéger toutes les routes de messagerie par une session applicative et une autorisation liée à l’entreprise.
 - [ ] Ajouter des tests automatisés ciblés pour les réglages, le parseur Gmail, la génération MIME et les Route Handlers.
+- [ ] Ajouter des tests automatisés de migration des Réglages et de projection du Planning, notamment pour les capacités exceptionnelles et les références désactivées.
 
 ## Ensuite
 
@@ -68,3 +78,9 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Créer le centre de demandes internes en mode démonstration.
 - [ ] Ajouter des commandes IA avancées, multi-sources et confirmées.
 - [ ] Préparer puis déployer le mode SaaS multi-entreprise avec isolation vérifiée.
+# Mise à jour IA Mail — 14/07/2026
+
+- [x] Créer l’analyse structurée et les réponses assistées avec provenance, consentement et appels exclusivement explicites.
+- [x] Centraliser les budgets, réduire le contexte, dédupliquer les appels, mettre les analyses en cache et afficher des métriques sûres.
+- [ ] Remplacer cache, métriques et coordination IA locaux par des dépôts distribués, chiffrés et multi-tenant avant production.
+- [ ] Ajouter une limite mensuelle durable, une tarification validée et des évaluations opt-in des modèles sur les fixtures synthétiques.

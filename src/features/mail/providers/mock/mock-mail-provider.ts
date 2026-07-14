@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { getMockMailMessages } from "@/features/mail/mock/mail-messages";
+import { getMailProviderDefinition } from "@/features/mail/config/mail-provider-catalog";
 import type { MailProvider } from "@/features/mail/services/mail-provider";
 import type {
   CreateMailDraftInput,
@@ -10,6 +11,7 @@ import type {
   MailConnectionStatus,
   MailDraft,
   MailMessage,
+  MailSearchCriteria,
   MailThread,
 } from "@/features/mail/types/mail";
 
@@ -22,7 +24,7 @@ export class MockMailProvider implements MailProvider {
 
   constructor(private readonly account: MailAccount) {
     this.type = account.provider;
-    this.name = providerName(account.provider);
+    this.name = getMailProviderDefinition(account.provider).label;
   }
 
   async connect(): Promise<MailAccount> {
@@ -71,14 +73,9 @@ export class MockMailProvider implements MailProvider {
     };
   }
 
-  async searchMessages(query: string): Promise<MailMessage[]> {
-    const normalized = query.trim().toLocaleLowerCase("fr");
-    if (!normalized) return [];
-    return getMockMailMessages(this.account).filter((message) =>
-      [message.subject, message.summary, message.from.name, message.from.email]
-        .filter(Boolean)
-        .some((value) => value!.toLocaleLowerCase("fr").includes(normalized)),
-    );
+  async searchMessages(criteria: MailSearchCriteria): Promise<MailMessage[]> {
+    const { searchMailMessages } = await import("@/features/mail/services/mail-search");
+    return searchMailMessages(getMockMailMessages(this.account), criteria);
   }
 
   async createDraft(input: CreateMailDraftInput): Promise<MailDraft> {
@@ -100,10 +97,4 @@ export class MockMailProvider implements MailProvider {
   }
 
   async archiveMessage(): Promise<void> {}
-}
-
-function providerName(provider: MailAccount["provider"]): string {
-  if (provider === "google") return "Google Workspace";
-  if (provider === "microsoft") return "Microsoft 365";
-  return "Mock";
 }

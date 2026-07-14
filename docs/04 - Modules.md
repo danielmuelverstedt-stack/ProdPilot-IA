@@ -1,5 +1,11 @@
 # Modules fonctionnels — ProdPilot IA
 
+## Référence constitutionnelle
+
+Les modules appliquent la [Constitution produit](specifications/00%20-%20Vision.md). Ils sont des capacités d’assistance organisées autour de la journée de l’utilisateur, jamais des silos ou des logiciels spécialisés autonomes. Les règles communes sont définies dans [01 - Fundamental Principles.md](specifications/01%20-%20Fundamental%20Principles.md) et [03 - Product Rules.md](specifications/03%20-%20Product%20Rules.md).
+
+ERP, e-mails, planning, machines et maintenance sont des sources ou contextes. Les modules les rendent compréhensibles et actionnables sans chercher à remplacer un ERP, une messagerie, un logiciel de planning ou une GMAO.
+
 ## Lecture du document
 
 Les modules ci-dessous possèdent une démonstration navigable lorsqu’ils sont indiqués « fonctionnel en mode démo ». Cela ne signifie pas que leurs intégrations ERP, Supabase, OpenAI ou Microsoft Graph sont réalisées. Le MVP produit global est défini dans la feuille de route.
@@ -30,9 +36,9 @@ Les modules ci-dessous possèdent une démonstration navigable lorsqu’ils sont
 - **Objectif** : repérer et traiter les messages importants sans quitter le contexte de production.
 - **Utilisateurs principaux** : responsables de production et planificateurs.
 - **Écrans principaux** : connexions de messagerie, boîte récente, détail, résumé et éditeur de brouillon.
-- **Fonctions clés** : plusieurs comptes Google Workspace, Microsoft 365 ou Mock, compte actif unique, OAuth futur, lecture, recherche/filtres, synthèse IA, création d’action et brouillon avec confirmation.
+- **Fonctions clés** : plusieurs comptes Google Workspace, Microsoft 365 ou Mock, compte actif unique, OAuth par fournisseur, lecture, recherche/filtres, synthèse IA, création d’action et brouillon avec confirmation.
 - **Liens** : Mon Espace, Actions, OF, Demandes internes et Assistant IA.
-- **Périmètre MVP** : abstraction indépendante du fournisseur, registre multi-comptes de démonstration, sélection du compte actif, messages récents, résumé, proposition de réponse et confirmation avant toute action externe.
+- **Périmètre MVP** : abstraction indépendante du fournisseur, Google Workspace côté serveur, registre multi-comptes, sélection du compte actif, messages récents, résumé, proposition de réponse et confirmation avant toute action externe.
 - **Périmètre futur** : catégorisation avancée, rattachement suggéré aux objets métier et règles personnalisées.
 
 ## Actions
@@ -47,13 +53,13 @@ Les modules ci-dessous possèdent une démonstration navigable lorsqu’ils sont
 
 ## Planning
 
-- **Objectif** : organiser les opérations de production par machine et rendre les conflits visibles.
+- **Objectif** : éclairer les risques, contraintes et arbitrages liés aux opérations de production par machine.
 - **Utilisateurs principaux** : planificateurs et responsables de production.
 - **Écrans principaux** : planning par machine/période, file des OF, conflits et version imprimable.
-- **Fonctions clés** : calcul initial, glisser-déposer, contraintes, capacité, versions et publication.
+- **Fonctions clés** : compréhension de la charge, contraintes, options d’ajustement confirmées, versions et supports de communication.
 - **Liens** : OF, Import ERP, Qualité ERP, Parc machines, Maintenance, Impression et Mon Espace.
 - **Périmètre MVP** : planning issu des données nettoyées, ajustements tracés, alertes et impression par machine.
-- **Périmètre futur** : scénarios, optimisation multi-contrainte, simulation et comparaison charge/capacité.
+- **Périmètre futur** : scénarios expliqués, simulation et comparaison charge/capacité, sans devenir un logiciel de planning généraliste.
 
 ## Ordres de fabrication / OF
 
@@ -107,7 +113,7 @@ Les modules ci-dessous possèdent une démonstration navigable lorsqu’ils sont
 
 ## Parc machines
 
-- **Objectif** : centraliser l’état et les informations opérationnelles des équipements.
+- **Objectif** : rendre accessibles les informations équipement qui influencent les décisions de production.
 - **Utilisateurs principaux** : production, maintenance et méthodes.
 - **Écrans principaux** : liste, fiche machine, état, documents et historique.
 - **Fonctions clés** : identité, capacité, disponibilité, événements, documents et contacts.
@@ -117,13 +123,13 @@ Les modules ci-dessous possèdent une démonstration navigable lorsqu’ils sont
 
 ## Planning de maintenance
 
-- **Objectif** : anticiper les indisponibilités machines qui influencent la production.
+- **Objectif** : anticiper l’effet des indisponibilités et interventions sur les engagements de production.
 - **Utilisateurs principaux** : maintenance, responsables de production et planificateurs.
 - **Écrans principaux** : calendrier, intervention, charge et alertes à venir.
 - **Fonctions clés** : planification, durée, responsable, statut et impact sur capacité.
 - **Liens** : Parc machines, Planning, Actions et Mon Espace.
 - **Périmètre MVP** : indisponibilités planifiées visibles dans le planning.
-- **Périmètre futur** : récurrence, compteurs et intégration avec une GMAO existante.
+- **Périmètre futur** : récurrence, compteurs et intégration avec une GMAO existante, sans reproduire ses fonctions spécialisées.
 
 ## Demandes internes
 

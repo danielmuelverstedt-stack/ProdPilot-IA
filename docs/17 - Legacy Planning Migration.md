@@ -41,21 +41,21 @@ Audit réalisé le 13/07/2026 à partir de la référence disponible dans `legac
 - Charge : vert sous 80 %, ambre de 80 à 94 %, rouge à partir de 95 %.
 - Blocs très compacts, coins de 8 px, typographie de 10 px ; carte et contrôles suivent les surfaces claires et arrondies du shell historique.
 
-## Écarts du Planning Next.js actuel
+## État de la migration Next.js
 
-- La vue actuelle est une succession de grandes cartes verticales groupées par machine ou département, et non la grille mensuelle historique.
-- Elle ne présente ni semaines groupées, ni charge journalière par cellule, ni colonne figée, ni ajout direct dans une case.
-- Le déplacement se limite à des boutons haut/bas et à des champs machine/date ; il n’existe pas de glisser-déposer ni de dialogue de tâche libre.
-- L’impression est globale et intégrée à la même vue, sans entrée par machine.
-- La densité, la hiérarchie de la barre d’outils, les couleurs d’état et le comportement mobile divergent fortement de la référence.
-- Avant la finalisation, les données centralisées contenaient quatre machines et cinq opérations ; la liste des 28 machines a ensuite été portée dans les Réglages, qui restent la source unique, sans recopier les blocs de planning historiques.
+- La grille mensuelle, les semaines groupées, la colonne machine figée, les charges journalières, l’ajout par cellule, les tâches libres, le déplacement et l’impression par machine sont migrés.
+- Les 28 machines historiques vivent uniquement dans la configuration initiale centralisée. Elles sont visibles, modifiables, réordonnables, désactivables ou supprimables dans Réglages → Production → Machines.
+- Les onglets de départements sont produits depuis les départements actifs configurés. Leur ordre, libellé et couleur ne sont pas définis dans le Planning.
+- Les capacités journalières utilisent les règles configurées par machine ou département et leurs exceptions datées. Les seuils de charge sont eux aussi configurables.
+- Les priorités, statuts, types de tâches et types de maintenance sont résolus par identifiant ou valeur depuis les Réglages, avec ordre, activation et couleurs configurables.
+- L’impression applique le modèle de Personnalisation → Impression ; aucune liste de colonnes n’est définie dans un composant Planning.
 
 ## Plan exact de migration
 
 1. Construire une projection typée du dépôt mock courant : machines configurées actives, OF, opérations, maintenances, jours ouvrés, semaines ISO, capacité et charge.
 2. Remplacer la liste verticale par la grille historique machines/jours, avec colonne machine figée, en-têtes de semaines, cellules multi-blocs, charges et légende.
 3. Scinder le rendu en composants focalisés : barre d’outils, filtres, grille, ligne machine, bloc, dialogues de mouvement/ajout/tâche et vue d’impression.
-4. Utiliser les machines, départements, couleurs de thème, identité société, droits et colonnes d’impression des réglages actuels.
+4. Utiliser les machines, départements, capacités, priorités, statuts, types, couleurs de thème, identité société, droits et colonnes d’impression des réglages actuels.
 5. Persister ajouts et déplacements via le dépôt mock existant ; étendre uniquement `MaintenanceEvent` avec la catégorie d’affichage Maintenance/Divers, sans dupliquer les données.
 6. Reproduire le glisser-déposer sur ordinateur et fournir le même résultat par un dialogue explicite utilisable au clavier et sur mobile.
 7. Conserver le défilement horizontal sur tablette et mobile, avec filtre machine pour limiter la grille sans altérer la composition desktop.
@@ -66,6 +66,7 @@ Audit réalisé le 13/07/2026 à partir de la référence disponible dans `legac
 - La liste complète des machines provient des Réglages centralisés ; seul le volume d’OF reste volontairement limité au dépôt mock actuel, sans recopier les blocs historiques.
 - L’interface Next.js demande une confirmation avant d’enregistrer un déplacement, alors que le prototype déplaçait immédiatement hors conflit de maintenance. Cette confirmation préserve le comportement de sécurité déjà livré.
 - Le glisser-déposer HTML est complété par un bouton de déplacement : il reste ainsi accessible sur écran tactile et au clavier.
+- Les données d’OF et de maintenance restent un jeu de démonstration réduit ; la connexion ERP et la persistance Supabase ne font pas partie de cette migration.
 
 ## Validation de la migration
 

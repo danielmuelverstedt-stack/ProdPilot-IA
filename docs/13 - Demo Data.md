@@ -2,9 +2,11 @@
 
 ## Source unique
 
-Les données métier sont définies dans `src/features/demo/mock/demo-data.ts` et typées dans `src/features/demo/types/demo.ts`. Les modules utilisent `demo-repository.ts`, jamais une copie locale de la même entité.
+Les événements et objets métier de démonstration sont définis dans `src/features/demo/mock/demo-data.ts` et typés dans `src/features/demo/types/demo.ts`. Les modules utilisent `demo-repository.ts`, jamais une copie locale de la même entité.
 
-Les références sont cohérentes entre modules : par exemple `OF-240184` utilise `TOU-01` puis `FRA-10`, ses actions et anomalies pointent vers le même OF, et les maintenances de `FRA-10` apparaissent dans le planning.
+Les standards configurables — notamment machines, départements, capacités, priorités, statuts et types — appartiennent au dépôt central des Réglages. Le Planning combine ces réglages avec les événements de démonstration par un service ; le jeu mock ne constitue pas un second référentiel de configuration.
+
+Les références sont cohérentes entre modules : par exemple `OF-240184` référence les mêmes machines configurées, ses actions et anomalies pointent vers le même OF, et les événements associés apparaissent dans le Planning.
 
 ## Persistance
 

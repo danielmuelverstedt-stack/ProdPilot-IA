@@ -4,6 +4,52 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Configuration Google Workspace sécurisée — 14/07/2026
+
+- Remplacement des anciennes listes d’autorisation Google par la variable serveur unique et obligatoire `GOOGLE_ALLOWED_EMAIL`.
+- Validation centralisée de l’identifiant client, du secret, de l’URI de rappel locale et de l’adresse autorisée, avec messages précis sans valeur sensible.
+- Ajout d’un contrôle non bloquant au démarrage du serveur et affichage de l’erreur de configuration dans Réglages → Connexions → Messagerie.
+- Mise à jour de `.env.example`, de la règle Git pour les fichiers d’environnement et du guide de configuration Google Cloud pas à pas.
+
+### Architecture Mails consolidée — 13/07/2026
+
+- Découpage de l’espace Mails en barre de recherche et filtres, carte de message, pièces jointes, brouillon et états de chargement, vide, erreur ou connexion requise.
+- Ajout d’une recherche typée couvrant contenu, correspondants, pièces jointes, dates, lecture, importance, indicateurs, compte, fournisseur, labels, tags, priorité et catégories.
+- Extension et migration compatible des préférences par compte : affichage, lecture, conversation, signature, réponses, synchronisation, filtres, notifications et architecture des brouillons.
+- Catalogue central des fournisseurs avec Google Workspace, Microsoft 365, IMAP futur et démonstration ; remplacement du placeholder Microsoft dupliqué par un adaptateur indisponible générique.
+- Création des contrats déterministes de synthèse, classification, suggestion de réponse, priorité, détection d’action, extraction d’entités et conversation, sans appel OpenAI.
+- Préparation typée des pièces jointes, révisions de brouillons, conversations et notifications sans téléchargement, OCR, envoi ni intégration externe supplémentaire.
+- Séparation du dépôt local de comptes et de sa migration version 3 ; conservation des comptes et rejet des propriétés inconnues.
+- Documentation complète dans `docs/18 - Mail Architecture.md`, avec composants, services, dépôts, UX, réglages, fournisseurs, IA, recette et intégrations futures.
+
+### Gestion des comptes de messagerie enrichie — 13/07/2026
+
+- Remplacement de la table des connexions par des cartes responsive affichant fournisseur, compte actif, type réel ou démonstration, état, dernières synchronisation et vérification.
+- Ajout d’un choix clair entre Google Workspace, Microsoft 365 annoncé comme bientôt disponible et compte de démonstration, sans afficher le terme technique « Mock » à l’utilisateur.
+- Ajout d’un résumé du compte actif et des services qui l’utilisent, y compris les futures fonctions IA.
+- Centralisation par compte du nom affiché, de la langue, du ton de réponse, de la période de synchronisation, du volume, des filtres et des préférences de brouillons et pièces jointes.
+- Migration compatible du registre local de comptes vers sa version 2, avec valeurs par défaut uniques et possibilité d’associer ultérieurement une organisation.
+- Synchronisation manuelle limitée aux comptes Google réellement connectés, dialogues accessibles, confirmation de déconnexion et maintien garanti d’un compte de démonstration de repli.
+- Envoi d’e-mails maintenu indisponible ; Microsoft Graph et toute connexion Microsoft réelle restent hors périmètre.
+
+### Constitution produit — 13/07/2026
+
+- Création de `docs/specifications` comme source fonctionnelle de référence pour tous les développements futurs.
+- Formalisation de la vision, des dix principes fondamentaux, de l’architecture fonctionnelle, des règles produit, de la philosophie des Réglages, de l’expérience quotidienne, des règles de construction et de la gouvernance des évolutions.
+- Définition d’une IA explicable qui assiste et propose sans décider ni déclencher d’action irréversible.
+- Réalignement de la feuille de route sur l’ordre Assistant Mails, Conversation IA, Import ERP, Planning, Actions, Réunions, Parc Machines, Maintenance et Analyses.
+- Clarification du positionnement : ERP, messagerie, planning et maintenance sont des sources ou contextes ; ProdPilot IA reste un assistant de pilotage et de décision.
+- Ajout de l’obligation de lecture dans `AGENTS.md` et de références constitutionnelles dans la documentation existante, avec clarification des documents historiques et des sources de données de démonstration.
+
+### Planning entièrement configurable — 13/07/2026
+
+- Passage des Réglages en version 4 avec départements, capacités, priorités, statuts d’opération et de maintenance, types de tâches et types de maintenance typés, ordonnables, activables et colorables.
+- Ajout des capacités par département ou machine, jours travaillés et exceptions datées, avec calcul de charge et de surcharge alimenté uniquement par la configuration.
+- Machines, onglets de départements, légende, cartes, priorités et dialogues du Planning reliés à la projection centralisée des Réglages.
+- Modèle d’impression extrait dans un service typé ; logo, identité, papier, orientation, colonnes visibles et ordre proviennent de Personnalisation → Impression.
+- Migration automatique des anciennes listes de chaînes et de l’ancien jeu de quatre machines, en conservant les configurations personnalisées.
+- Suppression des standards société auparavant présents dans les composants Planning ; les valeurs initiales sont définies une seule fois dans la configuration par défaut.
+
 ### Planning historique migré — 13/07/2026
 
 - Audit de la référence historique et plan de migration détaillé dans `docs/17 - Legacy Planning Migration.md`.
@@ -115,3 +161,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 - Le projet est encore au stade du socle technique et affiche l’écran de démarrage Next.js.
 - Aucun module métier, connexion Gmail, import ERP ou planning n’est déclaré comme livré.
+## [Optimisation IA Mail] — 14/07/2026
+
+### Ajouté
+
+- Fournisseur OpenAI serveur avec API Responses, sorties JSON strictes et repli déterministe si la configuration manque.
+- Analyse à la demande, génération/réécriture, éditeur avec historique et confirmation complète avant brouillon Gmail.
+- Budgets, réduction de contexte, cache, déduplication en vol, limites quotidiennes et métriques sans corps d’e-mail.
+- Réglages IA, neuf fixtures synthétiques, tests de régression et documentation dédiée (documents 20 à 24).
+
+### Sécurité
+
+- Aucun appel OpenAI automatique, aucune pièce jointe binaire, aucun secret côté client et aucune fonction d’envoi.
+- Création Gmail étendue à À/Cc/Cci avec validation serveur et confirmation explicite séparée.

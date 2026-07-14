@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { MailAccount, MailProviderType } from "@/features/mail/types/mail";
+import type { MailAccount, MailAccountSettings, MailProviderType } from "@/features/mail/types/mail";
 
 export interface CreateMailAccountInput {
   provider: MailProviderType;
@@ -21,6 +21,7 @@ export interface MailAccountRepository {
   add(input: CreateMailAccountInput): Promise<MailAccount>;
   connectGoogle(input: ConnectGoogleAccountInput): Promise<MailAccount>;
   rename(accountId: string, displayName: string): Promise<MailAccount>;
+  updateSettings(accountId: string, displayName: string, settings: MailAccountSettings): Promise<MailAccount>;
   activate(accountId: string): Promise<MailAccount>;
   markConnectionTest(accountId: string, testedAt: string): Promise<MailAccount>;
   markSynchronization(accountId: string, synchronizedAt: string): Promise<MailAccount>;

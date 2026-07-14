@@ -7,9 +7,17 @@ import {
   testGoogleConnection,
 } from "@/features/mail/server/google/google-auth";
 import { getGoogleTokenKey } from "@/features/mail/server/google/google-account-key";
-import { isGoogleConfigured } from "@/features/mail/server/google/google-config";
+import { getGoogleConfigurationStatus } from "@/features/mail/server/google/google-config";
 import { getGmailReplyHeaders, parseGmailMessage } from "@/features/mail/server/google/gmail-message-parser";
 import { createGmailRawMessage } from "@/features/mail/server/google/gmail-mime";
+import { buildGmailSearchQuery } from "@/features/mail/providers/google/google-search-query";
+import {
+  assertGmailId,
+  clampGoogleMessageLimit,
+  getGoogleHttpStatus,
+  receivedSinceYesterdayQuery,
+  validateGoogleDraft,
+} from "@/features/mail/providers/google/google-mail-validation";
 import { googleTokenRepository } from "@/features/mail/server/google/local-google-token-repository";
 import type { MailProvider } from "@/features/mail/services/mail-provider";
 import type {
@@ -19,11 +27,9 @@ import type {
   MailConnectionStatus,
   MailDraft,
   MailMessage,
+  MailSearchCriteria,
   MailThread,
 } from "@/features/mail/types/mail";
-
-const DEFAULT_MESSAGE_LIMIT = 25;
-const MAX_MESSAGE_LIMIT = 100;
 
 export class GoogleMailProvider implements MailProvider {
   readonly type = "google" as const;
@@ -44,14 +50,15 @@ export class GoogleMailProvider implements MailProvider {
 
   async getConnectionStatus(): Promise<MailConnectionStatus> {
     const record = await googleTokenRepository.get(this.key);
-    if (!isGoogleConfigured()) {
+    const configuration = getGoogleConfigurationStatus();
+    if (!configuration.isValid) {
       return {
         provider: this.type,
         state: "error",
         emailAddress: record?.emailAddress ?? this.account.emailAddress,
         connectedAt: record?.connectedAt ?? this.account.connectedAt,
         lastSuccessfulSyncAt: record?.lastSuccessfulSyncAt ?? this.account.lastSuccessfulSyncAt,
-        error: "La configuration serveur Google Workspace est incomplète.",
+        error: configuration.error,
       };
     }
     if (!record) {
@@ -87,7 +94,7 @@ export class GoogleMailProvider implements MailProvider {
   }
 
   async listMessages(options: ListMessagesOptions = {}): Promise<MailMessage[]> {
-    const limit = clampLimit(options.limit);
+    const limit = clampGoogleMessageLimit(options.limit);
     const queries = [
       receivedSinceYesterdayQuery(),
       options.unreadOnly ? "is:unread" : "",
@@ -119,7 +126,7 @@ export class GoogleMailProvider implements MailProvider {
         const result = await gmail.users.messages.get({ userId: "me", id: messageId, format: "full" });
         return this.withAccountId(parseGmailMessage(result.data, emailAddress));
       } catch (error) {
-        if (getHttpStatus(error) === 404) return null;
+        if (getGoogleHttpStatus(error) === 404) return null;
         throw error;
       }
     });
@@ -143,20 +150,20 @@ export class GoogleMailProvider implements MailProvider {
           lastMessageAt: messages.at(-1)?.receivedAt ?? messages[0].receivedAt,
         };
       } catch (error) {
-        if (getHttpStatus(error) === 404) return null;
+        if (getGoogleHttpStatus(error) === 404) return null;
         throw error;
       }
     });
   }
 
-  async searchMessages(query: string): Promise<MailMessage[]> {
-    const normalized = query.trim();
-    if (!normalized || normalized.length > 200) throw new Error("La recherche Gmail est invalide.");
+  async searchMessages(criteria: MailSearchCriteria): Promise<MailMessage[]> {
+    const query = buildGmailSearchQuery(criteria);
+    if (!query) return [];
     return this.withGmail(async (gmail, emailAddress) => {
       const list = await gmail.users.messages.list({
         userId: "me",
-        maxResults: DEFAULT_MESSAGE_LIMIT,
-        q: normalized,
+        maxResults: clampGoogleMessageLimit(this.account.settings.maximumMessagesRetrieved),
+        q: query,
       });
       return Promise.all((list.data.messages ?? []).flatMap(({ id }) => id ? [
         gmail.users.messages.get({ userId: "me", id, format: "full" })
@@ -166,7 +173,7 @@ export class GoogleMailProvider implements MailProvider {
   }
 
   async createDraft(input: CreateMailDraftInput): Promise<MailDraft> {
-    validateDraft(input);
+    validateGoogleDraft(input);
     if (input.replyToMessageId) assertGmailId(input.replyToMessageId);
     if (input.replyToThreadId) assertGmailId(input.replyToThreadId);
     return this.withGmail(async (gmail) => {
@@ -245,46 +252,4 @@ export class GoogleMailProvider implements MailProvider {
       throw new Error(message);
     }
   }
-}
-
-function clampLimit(value?: number): number {
-  return Number.isInteger(value)
-    ? Math.min(Math.max(value!, 1), MAX_MESSAGE_LIMIT)
-    : DEFAULT_MESSAGE_LIMIT;
-}
-
-function receivedSinceYesterdayQuery(): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() - 1);
-  return `after:${date.toISOString().slice(0, 10).replaceAll("-", "/")}`;
-}
-
-function assertGmailId(value: string): void {
-  if (!/^[A-Za-z0-9_-]{1,200}$/.test(value)) throw new Error("L’identifiant Gmail est invalide.");
-}
-
-function validateDraft(input: CreateMailDraftInput): void {
-  if (!input.to.length || input.to.length > 20 || !input.to.every((item) => isValidEmail(item.email))) {
-    throw new Error("Le destinataire du brouillon est invalide.");
-  }
-  if (!input.subject.trim() || input.subject.length > 998 || /[\r\n]/.test(input.subject)) {
-    throw new Error("L’objet du brouillon est invalide.");
-  }
-  if (!input.bodyText.trim() || input.bodyText.length > 200_000) {
-    throw new Error("Le contenu du brouillon est invalide.");
-  }
-}
-
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && !/[\r\n]/.test(value);
-}
-
-function getHttpStatus(error: unknown): number | undefined {
-  if (typeof error !== "object" || error === null) return undefined;
-  if ("code" in error && typeof error.code === "number") return error.code;
-  if ("response" in error && typeof error.response === "object" && error.response
-    && "status" in error.response && typeof error.response.status === "number") {
-    return error.response.status;
-  }
-  return undefined;
 }

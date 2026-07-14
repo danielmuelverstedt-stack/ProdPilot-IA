@@ -37,6 +37,10 @@ export function parseGmailMessage(message: gmail_v1.Schema$Message, accountEmail
     isRead: !labels.has("UNREAD"),
     isArchived: !labels.has("INBOX"),
     attachments: collectAttachments(message.payload),
+    labels: [...labels],
+    tags: [],
+    isImportant: labels.has("IMPORTANT"),
+    isFlagged: labels.has("STARRED"),
   };
 }
 
@@ -82,12 +86,22 @@ function collectAttachments(payload?: MessagePart): MailAttachment[] {
         mimeType: part.mimeType ?? "application/octet-stream",
         sizeBytes: part.body.size ?? 0,
         isInline: disposition.toLowerCase().includes("inline"),
+        previewCapability: getPreviewCapability(part.mimeType),
+        ocrStatus: "not_requested",
+        analysisStatus: "not_requested",
       });
     }
     part.parts?.forEach(visit);
   }
   visit(payload);
   return attachments;
+}
+
+function getPreviewCapability(mimeType?: string | null): MailAttachment["previewCapability"] {
+  if (mimeType?.startsWith("image/")) return "image";
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType?.startsWith("text/")) return "text";
+  return "none";
 }
 
 function parseAddresses(value?: string): MailAddress[] {

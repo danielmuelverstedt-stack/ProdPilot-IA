@@ -3,12 +3,13 @@ import { fieldClass, formatEuropeanDate, primaryButton, secondaryButton } from "
 import { PlanningDialogShell } from "@/features/planning/components/PlanningDialogShell";
 import type { PlanningDay, PlanningMachine, PlanningMoveTarget } from "@/features/planning/types/planning";
 
-export function PlanningMoveDialog({ target, machines, days, currentLoad, maintenanceConflict, onConfirm, onClose }: {
+export function PlanningMoveDialog({ target, machines, days, currentLoad, maintenanceConflict, loadColors, onConfirm, onClose }: {
   target: PlanningMoveTarget;
   machines: PlanningMachine[];
   days: PlanningDay[];
   currentLoad: (machineId: string, date: string) => number;
   maintenanceConflict: (machineId: string, date: string) => string | null;
+  loadColors: { normal: string; warning: string; critical: string };
   onConfirm: (machineId: string, date: string) => void;
   onClose: () => void;
 }) {
@@ -16,6 +17,8 @@ export function PlanningMoveDialog({ target, machines, days, currentLoad, mainte
   const [date, setDate] = useState(target.date);
   const machine = machines.find((item) => item.id === machineId);
   const loadAfter = currentLoad(machineId, date) + (target.block.machineId === machineId && target.block.date === date ? 0 : target.block.durationHours);
+  const capacity = machine?.capacityByDate[date] ?? 0;
+  const isOverloaded = loadAfter > capacity;
   const conflict = maintenanceConflict(machineId, date);
   return <PlanningDialogShell title={`Déplacer ${target.block.order.id}`} description="Le changement sera conservé dans les données locales de démonstration." onClose={onClose} actions={<><button type="button" className={secondaryButton} onClick={onClose}>Annuler</button><button type="button" className={primaryButton} onClick={() => onConfirm(machineId, date)}>Confirmer le déplacement</button></>}>
     <div className="grid gap-4 sm:grid-cols-2">
@@ -26,9 +29,9 @@ export function PlanningMoveDialog({ target, machines, days, currentLoad, mainte
         <select className={fieldClass} value={date} onChange={(event) => setDate(event.target.value)}>{days.map((day) => <option key={day.date} value={day.date}>{formatEuropeanDate(`${day.date}T12:00:00.000Z`)}</option>)}</select>
       </label>
     </div>
-    <div className={`mt-4 rounded-xl border p-4 text-sm ${loadAfter > (machine?.capacityHours ?? 8) ? "border-red-200 bg-red-50 text-red-800" : "border-slate-200 bg-slate-50 text-slate-700"}`}>
-      Charge après déplacement : <strong>{loadAfter.toLocaleString("fr-BE")}/{machine?.capacityHours ?? 8} h</strong>{loadAfter > (machine?.capacityHours ?? 8) ? " — surcharge" : ""}.
+    <div className="mt-4 rounded-xl border p-4 text-sm" style={{ borderColor: isOverloaded ? loadColors.critical : loadColors.normal, background: `color-mix(in srgb, ${isOverloaded ? loadColors.critical : loadColors.normal} 8%, white)`, color: isOverloaded ? loadColors.critical : loadColors.normal }}>
+      Charge après déplacement : <strong>{loadAfter.toLocaleString("fr-BE")}/{capacity.toLocaleString("fr-BE")} h</strong>{isOverloaded ? " — surcharge" : ""}.
     </div>
-    {conflict ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>Maintenance prévue :</strong> {conflict}. Vous pouvez continuer après vérification.</div> : null}
+    {conflict ? <div className="mt-3 rounded-xl border p-4 text-sm" style={{ borderColor: loadColors.warning, background: `color-mix(in srgb, ${loadColors.warning} 10%, white)`, color: loadColors.warning }}><strong>Maintenance prévue :</strong> {conflict}. Vous pouvez continuer après vérification.</div> : null}
   </PlanningDialogShell>;
 }

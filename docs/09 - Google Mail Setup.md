@@ -2,62 +2,112 @@
 
 ## Périmètre
 
-ProdPilot IA utilise un flux OAuth 2.0 serveur avec `googleapis`. Plusieurs comptes Google peuvent être enregistrés ; chaque jeton est associé à une clé composée du contexte utilisateur local, du contexte entreprise local, du fournisseur et de l’`accountId`. L’état OAuth signé expire après dix minutes et est vérifié avec un nonce `HttpOnly`.
+ProdPilot IA utilise le flux OAuth 2.0 existant côté serveur avec `googleapis`. Cette procédure prépare un environnement local sans modifier le flux OAuth ni l’architecture Mails.
 
-La version lit les messages reçus depuis la veille et crée des brouillons après confirmation explicite. Elle ne demande ni `gmail.send` ni `gmail.modify` : aucun e-mail n’est envoyé et aucun message n’est archivé.
+Les portées restent limitées à l’identité du compte, à la lecture Gmail et à la création de brouillons :
 
-## Configuration Google Cloud
+```text
+openid
+email
+profile
+https://www.googleapis.com/auth/gmail.readonly
+https://www.googleapis.com/auth/gmail.compose
+```
 
-1. Créer ou sélectionner un projet dans Google Cloud.
-2. Activer **Gmail API** dans **API et services → Bibliothèque**.
-3. Configurer **Google Auth Platform → Branding** avec le nom `ProdPilot IA`, une adresse d’assistance et un contact développeur.
-4. Choisir une audience interne à l’organisation Workspace, ou une audience externe en mode Test et ajouter chaque adresse autorisée comme utilisateur test.
-5. Ajouter les portées :
+Les portées `gmail.send` et `gmail.modify` ne sont pas demandées. ProdPilot IA ne peut donc ni envoyer ni archiver un message.
+
+## 1. Créer le projet Google Cloud
+
+1. Ouvrir la console Google Cloud.
+2. Créer un projet ou sélectionner un projet dédié à ProdPilot IA.
+3. Vérifier que le bon projet est actif avant de poursuivre.
+
+> Capture à ajouter : sélection du projet Google Cloud.
+
+## 2. Activer Gmail API
+
+1. Ouvrir **API et services → Bibliothèque**.
+2. Rechercher **Gmail API**.
+3. Ouvrir la fiche puis cliquer sur **Activer**.
+
+> Capture à ajouter : Gmail API activée.
+
+## 3. Configurer OAuth
+
+1. Ouvrir **Google Auth Platform**.
+2. Dans **Branding**, renseigner le nom de l’application, l’adresse d’assistance et le contact développeur.
+3. Choisir une audience interne à l’organisation Workspace ou une audience externe en mode test.
+4. Pour une audience externe en test, ajouter l’adresse définie par `GOOGLE_ALLOWED_EMAIL` comme utilisateur test.
+5. Déclarer uniquement les portées listées dans la section Périmètre.
+
+> Capture à ajouter : audience et utilisateurs test OAuth.
+
+## 4. Créer le client OAuth
+
+1. Créer un client OAuth de type **Application Web**.
+2. Ajouter exactement l’origine JavaScript autorisée :
 
    ```text
-   openid
-   email
-   profile
-   https://www.googleapis.com/auth/gmail.readonly
-   https://www.googleapis.com/auth/gmail.compose
+   http://localhost:3000
    ```
 
-6. Créer un client OAuth **Application Web**.
-7. Ajouter exactement l’URI de redirection :
+3. Ajouter exactement l’URI de redirection autorisée :
 
    ```text
    http://localhost:3000/api/auth/google/callback
    ```
 
-8. Copier l’identifiant et le secret uniquement dans `.env.local`.
+4. Copier l’identifiant et le secret du client dans `.env.local` uniquement.
 
-## Variables serveur
+> Capture à ajouter : origine et URI de redirection du client OAuth.
+
+## 5. Créer `.env.local`
+
+À la racine du dépôt, copier `.env.example` vers `.env.local`, puis compléter les valeurs :
 
 ```dotenv
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
-GOOGLE_ALLOWED_EMAILS=daniel.muelverstedt@tkmi.be,autre@tkmi.be
-GOOGLE_ALLOWED_DOMAINS=tkmi.be
+GOOGLE_ALLOWED_EMAIL=
 ```
 
-`GOOGLE_ALLOWED_EMAILS` et `GOOGLE_ALLOWED_DOMAINS` sont des listes séparées par des virgules. Une adresse est acceptée si elle apparaît dans la liste des adresses ou si son domaine est autorisé. En développement local uniquement, laisser les deux listes vides autorise les utilisateurs test du projet OAuth. En production, au moins une des deux politiques est obligatoire.
+- `GOOGLE_CLIENT_ID` : identifiant du client OAuth **Application Web**, généralement terminé par `.apps.googleusercontent.com`.
+- `GOOGLE_CLIENT_SECRET` : secret associé au client ; il ne doit jamais être copié dans du code client ou un fichier suivi par Git.
+- `GOOGLE_REDIRECT_URI` : valeur locale imposée pour cette version. Toute différence produit une erreur de configuration explicite.
+- `GOOGLE_ALLOWED_EMAIL` : adresse e-mail unique autorisée à terminer la connexion Google.
 
-Toutes ces variables restent côté serveur. `.env.local` est exclu de Git et aucun jeton n’est retourné par une API.
+Les quatre variables sont obligatoires. Au démarrage, une valeur manquante ou invalide est signalée dans la sortie serveur sans interrompre le mode démonstration. La même erreur est affichée dans **Réglages → Connexions → Messagerie**. Aucune valeur sensible n’est incluse dans le message.
 
-## Test local
+## 6. Lancer l’application
 
-1. Créer `.env.local` avec les variables ci-dessus.
-2. Lancer `npm run dev`.
-3. Ouvrir `/reglages/connexions/messagerie`.
-4. Cliquer sur **Connecter Google Workspace** et accepter les portées.
-5. Vérifier le retour, l’adresse, l’état actif et **Tester**.
-6. Connecter un second compte autorisé, alterner le compte actif et vérifier que Mails affiche uniquement le compte actif.
-7. Tester **Reconnecter** puis **Déconnecter** sur un seul compte ; les autres comptes doivent rester intacts.
-8. Créer un brouillon après avoir coché la confirmation ; vérifier qu’aucun e-mail n’est envoyé.
+```powershell
+npm run dev
+```
 
-## Stockage des jetons et limites
+Si la configuration est incomplète, corriger la variable nommée dans le message, puis redémarrer le serveur afin que Next.js recharge `.env.local`.
 
-Le dépôt local écrit `.local-data/google-mail-tokens.json`, exclu de Git et désactivé en production. Il préserve le jeton de renouvellement lors d’un rafraîchissement et supprime uniquement la clé du compte déconnecté.
+## 7. Connecter le compte
 
-Avant la production, il faut : authentifier l’utilisateur ; dériver utilisateur et entreprise depuis la session ; chiffrer les jetons en base ; appliquer les autorisations serveur ; auditer les accès sans contenu ni secret ; traiter rotation, révocation et rétention. Les pièces jointes restent des métadonnées, le HTML non fiable n’est jamais rendu, l’interface n’a pas de pagination et Microsoft Graph n’est pas implémenté.
+1. Ouvrir `http://localhost:3000/reglages/connexions/messagerie`.
+2. Vérifier qu’aucune erreur de configuration Google n’est affichée.
+3. Cliquer sur **Connecter Google Workspace**.
+4. Choisir exactement le compte déclaré dans `GOOGLE_ALLOWED_EMAIL`.
+5. Accepter les portées demandées.
+6. Vérifier le retour vers l’application, l’adresse connectée et l’état de connexion.
+7. Utiliser **Tester** avant de consulter les messages.
+
+## Sécurité et stockage des jetons
+
+Les variables Google sont lues exclusivement par des modules marqués `server-only`. Elles ne portent pas le préfixe `NEXT_PUBLIC_` et ne sont pas transmises aux composants client. Les réponses API ne contiennent ni secret ni jeton, et les journaux de configuration n’affichent que le nom d’une variable ou une règle de validation.
+
+Le dépôt local de développement écrit les jetons dans `.local-data/google-mail-tokens.json`, exclu de Git et désactivé en production. Avant tout déploiement partagé, il doit être remplacé par un stockage chiffré en base, lié à un utilisateur authentifié et à son entreprise, avec rotation, révocation, rétention et audit des accès.
+
+## Limites connues et préparation de la production
+
+- L’URI de redirection est volontairement limitée à `localhost` dans cette version. Une URI HTTPS de production nécessitera une évolution explicitement validée de la règle de configuration et du client Google Cloud.
+- Le stockage local des jetons est réservé au développement individuel.
+- L’authentification applicative et l’isolation serveur par entreprise doivent être en place avant une utilisation partagée.
+- Microsoft Graph n’est pas implémenté.
+- Les pièces jointes restent limitées à leurs métadonnées et le HTML non fiable n’est jamais exécuté.
+- La création d’un brouillon reste distincte de tout envoi ; aucune fonctionnalité d’envoi n’est disponible.

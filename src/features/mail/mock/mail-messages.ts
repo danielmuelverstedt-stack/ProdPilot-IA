@@ -1,6 +1,6 @@
 import type { MailAccount, MailMessage } from "@/features/mail/types/mail";
 
-export const mockMailMessages: MailMessage[] = [
+const mockMailMessages: MailMessage[] = [
   {
     id: "google-1",
     accountId: "google-workspace-mock",
@@ -21,6 +21,10 @@ export const mockMailMessages: MailMessage[] = [
     isRead: false,
     isArchived: false,
     attachments: [],
+    labels: ["INBOX", "UNREAD", "IMPORTANT"],
+    tags: ["production", "retard"],
+    isImportant: true,
+    isFlagged: true,
   },
   {
     id: "google-4",
@@ -42,6 +46,10 @@ export const mockMailMessages: MailMessage[] = [
     isRead: false,
     isArchived: false,
     attachments: [],
+    labels: ["INBOX", "UNREAD"],
+    tags: ["client"],
+    isImportant: true,
+    isFlagged: false,
   },
   {
     id: "google-2",
@@ -69,8 +77,15 @@ export const mockMailMessages: MailMessage[] = [
         mimeType: "application/pdf",
         sizeBytes: 248000,
         isInline: false,
+        previewCapability: "pdf",
+        ocrStatus: "not_requested",
+        analysisStatus: "not_requested",
       },
     ],
+    labels: ["INBOX"],
+    tags: ["qualité"],
+    isImportant: false,
+    isFlagged: false,
   },
   {
     id: "google-5",
@@ -92,6 +107,10 @@ export const mockMailMessages: MailMessage[] = [
     isRead: false,
     isArchived: false,
     attachments: [],
+    labels: ["INBOX", "UNREAD", "IMPORTANT"],
+    tags: ["maintenance"],
+    isImportant: true,
+    isFlagged: false,
   },
   {
     id: "google-3",
@@ -113,6 +132,10 @@ export const mockMailMessages: MailMessage[] = [
     isRead: true,
     isArchived: false,
     attachments: [],
+    labels: ["INBOX"],
+    tags: ["atelier"],
+    isImportant: false,
+    isFlagged: false,
   },
   {
     id: "google-6",
@@ -134,6 +157,10 @@ export const mockMailMessages: MailMessage[] = [
     isRead: true,
     isArchived: false,
     attachments: [],
+    labels: ["INBOX"],
+    tags: ["réunion"],
+    isImportant: false,
+    isFlagged: false,
   },
 ];
 

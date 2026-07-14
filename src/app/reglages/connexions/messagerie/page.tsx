@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { AppShell } from "@/components/layout/AppShell";
 import { MailConnectionsPanel } from "@/features/mail/components/MailConnectionsPanel";
+import { getGoogleConfigurationStatus } from "@/features/mail/server/google/google-config";
 import { getMailAccounts } from "@/features/mail/services/mail-connections";
 
 interface MailSettingsPageProps {
@@ -11,18 +12,25 @@ export default async function MailSettingsPage({ searchParams }: MailSettingsPag
   await connection();
   const query = await searchParams;
   const accounts = await getMailAccounts();
-  const initialNotice = getGoogleNotice(query.google, query.reason);
+  const initialNotice = getGoogleNotice(query.google, query.reason)
+    ?? getGoogleConfigurationNotice();
 
   return (
     <AppShell activeSection="settings" headerTitle="Réglages">
       <div className="mx-auto max-w-7xl">
         <nav aria-label="Fil d’Ariane" className="text-sm text-[#64736c]"><ol className="flex flex-wrap items-center gap-2"><li>Réglages</li><li aria-hidden="true">/</li><li>Connexions</li><li aria-hidden="true">/</li><li className="font-medium text-[#263b32]" aria-current="page">Messagerie</li></ol></nav>
-        <header className="mt-7 max-w-3xl"><p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#247052]">Centre de connexions</p><h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#17211d] sm:text-4xl">Messagerie</h1><p className="mt-4 text-base leading-7 text-[#64736c] sm:text-lg">Gérez plusieurs comptes Google Workspace, Microsoft 365 ou Mock et choisissez celui utilisé dans tout ProdPilot IA.</p></header>
-        <aside className="mt-6 rounded-2xl border border-[#d7e4de] bg-[#f7faf8] p-4 text-sm text-[#40554b]"><strong>Compte actif unique.</strong> Gmail utilise OAuth côté serveur. Les comptes Mock restent disponibles pour tester l’interface sans connexion externe.</aside>
+        <header className="mt-7 max-w-3xl"><p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#247052]">Centre de connexions</p><h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-[#17211d] sm:text-4xl">Messagerie</h1><p className="mt-4 text-base leading-7 text-[#64736c] sm:text-lg">Gérez vos comptes Google Workspace, préparez Microsoft 365 et choisissez le compte utilisé dans tout ProdPilot IA.</p></header>
+        <aside className="mt-6 rounded-2xl border border-[#d7e4de] bg-[#f7faf8] p-4 text-sm text-[#40554b]"><strong>Compte actif unique.</strong> Gmail utilise OAuth côté serveur. Un compte de démonstration permet de tester l’interface sans connexion externe.</aside>
         <MailConnectionsPanel initialAccounts={accounts} initialNotice={initialNotice} />
       </div>
     </AppShell>
   );
+}
+
+function getGoogleConfigurationNotice() {
+  const configuration = getGoogleConfigurationStatus();
+  if (configuration.isValid) return undefined;
+  return { tone: "error" as const, message: configuration.error };
 }
 
 function getGoogleNotice(google?: string, reason?: string) {

@@ -1,5 +1,11 @@
 # Architecture technique — ProdPilot IA
 
+## Autorité fonctionnelle
+
+La [Constitution produit](specifications/00%20-%20Vision.md) définit le positionnement, les principes et l’architecture fonctionnelle qui gouvernent ce document. Lire en priorité [02 - Global Architecture.md](specifications/02%20-%20Global%20Architecture.md), [03 - Product Rules.md](specifications/03%20-%20Product%20Rules.md) et [06 - Coding Rules.md](specifications/06%20-%20Coding%20Rules.md).
+
+Cette architecture technique met en œuvre la chaîne fonctionnelle suivante : **Réglages → référentiels et dépôts → services → logique métier → interface**. Les modules ne communiquent pas directement et les systèmes ERP, mail, planning ou maintenance restent des sources remplaçables, non l’identité du produit.
+
 ## État et objectif
 
 Le projet utilise actuellement Next.js 16.2.10, React 19, TypeScript strict, Tailwind CSS 4 et l’App Router sous `src/app`. L’architecture ci-dessous est une cible progressive : elle ne signifie pas que les intégrations réelles ou la base de données sont déjà implémentées.
@@ -99,6 +105,8 @@ Interface → opération/route serveur → service métier → dépôt ou adapta
 - **Domaine** : règles de production, qualité, planning et états métier.
 - **Infrastructure** : PostgreSQL, stockage de fichiers, adaptateurs de messagerie, OpenAI et futurs ERP.
 
+Cette séparation est subordonnée aux frontières fonctionnelles de la Constitution : une interface ne possède pas sa propre copie métier, un service ne recrée pas un référentiel et un adaptateur externe ne dicte pas le modèle commun.
+
 ## Flux de données général
 
 1. L’utilisateur authentifié déclenche une consultation ou une commande.
@@ -120,6 +128,8 @@ Interface → opération/route serveur → service métier → dépôt ou adapta
 L’authentification applicative et l’autorisation d’un fournisseur de messagerie sont deux consentements distincts.
 
 ## Architecture et flux de messagerie
+
+La description technique détaillée, les composants, services, réglages, contrats IA, recette et intégrations futures sont regroupés dans `docs/18 - Mail Architecture.md`.
 
 Les composants d’interface utilisent uniquement les types communs et les services de messagerie. Ils ne connaissent ni Gmail API ni Microsoft Graph. Le contrat `MailProvider` expose la connexion, la déconnexion, l’état, les messages, fils, recherches, brouillons et archivage. L’envoi est volontairement absent des premières versions. Une factory sélectionne un adaptateur lié au compte à partir du fournisseur (`google`, `microsoft` ou `mock`) et du mode du compte.
 
@@ -168,12 +178,15 @@ Chaque enregistrement nettoyé conserve un lien vers l’import et, si possible,
 
 ## Flux de données du planning
 
-1. Le planning lit les OF, opérations, gammes, machines, calendriers et durées nettoyés.
-2. Un service construit une proposition selon les contraintes et priorités disponibles.
-3. Les conflits et hypothèses sont retournés avec le résultat.
-4. L’utilisateur ajuste la proposition ; ces changements sont historisés dans ProdPilot.
-5. Les vues par machine, « Mon Espace » et impressions utilisent une même version publiée du planning.
-6. Aucune modification n’est répercutée dans l’ERP lors des premières versions.
+1. Le `settings-repository` charge et migre la configuration Production versionnée. Il constitue l’unique frontière de persistance locale et pourra être remplacé par un dépôt Supabase.
+2. Le service `planning-view` combine les données métier de démonstration avec les machines, départements, capacités, priorités, statuts et types actifs des Réglages.
+3. Les composants Planning consomment uniquement cette projection typée : ils ne lisent pas `localStorage` et ne contiennent aucun référentiel société.
+4. La capacité applicable suit l’ordre machine, département, valeur générale ; les exceptions datées remplacent la capacité du jour.
+5. Le service `planning-print` interprète le modèle d’impression central : identité, logo, papier, orientation, visibilité et ordre des colonnes.
+6. Les modifications faites dans Réglages sont propagées par `SettingsProvider`, sans changement des composants Planning.
+7. Les ajouts et déplacements de démonstration restent persistés via le dépôt métier commun. Aucune modification n’est répercutée dans l’ERP.
+
+Les valeurs initiales de l’entreprise, dont les 28 machines historiques, existent uniquement dans `default-settings.ts`. La migration de configuration enrichit les anciennes installations sans réintroduire ces valeurs dans le Planning.
 
 ## Principes de sécurité
 

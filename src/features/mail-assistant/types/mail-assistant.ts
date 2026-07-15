@@ -40,7 +40,7 @@ export interface MailAssistantReplyProposal {
   versions: MailAssistantReplyVersion[];
   currentVersion: number;
   isManuallyEdited: boolean;
-  status: "pending" | "draft_created" | "ignored";
+  status: "pending" | "approved" | "draft_created" | "ignored";
 }
 
 export interface MailAssistantSessionMessage extends MailMessage {

@@ -71,6 +71,16 @@ La messagerie présente chaque compte sous forme de carte responsive et maintien
 - règles de recommandation, seuils de confiance et confirmations ;
 - politiques de conservation, confidentialité et audit.
 
+### Mémoire locale
+
+- activation, indexation des messages et conservation optionnelle du texte nettoyé ;
+- conservation des liens sources, analyses, sessions, décisions et préférences confirmées ;
+- durées de rétention, nettoyage automatique, taille maximale et accès hors ligne ;
+- priorité aux résultats locaux, politique d’escalade IA et confirmation avant les appels coûteux ;
+- sauvegarde, restauration et effacements sélectifs avec confirmation.
+
+Ces réglages ne peuvent jamais autoriser le stockage de secrets, de jetons, d’audio ou du contenu binaire des pièces jointes. Les décisions confirmées ne sont pas supprimées silencieusement par une politique de rétention.
+
 ## Cycle de vie d’un réglage
 
 Chaque réglage possède une définition compréhensible, une valeur initiale centralisée, un niveau d’application, une validation et un comportement de repli. Les changements importants sont traçables. Les suppressions et désactivations préservent la cohérence des objets historiques.

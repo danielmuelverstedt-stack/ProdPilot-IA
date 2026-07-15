@@ -54,6 +54,12 @@ L’IA accède uniquement aux sources nécessaires à la demande et autorisées 
 
 Le contexte d’une autre entreprise, d’un autre compte ou d’un autre rôle ne doit jamais être mélangé.
 
+## Escalade locale avant IA
+
+L’assistant utilise le niveau le moins coûteux capable de répondre correctement : opération locale déterministe, intelligence locale validée, puis appel IA réel uniquement si une synthèse ou un raisonnement nouveau est nécessaire. Le caractère conversationnel de l’interface ne justifie jamais à lui seul un appel externe.
+
+Toute réponse issue de la mémoire conserve type de source, fraîcheur, autorité, confirmation utilisateur et origine IA éventuelle. L’ordre d’autorité est : décision utilisateur confirmée, fait source, extraction déterministe, analyse IA validée, suggestion IA non confirmée.
+
 ## Personnalisation
 
 Le ton, le niveau de détail, les sources autorisées, certaines règles de recommandation et les modèles peuvent être configurés. La configuration ne peut pas supprimer les exigences de sécurité, d’explication ou de confirmation.

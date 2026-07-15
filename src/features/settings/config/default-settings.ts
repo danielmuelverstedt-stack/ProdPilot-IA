@@ -11,6 +11,7 @@ import {
   type TaskTypeSettings,
 } from "@/features/settings/types/settings";
 import { DEFAULT_AI_BUDGET_POLICY } from "@/features/ai/config/ai-budget-policy";
+import { MAIL_MEMORY_DEFAULTS } from "@/features/mail-memory/config/mail-memory-defaults";
 
 function productionMachine(
   id: string,
@@ -293,6 +294,7 @@ export const defaultSettings: AppSettings = {
     automaticAnalysis: false,
     automaticDraftCreation: false,
   },
+  mailMemory: { ...MAIL_MEMORY_DEFAULTS },
   templates: {
     mail: "Bonjour {responsable},\n\nVoici le point à traiter : {sujet}.\n\nMerci,\nDaniel",
     qrqc: "QRQC du {date}\n\nBlocages : {blocages}\nActions : {actions}",

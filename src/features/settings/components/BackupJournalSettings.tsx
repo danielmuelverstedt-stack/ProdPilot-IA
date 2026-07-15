@@ -5,6 +5,7 @@ import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { buttonClass, SettingsPanel } from "@/features/settings/components/SettingsUi";
 import { parseSettingsBackup } from "@/features/settings/services/settings-repository";
 import { resetDemoData } from "@/features/demo/services/demo-repository";
+import { MailMemoryBackupTools } from "@/features/settings/components/MailMemoryBackupTools";
 
 const MAX_BACKUP_SIZE = 2 * 1024 * 1024;
 
@@ -58,7 +59,7 @@ export function BackupSettings() {
     setNotice("Données de démonstration réinitialisées.");
   }
 
-  return (
+  return (<div className="space-y-5">
     <SettingsPanel
       title="Sauvegardes"
       description="Exportez ou restaurez les réglages locaux. Aucun envoi réseau n’est effectué."
@@ -83,7 +84,8 @@ export function BackupSettings() {
         </button>
       </div>
       <p className="mt-4 text-sm text-slate-500" aria-live="polite">{notice}</p>
-    </SettingsPanel>
+    </SettingsPanel><MailMemoryBackupTools />
+    </div>
   );
 }
 

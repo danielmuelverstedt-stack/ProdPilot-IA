@@ -4,6 +4,26 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Mémoire métier locale de l’Assistant mails — 15/07/2026
+
+- Ajout d’une base IndexedDB versionnée et de dépôts typés remplaçables, strictement isolés par compte, fournisseur, utilisateur, entreprise et mode.
+- Ajout de l’index Mail local, de la persistance des sessions, des liens sources Gmail centralisés, de la recherche déterministe et de l’orchestration IA à trois niveaux.
+- Ajout des décisions confirmées, demandes de réunion préparées, suivis Mail locaux et préférences de contact exclusivement confirmées.
+- Ajout des Réglages Mails → Mémoire locale, des sauvegardes versionnées, de la rétention et des effacements avec confirmation.
+- Interdiction technique des pièces jointes binaires, secrets, jetons, audio et HTML brut dans IndexedDB et les sauvegardes.
+- Passage de `npm run dev` à Webpack par défaut, sans modifier le build de production.
+
+### Ajustement de l’expérience de l’Assistant mails — 15/07/2026
+
+- Remplacement du spinner technique de l’analyse par une progression visuelle douce, porteuse de sens et compatible avec la réduction des mouvements.
+
+### Expérience focalisée de l’Assistant mails — 14/07/2026
+
+- Remplacement du shell applicatif complet par une navigation de session minimale, sans modifier la navigation générale ni la liste Mail traditionnelle.
+- Recomposition du parcours en accueil centré, séquence d’analyse calme, brief décisionnel, vue un-par-un par défaut, cartes de réponse sobres, conversation persistante et écran de fin dédié.
+- Ajout du panneau accessible du message original, du groupe replié des messages sans action, de la navigation précédent/suivant et d’animations courtes compatibles avec la réduction des mouvements.
+- Ajout de la validation conversationnelle de la proposition courante sur « OK » et de la validation des deux propositions sur instruction explicite, sans ajouter d’envoi.
+
 ### Assistant mails conversationnel — 14/07/2026
 
 - Ajout de `/mails/assistant` avec démarrage explicite, brief déterministe, conversation, groupes expliqués, propositions versionnées et résumé de fin.

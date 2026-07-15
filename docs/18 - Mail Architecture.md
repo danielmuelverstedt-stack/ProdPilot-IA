@@ -55,6 +55,8 @@ Les composants interactifs sont des Client Components ciblés. Les pages et int�
 
 `GoogleTokenRepository` reste une frontière séparée et exclusivement serveur. Son implémentation locale doit être remplacée par un stockage chiffré lié à l’utilisateur et à l’entreprise avant la production.
 
+`MailMemoryRepository` conserve dans IndexedDB une projection locale sourcée des messages synchronisés, sessions, décisions et liens. Il ne contient aucun jeton et ne remplace ni le registre des comptes ni Gmail. Son adaptateur est versionné et remplaçable par un stockage serveur futur.
+
 ## Expérience et accessibilité
 
 - Interface française et dates européennes.
@@ -89,6 +91,8 @@ Ajouter un fournisseur futur demande un adaptateur et une entrée de catalogue, 
 ## Pièces jointes
 
 Le modèle prévoit métadonnées, capacité d’aperçu, état OCR et état d’analyse future. Cette version affiche nom, type et taille. Aucun octet n’est téléchargé, aucun OCR n’est exécuté et aucune analyse IA n’est lancée.
+
+La mémoire locale applique une politique plus stricte : elle conserve uniquement identifiant fournisseur, message parent, nom, MIME, taille approximative, lien source et état d’accès. Les objets binaires sont refusés par l’adaptateur.
 
 ## Brouillons et conversations
 

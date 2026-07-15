@@ -6,7 +6,9 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("la page initiale ne lance aucune analyse ni session", async () => {
   const page = await read("src/features/mail-assistant/components/MailAssistantWorkspace.tsx");
-  assert.match(page, /onClick={startSession}/);
+  const start = await read("src/features/mail-assistant/components/MailSessionStart.tsx");
+  assert.match(page, /onStart={startSession}/);
+  assert.match(start, /onClick={onStart}/);
   assert.doesNotMatch(page, /useEffect\([\s\S]*assistant\/session/);
 });
 
@@ -51,4 +53,33 @@ test("la voix exige une action et prévoit un état non supporté", async () => 
   assert.match(voice, /onClick=/);
   assert.match(voice, /Saisie vocale non disponible/);
   assert.match(voice, /continuous = false/);
+});
+
+test("le parcours visuel reste conversationnel et centré sur les décisions", async () => {
+  const workspace = await read("src/features/mail-assistant/components/MailAssistantWorkspace.tsx");
+  const loading = await read("src/features/mail-assistant/components/MailSessionLoading.tsx");
+  const decisionList = await read("src/features/mail-assistant/components/MailDecisionList.tsx");
+  const noAction = await read("src/features/mail-assistant/components/MailNoActionGroup.tsx");
+  assert.match(workspace, /"focused"/);
+  assert.match(workspace, /MailAssistantInput/);
+  assert.match(loading, /aria-busy="true"/);
+  assert.match(decisionList, /À valider/);
+  assert.match(noAction, /sans action recommandée/);
+});
+
+test("le shell de session remplace le menu complet sans toucher à la liste traditionnelle", async () => {
+  const shell = await read("src/features/mail-assistant/components/MailSessionShell.tsx");
+  const page = await read("src/app/mails/assistant/page.tsx");
+  const traditional = await read("src/app/mails/page.tsx");
+  assert.match(shell, /href="\/mails"/);
+  assert.doesNotMatch(page, /AppShell/);
+  assert.match(traditional, /MailWorkspaceLoader/);
+});
+
+test("la validation simple et la validation des deux propositions sont reconnues", async () => {
+  const interpreter = await read("src/features/mail-assistant/services/mail-command-interpreter.ts");
+  const service = await read("src/features/mail-assistant/services/mail-assistant-session-service.ts");
+  assert.match(interpreter, /pendingIntent \?\? "mark_processed"/);
+  assert.match(interpreter, /\/les deux\//);
+  assert.match(service, /approveReplies/);
 });

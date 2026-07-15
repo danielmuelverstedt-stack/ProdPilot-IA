@@ -22,6 +22,11 @@ body { min-height: 100vh; margin: 0; background: var(--app-background); color: v
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid color-mix(in srgb, var(--app-primary) 25%, transparent); outline-offset: 2px; }
+@keyframes mail-session-enter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes mail-session-pulse { 0%, 100% { opacity: .28; transform: scale(.82); } 45% { opacity: 1; transform: scale(1); } }
+.mail-session-enter { animation: mail-session-enter 280ms ease-out both; }
+.mail-session-pulse { animation: mail-session-pulse 1.45s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .mail-session-enter, .mail-session-pulse, .animate-spin { animation: none !important; } * { scroll-behavior: auto !important; } }
 @media print {
   aside, body > div header, .print\:hidden { display: none !important; }
   main { padding: 0 !important; }

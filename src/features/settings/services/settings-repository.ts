@@ -73,9 +73,14 @@ function isSettings(value: unknown): value is AppSettings {
     && parseAiBudgetPolicy(value.ai.budgetPolicy) !== null
     && parseAiPricingRegistry(value.ai.pricingRegistry) !== null
     && isRecord(value.ai.firstUseChecklist) && hasBooleans(value.ai.firstUseChecklist, ["platformAccountCreated", "billingConfigured", "applicationRestarted"]);
+  const memoryValid = isRecord(value.mailMemory)
+    && hasBooleans(value.mailMemory, ["enabled", "indexSynchronizedMails", "storeCleanedMessageText", "keepSourceLinks", "storeAnalyses", "storeSessionHistory", "storeContactPreferences", "storeDecisions", "automaticCleanup", "offlineAccess", "showSourceLinks", "preferLocalResults", "askBeforeExpensiveAiCall"])
+    && ["mailRetentionDays", "analysisRetentionDays", "sessionRetentionDays", "auditRetentionDays", "maximumLocalSizeMb"].every((key) => isRecord(value.mailMemory) && typeof value.mailMemory[key] === "number" && Number.isFinite(value.mailMemory[key]))
+    && ["local_first", "balanced"].includes(String(value.mailMemory.aiEscalationMode))
+    && (value.mailMemory.lastBackupAt === null || typeof value.mailMemory.lastBackupAt === "string");
   const templatesValid = isRecord(value.templates) && Object.values(value.templates).every((template) => typeof template === "string");
   const journalValid = Array.isArray(value.journal) && value.journal.every((entry) => isRecord(entry) && hasStrings(entry, ["id", "date", "description"]));
-  return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && rolesValid && usersValid && printValid && aiValid && templatesValid && journalValid;
+  return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && rolesValid && usersValid && printValid && aiValid && memoryValid && templatesValid && journalValid;
 }
 
 export function parseSettingsBackup(value: unknown): AppSettings | null {
@@ -110,6 +115,7 @@ function migrateSettings(value: unknown): AppSettings {
       },
       categories: migrateStandards(isRecord(saved.ai) ? saved.ai.categories : undefined, defaults.ai.categories),
     },
+    mailMemory: { ...defaults.mailMemory, ...(isRecord(saved.mailMemory) ? saved.mailMemory : {}) },
     production: migrateProductionSettings(saved.version, saved.production, defaults.production),
     print: {
       ...defaults.print,

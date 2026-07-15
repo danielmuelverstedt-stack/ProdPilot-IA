@@ -70,3 +70,11 @@ La configuration décrit comment l’entreprise souhaite travailler. Les donnée
 ## Responsabilité des modules
 
 Un module est une vue cohérente sur un besoin utilisateur, pas un silo de données. Il peut réunir plusieurs sources à travers des services, mais ne devient jamais propriétaire d’une copie locale de leurs objets.
+
+## Mémoire locale de travail
+
+ProdPilot IA peut maintenir une mémoire locale structurée afin de rechercher des informations synchronisées, réutiliser une analyse et continuer un travail hors ligne. Cette mémoire est une projection sourcée : elle ne remplace jamais le fournisseur externe comme source officielle.
+
+L’accès suit la chaîne `interface → services d’application → services de mémoire → dépôts typés → adaptateur de stockage`. Les composants n’accèdent pas directement au stockage. Chaque enregistrement est isolé par entreprise, utilisateur, compte, fournisseur et mode réel ou démonstration.
+
+IndexedDB est l’adaptateur local initial. Il doit pouvoir être remplacé ou synchronisé avec un stockage serveur chiffré et multi-utilisateur sans changer les contrats métier.

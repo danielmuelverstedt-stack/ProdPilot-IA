@@ -36,6 +36,9 @@ Ces éléments proviennent des Réglages et de référentiels typés. Les valeur
 - Les appels dispersés à `localStorage` ou à tout autre mécanisme de persistance sont interdits.
 - Changer de technologie de stockage ne doit pas imposer de réécrire l’interface ou les règles métier.
 - Une donnée importée conserve sa source et son historique ; elle n’écrase pas silencieusement une donnée validée.
+- Une projection locale conserve sa provenance, sa fraîcheur et son autorité ; elle ne devient pas une source officielle concurrente.
+- Les pièces jointes et documents externes ne sont jamais copiés dans la mémoire locale : seuls liens, références fournisseur et métadonnées sûres sont autorisés.
+- Tout stockage local métier est versionné, migrable et strictement isolé par compte, utilisateur, entreprise et mode.
 
 ## Sources externes
 
@@ -52,6 +55,8 @@ Ces éléments proviennent des Réglages et de référentiels typés. Les valeur
 - Une information manquante ou incertaine est signalée.
 - Toute action externe ou irréversible exige une confirmation humaine dédiée.
 - L’IA respecte les mêmes permissions et frontières de données que l’utilisateur.
+- Une opération locale déterministe ou une analyse locale valide est utilisée avant tout nouvel appel IA payant.
+- Une interprétation IA ne devient une décision ou une préférence durable qu’après confirmation explicite.
 
 ## Expérience produit
 

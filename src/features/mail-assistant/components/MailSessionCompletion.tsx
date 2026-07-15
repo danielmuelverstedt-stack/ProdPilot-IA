@@ -1,0 +1,10 @@
+import Link from "next/link";
+import type { MailAssistantSession } from "@/features/mail-assistant/types/mail-assistant";
+
+export function MailSessionCompletion({ session, onResume }: { session: MailAssistantSession; onResume: () => void }) {
+  const withoutAction = session.messages.filter((message) => !message.classification.requiresReply && !message.classification.suggestsAction).length;
+  const review = session.messages.filter((message) => message.classification.group === "review" && !message.processed).length;
+  const minutes = Math.max(1, Math.round((new Date(session.endedAt ?? session.startedAt).getTime() - new Date(session.startedAt).getTime()) / 60_000));
+  const rows = [[session.messages.length, "messages analysés"], [withoutAction, "sans action"], [session.replies.length, "réponses préparées"], [session.draftsCreated.length, "brouillons créés"], [session.actionsCreated.length, "actions créées"], [review, "à vérifier"]] as const;
+  return <section className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-2xl flex-col items-center justify-center px-5 py-14 text-center"><span className="grid size-14 place-items-center rounded-full bg-[#e4f0e9] text-2xl text-[#1f5f49]">✓</span><h1 className="mt-6 text-4xl font-semibold tracking-[-0.04em]">Session terminée</h1><div className="mt-9 grid w-full grid-cols-2 gap-2 sm:grid-cols-3">{rows.map(([value, label]) => <div key={label} className="rounded-2xl bg-white p-4"><strong className="block text-2xl">{value}</strong><span className="text-xs text-slate-500">{label}</span></div>)}</div><p className="mt-5 text-sm text-slate-500">Temps de session : {minutes} min</p><div className="mt-8 flex flex-wrap justify-center gap-3"><Link href="/mails" className="min-h-11 rounded-xl border border-black/10 bg-white px-5 py-3 text-sm font-semibold">Voir les brouillons</Link>{review ? <button type="button" onClick={onResume} className="min-h-11 rounded-xl border border-black/10 bg-white px-5 text-sm font-semibold">Reprendre le message en attente</button> : null}<Link href="/" className="min-h-11 rounded-xl bg-[#1f5f49] px-6 py-3 text-sm font-semibold text-white">Terminer</Link></div></section>;
+}

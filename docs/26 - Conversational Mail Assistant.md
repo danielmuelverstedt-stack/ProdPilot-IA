@@ -29,3 +29,17 @@ Avec Google OAuth, la lecture et la création de brouillons utilisent les contra
 ## Limites connues
 
 La session active reste orchestrée par le processus serveur tandis que son historique et ses sources sont projetés dans IndexedDB. La reprise transactionnelle multi-instance, le chiffrement serveur, le calendrier externe, QRQC et l’envoi direct restent non implémentés. Les commandes de traduction ou de reformulation avancée utilisent pour l’instant un repli déterministe limité.
+# Brief de démarrage systématique
+
+Chaque démarrage produit un texte visible, même sans nouveau message. Quatre états sont pris en charge : nouveaux mails, éléments locaux en attente, boîte à jour et synchronisation indisponible. En mode démonstration, le brief le précise explicitement.
+
+Les comptes proviennent de la mémoire locale isolée du compte actif : messages non lus ou sans statut, réponses et brouillons, sessions non résolues, relances, réunions préparées et actions ouvertes. Les phrases simples sont déterministes ; elles n’appellent jamais OpenAI.
+
+# Architecture UX en quatre états
+
+1. **Veille** : centre de commande sombre alimenté uniquement par la mémoire locale, sans conversation ni champ texte.
+2. **Conversation** : créée après « Démarrer la session » ; le brief devient vocal si le réglage l’autorise.
+3. **Travail actif** : validations, brouillons et timeline occupent l’espace principal ; l’historique conversationnel reste secondaire et replié.
+4. **Session terminée** : résultats exécutés, éléments restant à vérifier et retour au centre de commande.
+
+L’ouverture de la page ne contacte ni Gmail ni OpenAI. Elle peut uniquement lire la projection locale, recalculer des compteurs déterministes et afficher des résultats déjà présents. Toute synchronisation distante reste derrière l’action explicite de démarrage.

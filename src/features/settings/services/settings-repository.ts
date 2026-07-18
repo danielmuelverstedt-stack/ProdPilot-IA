@@ -78,9 +78,13 @@ function isSettings(value: unknown): value is AppSettings {
     && ["mailRetentionDays", "analysisRetentionDays", "sessionRetentionDays", "auditRetentionDays", "maximumLocalSizeMb"].every((key) => isRecord(value.mailMemory) && typeof value.mailMemory[key] === "number" && Number.isFinite(value.mailMemory[key]))
     && ["local_first", "balanced"].includes(String(value.mailMemory.aiEscalationMode))
     && (value.mailMemory.lastBackupAt === null || typeof value.mailMemory.lastBackupAt === "string");
+  const assistantValid = isRecord(value.mailAssistant)
+    && hasBooleans(value.mailAssistant, ["speakOpeningBrief", "askFollowUpQuestion", "autoListenAfterBrief", "includePendingDrafts", "includeMessagesWithoutStatus", "includeOverdueFollowUps", "includeInformationalMessages", "replayButtonVisible", "voiceEnabled", "voiceInteractionEnabled", "continuousConversation", "disableContinuousOnBlur", "transcriptPreview", "submitAutomatically", "voiceOutputEnabled", "speakConfirmations", "speakExecutionSummaries", "interruptAssistantBySpeaking"])
+    && ["maximumItemsSpoken", "speechRate", "speechVolume", "silenceTimeoutSeconds", "pauseAfterSpeechMs", "speechPitch", "microphoneTestDurationSeconds"].every((key) => isRecord(value.mailAssistant) && typeof value.mailAssistant[key] === "number")
+    && hasStrings(value.mailAssistant, ["briefDetail", "preferredLanguage", "preferredVoiceName", "listeningBehavior", "inputMode", "pushToTalkShortcut", "customShortcut", "recognitionLanguage", "assistantVoicePreset", "longAnswerSpeech", "ttsProvider", "selectedMicrophoneDeviceId", "preferredVoiceId", "preferredVoiceLocale", "voiceFallbackStrategy"]) && Array.isArray(value.mailAssistant.workflowStatuses);
   const templatesValid = isRecord(value.templates) && Object.values(value.templates).every((template) => typeof template === "string");
   const journalValid = Array.isArray(value.journal) && value.journal.every((entry) => isRecord(entry) && hasStrings(entry, ["id", "date", "description"]));
-  return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && rolesValid && usersValid && printValid && aiValid && memoryValid && templatesValid && journalValid;
+  return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && rolesValid && usersValid && printValid && aiValid && memoryValid && assistantValid && templatesValid && journalValid;
 }
 
 export function parseSettingsBackup(value: unknown): AppSettings | null {
@@ -116,6 +120,7 @@ function migrateSettings(value: unknown): AppSettings {
       categories: migrateStandards(isRecord(saved.ai) ? saved.ai.categories : undefined, defaults.ai.categories),
     },
     mailMemory: { ...defaults.mailMemory, ...(isRecord(saved.mailMemory) ? saved.mailMemory : {}) },
+    mailAssistant: { ...defaults.mailAssistant, ...(isRecord(saved.mailAssistant) ? saved.mailAssistant : {}), workflowStatuses: isRecord(saved.mailAssistant) && Array.isArray(saved.mailAssistant.workflowStatuses) ? saved.mailAssistant.workflowStatuses as AppSettings["mailAssistant"]["workflowStatuses"] : defaults.mailAssistant.workflowStatuses },
     production: migrateProductionSettings(saved.version, saved.production, defaults.production),
     print: {
       ...defaults.print,

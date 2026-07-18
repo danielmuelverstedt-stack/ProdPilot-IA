@@ -31,6 +31,7 @@ export async function persistMailAssistantSession(session: MailAssistantSession,
       const record: LocalMailMessage = {
         ...context,
         id: contextualId(context, "message", message.id), sourceId: message.id,
+        workflowStatus: message.ignored ? "ignored" : message.processed ? "processed" : message.classification.isUrgent || message.classification.group === "review" ? "review" : message.classification.requiresReply ? "reply_required" : message.classification.suggestsAction ? "analyze" : message.classification.group === "information" ? "information" : message.classification.group === "no_action" ? "no_action" : "new",
         createdAt: message.receivedAt, updatedAt: new Date().toISOString(), synchronizationStatus: "synchronized",
         threadId: message.threadId, from: message.from, to: message.to, cc: message.cc,
         subject: sanitizeText(message.subject), receivedAt: message.receivedAt, cleanedText,

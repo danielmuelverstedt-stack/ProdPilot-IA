@@ -1,7 +1,8 @@
 import type { AiBudgetPolicy, AiPricingEntry } from "@/features/ai/types/ai";
 import type { MailMemorySettings } from "@/features/mail-memory/types/mail-memory";
+import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
 
-export const SETTINGS_VERSION = 7;
+export const SETTINGS_VERSION = 10;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -229,6 +230,7 @@ export interface AppSettings {
   print: PrintSettings;
   ai: AiSettings;
   mailMemory: MailMemorySettings;
+  mailAssistant: MailAssistantStartSettings;
   templates: Record<string, string>;
   journal: SettingsJournalEntry[];
 }

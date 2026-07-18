@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Moteur de raisonnement local Mail — 15/07/2026
+
+- Ajout d’un moteur typé et déterministe qui croise messages, réponses, brouillons, suivis, engagements, décisions, réunions, actions et sessions de la mémoire locale.
+- Ajout des détections proactives de risques, attentes, recommandations, conflits, opportunités et chaînes de dépendance, avec faits sources, confiance, sévérité et action suggérée.
+- Ajout des cartes « Assistant Recommendations » au centre de commande, sans appel payant au chargement et sans exécution automatique.
+- Ajout d’une trace d’exécution locale ou cache/IA, de l’estimation de jetons et du verrou de consentement avant toute escalade IA.
+
 ### Mémoire métier locale de l’Assistant mails — 15/07/2026
 
 - Ajout d’une base IndexedDB versionnée et de dépôts typés remplaçables, strictement isolés par compte, fournisseur, utilisateur, entreprise et mode.
@@ -217,3 +224,70 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 - Aucun appel OpenAI automatique, aucune pièce jointe binaire, aucun secret côté client et aucune fonction d’envoi.
 - Création Gmail étendue à À/Cc/Cci avec validation serveur et confirmation explicite séparée.
+
+## [Brief de démarrage Mail local-first] — 15/07/2026
+
+### Ajouté
+
+- Brief visuel et parlé couvrant nouveaux messages, tâches locales, boîte à jour et indisponibilité Gmail.
+- Synthèse vocale native avec indicateur, pause, arrêt, relecture et message de compatibilité.
+- Statuts Mail typés, métriques locales isolées par compte et réglages de session/voix.
+- Tests comportementaux des états boîte à jour, attentes locales, urgence, indisponibilité Gmail et démonstration, avec exclusion des doublons de la session courante.
+
+### Sécurité et coûts
+
+- Les briefs simples sont exclusivement déterministes et ne déclenchent aucun appel OpenAI.
+- Aucun changement OAuth Gmail, aucune fonction d’envoi automatique et aucun fournisseur vocal externe.
+
+## [Interaction vocale Mail] — 15/07/2026
+
+### Ajouté
+
+- Microphone visible avec clic, maintien du raccourci configurable, durée, transcription partielle/finale, annulation et erreurs de permission accessibles.
+- Modes push-to-talk, clic et conversation continue explicitement activable, coupée à la perte de focus selon le réglage.
+- Catalogue asynchrone des voix système, prévisualisation, style original « Assistant britannique » et diagnostic local.
+- Contrat TTS remplaçable ; navigateur gratuit actif, fournisseurs premium déclarés mais non configurés.
+
+### Garanties
+
+- Aucun audio stocké, aucun appel TTS payant automatique, aucun changement OAuth Gmail et aucun envoi automatique.
+
+## [Diagnostic microphone et voix système] — 15/07/2026
+
+### Ajouté
+
+- Sélection des entrées audio après permission explicite, diagnostic Windows-like et mesure locale du signal avec seuils centralisés.
+- Enregistrement temporaire en mémoire pour réécoute unique, avec arrêt des pistes, fermeture AudioContext et révocation de l’URL.
+- Chargement différé des voix, `voiceschanged`, retry, déduplication par URI, filtres, prévisualisation exclusive et repli stable.
+
+### Confidentialité
+
+- Aucun audio téléversé ou persisté ; seules les préférences de périphérique et de voix sont conservées.
+
+## [Centre de commande de l’Assistant Mail] — 15/07/2026
+
+### Modifié
+
+- Accueil transformé en veille exécutive sombre : brief local, grands compteurs, travail préparé et attentes, sans chat ni saisie.
+- Session active réorganisée autour des validations et d’une timeline d’exécution ; conversation compacte et repliable.
+- Fin de session orientée résultats avec retour explicite à la veille.
+
+### Coûts et sécurité
+
+- Le rendu initial consulte uniquement la mémoire locale et les modèles déterministes. Aucun appel OpenAI, envoi ou mutation externe au chargement.
+
+## [Fiabilisation du statut Gmail] — 19/07/2026
+
+### Corrigé
+
+- Le registre local des comptes Mail coordonne désormais toutes ses lectures et mutations dans une même file, puis remplace son JSON atomiquement avec des fichiers temporaires uniques.
+- Le remplacement prend en charge les verrous de partage transitoires de Windows sans supprimer préalablement le fichier cible et nettoie systématiquement ses temporaires en cas d’échec.
+- Une synchronisation Gmail réussie remet le compte à l’état `connected`, actualise la date de synchronisation et efface l’ancienne erreur ; la callback OAuth répare de la même façon un compte existant sans le dupliquer.
+- La route des messages tente encore Gmail lorsqu’un compte OAuth conserve un ancien état d’erreur, puis renvoie des erreurs structurées `401`, `403`, `500` ou `502` au lieu d’un succès vide.
+- L’interface distingue reconnexion, autorisation Gmail, stockage local et indisponibilité du fournisseur.
+
+### Validation
+
+- Le compte local a été réparé sans manipulation directe des jetons Google ni modification de la configuration OAuth.
+- Validation runtime : `/api/mail/connection` répond `200` avec un compte connecté et `/api/mail/messages` répond `200` avec des messages Gmail réels.
+- Tests automatisés : 83 réussites ; TypeScript, ESLint et build Next.js validés.

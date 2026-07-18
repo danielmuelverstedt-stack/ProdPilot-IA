@@ -1,0 +1,14 @@
+"use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
+import { browserTtsProvider } from "@/features/mail-assistant/services/browser-tts-provider";
+
+export function MailAssistantSpeechOutput({ text, settings, autoPlay = true, onFinished }: { text: string; settings: MailAssistantStartSettings; autoPlay?: boolean; onFinished?: () => void }) {
+  const played = useRef("");
+  const [state, setState] = useState<"off" | "speaking" | "paused" | "stopped" | "unsupported">("off");
+  const speak = useCallback(() => { if (settings.ttsProvider !== "system-browser" || !browserTtsProvider.supported()) { setState("unsupported"); return; } browserTtsProvider.speak({ text, language: settings.preferredLanguage, voiceId: settings.preferredVoiceId, voiceName: settings.preferredVoiceName, rate: settings.speechRate, pitch: settings.speechPitch, volume: settings.speechVolume, onStart: () => setState("speaking"), onEnd: () => { setState("stopped"); onFinished?.(); }, onError: () => setState("stopped") }); }, [onFinished, settings.preferredLanguage, settings.preferredVoiceId, settings.preferredVoiceName, settings.speechPitch, settings.speechRate, settings.speechVolume, settings.ttsProvider, text]);
+  useEffect(() => { if (autoPlay && settings.voiceEnabled && settings.voiceOutputEnabled && played.current !== text) { played.current = text; speak(); } return () => browserTtsProvider.stop(); }, [autoPlay, settings.voiceEnabled, settings.voiceOutputEnabled, speak, text]);
+  if (!settings.voiceEnabled) return <p className="text-xs text-slate-500">Microphone désactivé · lecture vocale désactivée</p>;
+  if (state === "unsupported") return <p role="status" className="text-sm text-amber-800">La synthèse vocale n’est pas disponible dans ce navigateur. Le brief reste accessible à l’écran.</p>;
+  return <div className="flex flex-wrap items-center gap-2 text-sm"><span role="status" className="font-semibold text-[#1f5f49]">{state === "speaking" ? "Assistant en train de parler…" : state === "paused" ? "Lecture en pause" : "Assistant silencieux"}</span>{state === "speaking" ? <button type="button" onClick={() => { browserTtsProvider.pause(); setState("paused"); }} className="rounded-lg border px-3 py-2">Pause</button> : state === "paused" ? <button type="button" onClick={() => { browserTtsProvider.resume(); setState("speaking"); }} className="rounded-lg border px-3 py-2">Reprendre</button> : null}<button type="button" onClick={() => { browserTtsProvider.stop(); setState("stopped"); }} className="rounded-lg border px-3 py-2">Arrêter</button>{settings.replayButtonVisible ? <button type="button" onClick={speak} className="rounded-lg border px-3 py-2">Écouter à nouveau</button> : null}</div>;
+}

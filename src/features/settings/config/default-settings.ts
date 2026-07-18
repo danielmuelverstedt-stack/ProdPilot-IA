@@ -12,6 +12,7 @@ import {
 } from "@/features/settings/types/settings";
 import { DEFAULT_AI_BUDGET_POLICY } from "@/features/ai/config/ai-budget-policy";
 import { MAIL_MEMORY_DEFAULTS } from "@/features/mail-memory/config/mail-memory-defaults";
+import { MAIL_ASSISTANT_START_DEFAULTS } from "@/features/mail-assistant/config/mail-assistant-defaults";
 
 function productionMachine(
   id: string,
@@ -295,6 +296,7 @@ export const defaultSettings: AppSettings = {
     automaticDraftCreation: false,
   },
   mailMemory: { ...MAIL_MEMORY_DEFAULTS },
+  mailAssistant: structuredClone(MAIL_ASSISTANT_START_DEFAULTS),
   templates: {
     mail: "Bonjour {responsable},\n\nVoici le point à traiter : {sujet}.\n\nMerci,\nDaniel",
     qrqc: "QRQC du {date}\n\nBlocages : {blocages}\nActions : {actions}",

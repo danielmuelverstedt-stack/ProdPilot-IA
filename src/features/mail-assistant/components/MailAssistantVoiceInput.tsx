@@ -1,35 +1,32 @@
 "use client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
+import { matchesVoiceShortcut, resolveVoiceShortcut } from "@/features/mail-assistant/services/voice-shortcut";
+import { browserTtsProvider } from "@/features/mail-assistant/services/browser-tts-provider";
 
-import { useEffect, useRef, useState } from "react";
+interface RecognitionResult { 0: { transcript: string }; isFinal: boolean }
+interface RecognitionEvent { results: ArrayLike<RecognitionResult> }
+interface RecognitionError { error: string }
+interface Recognition { lang: string; interimResults: boolean; continuous: boolean; start(): void; stop(): void; abort(): void; onstart: (() => void) | null; onresult: ((event: RecognitionEvent) => void) | null; onerror: ((event: RecognitionError) => void) | null; onend: (() => void) | null }
+type RecognitionConstructor = new () => Recognition;
+type VoiceState = "disabled" | "ready" | "listening" | "transcribing" | "ready_transcript" | "error" | "denied";
 
-interface SpeechRecognitionEventLike { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }
-interface SpeechRecognitionErrorLike { error: string }
-interface SpeechRecognitionLike { lang: string; interimResults: boolean; continuous: boolean; start(): void; stop(): void; abort(): void; onresult: ((event: SpeechRecognitionEventLike) => void) | null; onerror: ((event: SpeechRecognitionErrorLike) => void) | null; onend: (() => void) | null }
-type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+export function MailAssistantVoiceInput({ disabled, settings, autoStartToken = 0, onTranscript, onSubmit }: { disabled: boolean; settings: MailAssistantStartSettings; autoStartToken?: number; onTranscript: (value: string) => void; onSubmit: (value: string) => void }) {
+  const recognition = useRef<Recognition | null>(null); const finalText = useRef(""); const held = useRef(false); const startedAt = useRef(0);
+  const [state, setState] = useState<VoiceState>(settings.voiceInteractionEnabled ? "ready" : "disabled"); const [partial, setPartial] = useState(""); const [elapsed, setElapsed] = useState(0); const [error, setError] = useState<string | null>(null);
+  const supported = typeof window !== "undefined" && Boolean((window as typeof window & { SpeechRecognition?: RecognitionConstructor; webkitSpeechRecognition?: RecognitionConstructor }).SpeechRecognition ?? (window as typeof window & { webkitSpeechRecognition?: RecognitionConstructor }).webkitSpeechRecognition);
+  const stop = useCallback(() => { recognition.current?.stop(); held.current = false; }, []);
+  const start = useCallback(() => { if (disabled || !settings.voiceInteractionEnabled || !recognition.current || state === "listening") return; if (settings.interruptAssistantBySpeaking) browserTtsProvider.stop(); setError(null); finalText.current = ""; setPartial(""); recognition.current.start(); }, [disabled, settings.interruptAssistantBySpeaking, settings.voiceInteractionEnabled, state]);
+  const cancel = useCallback(() => { recognition.current?.abort(); held.current = false; finalText.current = ""; setPartial(""); onTranscript(""); setState("ready"); }, [onTranscript]);
 
-export function MailAssistantVoiceInput({ disabled, onTranscript }: { disabled: boolean; onTranscript: (value: string) => void }) {
-  const recognition = useRef<SpeechRecognitionLike | null>(null);
-  const [isListening, setIsListening] = useState(false);
-  const [isSupported] = useState(() => typeof window !== "undefined" && Boolean((window as typeof window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor }).SpeechRecognition ?? (window as typeof window & { webkitSpeechRecognition?: SpeechRecognitionConstructor }).webkitSpeechRecognition));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const browser = window as typeof window & { SpeechRecognition?: SpeechRecognitionConstructor; webkitSpeechRecognition?: SpeechRecognitionConstructor };
-    const Constructor = browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
-    if (!Constructor) return;
-    const instance = new Constructor();
-    instance.lang = "fr-FR"; instance.interimResults = true; instance.continuous = false;
-    instance.onresult = (event) => { let transcript = ""; for (let index = 0; index < event.results.length; index += 1) transcript += event.results[index][0].transcript; onTranscript(transcript); };
-    instance.onerror = () => { setError("La reconnaissance vocale a échoué. Vous pouvez continuer au clavier."); setIsListening(false); };
-    instance.onend = () => setIsListening(false);
-    recognition.current = instance;
-    return () => instance.abort();
-  }, [onTranscript]);
-
-  if (!isSupported) return <span className="text-xs text-slate-500">Saisie vocale non disponible dans ce navigateur.</span>;
-  return <div className="flex items-center gap-2">
-    <button type="button" disabled={disabled} aria-label={isListening ? "Arrêter l’écoute" : "Dicter un message"} aria-pressed={isListening} onClick={() => { setError(null); if (isListening) recognition.current?.stop(); else { recognition.current?.start(); setIsListening(true); } }} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#195c45] disabled:opacity-50">{isListening ? "Arrêter" : "Micro"}</button>
-    {isListening ? <span role="status" className="text-xs font-semibold text-red-700">Écoute en cours…</span> : null}
-    {error ? <span role="alert" className="text-xs text-red-700">{error}</span> : null}
-  </div>;
+  useEffect(() => { const browser = window as typeof window & { SpeechRecognition?: RecognitionConstructor; webkitSpeechRecognition?: RecognitionConstructor }; const Constructor = browser.SpeechRecognition ?? browser.webkitSpeechRecognition; if (!Constructor || !settings.voiceInteractionEnabled) return; const instance = new Constructor(); instance.lang = settings.recognitionLanguage; instance.interimResults = true; instance.continuous = settings.inputMode === "continuous"; instance.onstart = () => { startedAt.current = Date.now(); setState("listening"); }; instance.onresult = (event) => { setState("transcribing"); let interim = ""; for (let index = 0; index < event.results.length; index += 1) { const result = event.results[index]; if (result.isFinal) finalText.current += `${result[0].transcript} `; else interim += result[0].transcript; } const combined = `${finalText.current}${interim}`.trim(); setPartial(combined); if (settings.transcriptPreview) onTranscript(combined); if (finalText.current.trim()) setState("ready_transcript"); }; instance.onerror = (event) => { const denied = event.error === "not-allowed" || event.error === "service-not-allowed"; setState(denied ? "denied" : "error"); setError(denied ? "Permission microphone refusée. Autorisez-la dans les réglages du navigateur." : `Erreur microphone : ${event.error}.`); }; instance.onend = () => { const transcript = finalText.current.trim(); setState(transcript ? "ready_transcript" : "ready"); if (transcript && settings.submitAutomatically) onSubmit(transcript); }; recognition.current = instance; return () => instance.abort(); }, [onSubmit, onTranscript, settings.inputMode, settings.recognitionLanguage, settings.submitAutomatically, settings.transcriptPreview, settings.voiceInteractionEnabled]);
+  useEffect(() => { if (state !== "listening") return; const timer = window.setInterval(() => setElapsed(Math.floor((Date.now() - startedAt.current) / 1000)), 250); return () => window.clearInterval(timer); }, [state]);
+  useEffect(() => { if (state !== "listening" || settings.inputMode === "continuous") return; const timeout = window.setTimeout(stop, settings.silenceTimeoutSeconds * 1000); return () => window.clearTimeout(timeout); }, [settings.inputMode, settings.silenceTimeoutSeconds, state, stop]);
+  useEffect(() => { if (autoStartToken) start(); }, [autoStartToken, start]);
+  useEffect(() => { const shortcut = resolveVoiceShortcut(settings.pushToTalkShortcut, settings.customShortcut); const down = (event: KeyboardEvent) => { if (event.repeat || !matchesVoiceShortcut(event, shortcut)) return; event.preventDefault(); held.current = true; start(); }; const up = (event: KeyboardEvent) => { if (!held.current || !matchesVoiceShortcut(event, shortcut)) return; event.preventDefault(); stop(); }; window.addEventListener("keydown", down); window.addEventListener("keyup", up); return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); }; }, [settings.customShortcut, settings.pushToTalkShortcut, start, stop]);
+  useEffect(() => { if (!settings.disableContinuousOnBlur) return; const blur = () => { if (settings.inputMode === "continuous") stop(); }; window.addEventListener("blur", blur); return () => window.removeEventListener("blur", blur); }, [settings.disableContinuousOnBlur, settings.inputMode, stop]);
+  if (!settings.voiceInteractionEnabled) return <span className="text-xs text-slate-500">Microphone désactivé</span>;
+  if (!supported) return <span role="status" className="text-xs text-amber-800">Saisie vocale non disponible. Utilisez Edge ou Chrome, ou continuez au clavier.</span>;
+  const shortcut = resolveVoiceShortcut(settings.pushToTalkShortcut, settings.customShortcut);
+  return <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><button type="button" disabled={disabled} title={`Cliquer ou maintenir ${shortcut.label}`} aria-label={state === "listening" ? "Arrêter l’écoute" : `Démarrer l’écoute. Raccourci ${shortcut.label}`} aria-pressed={state === "listening"} onClick={() => state === "listening" ? stop() : start()} className="min-h-11 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold disabled:opacity-50">{state === "listening" ? "Arrêter" : "Micro"}</button>{state === "listening" ? <><span aria-hidden="true" className="h-3 w-3 animate-pulse rounded-full bg-red-600 motion-reduce:animate-none"/><span role="status" className="text-xs font-semibold">Écoute en cours · {elapsed} s · {shortcut.label} maintenu</span><button type="button" onClick={cancel} className="text-xs font-semibold text-slate-600">Annuler</button></> : <span role="status" className="text-xs text-slate-500">{state === "transcribing" ? "Transcription en cours" : state === "ready_transcript" ? "Transcription prête · modifiable avant envoi" : "Prêt à écouter"} · {shortcut.label}</span>}</div>{settings.transcriptPreview && partial ? <div aria-live="polite" className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{partial}<button type="button" onClick={() => browserTtsProvider.speak({ text: partial, language: settings.preferredLanguage, voiceName: settings.preferredVoiceName, rate: settings.speechRate, pitch: settings.speechPitch, volume: settings.speechVolume, onStart() {}, onEnd() {}, onError() {} })} className="ml-2 font-semibold text-[#1f5f49]">Relire</button></div> : null}{error ? <p role="alert" className="mt-1 text-xs text-red-700">{error}</p> : null}</div>;
 }

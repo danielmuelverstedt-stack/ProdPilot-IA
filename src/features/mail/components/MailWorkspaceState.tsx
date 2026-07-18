@@ -8,8 +8,17 @@ export function MailEmptyState({ accountName, onRefresh }: { accountName: string
   return <MailWorkspaceState title="Aucun message récent" description={`Aucun message n’est disponible pour « ${accountName} ».`} actions={<button type="button" onClick={onRefresh} className={secondaryButton}>Actualiser</button>} />;
 }
 
-export function MailErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return <MailWorkspaceState title="Impossible de charger les messages" description={message} actions={<><button type="button" onClick={onRetry} className={primaryButton}>Réessayer</button><a href="/reglages/connexions/messagerie" className={secondaryButton}>Gérer les comptes</a></>} />;
+export function MailErrorState({ message, code, status, onRetry }: { message: string; code: string; status: number; onRetry: () => void }) {
+  const needsReconnect = status === 401 || code === "MAIL_AUTHENTICATION_REQUIRED";
+  const permissionDenied = status === 403 || code === "MAIL_PERMISSION_DENIED";
+  const title = needsReconnect
+    ? "La connexion Google doit être renouvelée"
+    : permissionDenied
+      ? "Autorisation Gmail insuffisante"
+      : status === 500
+        ? "Erreur interne de synchronisation"
+        : "Impossible de synchroniser Gmail";
+  return <MailWorkspaceState title={title} description={message} actions={<><button type="button" onClick={onRetry} className={primaryButton}>{needsReconnect ? "Réessayer" : "Actualiser les mails"}</button><a href="/reglages/connexions/messagerie" className={secondaryButton}>{needsReconnect || permissionDenied ? "Reconnecter Google" : "Gérer les comptes"}</a></>} />;
 }
 
 export function MailConnectionRequiredState({ accountName, error }: { accountName: string; error: string | null }) {

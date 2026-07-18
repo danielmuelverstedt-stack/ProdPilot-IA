@@ -15,6 +15,6 @@ export async function GET(request: NextRequest) {
     return apiJson({ account, messages });
   } catch (error) {
     const safe = getSafeMailError(error);
-    return apiError(safe.message, safe.status);
+    return apiError(safe.message, safe.status, safe.code);
   }
 }

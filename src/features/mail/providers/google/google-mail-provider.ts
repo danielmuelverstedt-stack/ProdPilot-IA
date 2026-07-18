@@ -250,9 +250,14 @@ export class GoogleMailProvider implements MailProvider {
       await googleTokenRepository.updateError(this.key, null);
       return result;
     } catch (error) {
-      const message = error instanceof Error && error.message.includes("expiré")
-        ? error.message
-        : "La communication avec Gmail a échoué. Reconnectez ce compte si le problème persiste.";
+      const status = getGoogleHttpStatus(error);
+      const message = status === 401
+        ? "La session Google a expiré ou a été révoquée. Reconnectez ce compte."
+        : status === 403
+          ? "Google refuse l’accès aux messages. Vérifiez les autorisations Gmail accordées."
+          : error instanceof Error && error.message.includes("expiré")
+            ? error.message
+            : "La communication avec Gmail a échoué. Réessayez dans quelques instants.";
       await googleTokenRepository.updateError(this.key, message);
       throw new Error(message);
     }

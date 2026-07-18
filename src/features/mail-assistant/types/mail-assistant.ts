@@ -12,6 +12,24 @@ export type MailAssistantIntent = (typeof MAIL_ASSISTANT_INTENTS)[number];
 export type MailAssistantGroup = "now" | "reply" | "action" | "review" | "information" | "no_action" | "processed";
 export type MailAssistantActionLevel = 1 | 2 | 3;
 export type MailAssistantStatus = "idle" | "starting" | "ready" | "executing" | "finished" | "error";
+export type MailWorkflowStatusId = "new" | "analyze" | "review" | "reply_required" | "draft_ready" | "awaiting_validation" | "awaiting_reply" | "action_created" | "information" | "no_action" | "processed" | "ignored";
+export interface MailWorkflowStatusDefinition { id: MailWorkflowStatusId; label: string; active: boolean; order: number }
+export interface MailAssistantStartSettings {
+  speakOpeningBrief: boolean; askFollowUpQuestion: boolean; autoListenAfterBrief: boolean;
+  includePendingDrafts: boolean; includeMessagesWithoutStatus: boolean; includeOverdueFollowUps: boolean; includeInformationalMessages: boolean;
+  maximumItemsSpoken: number; briefDetail: "compact" | "detailed"; replayButtonVisible: boolean;
+  voiceEnabled: boolean; speechRate: number; speechVolume: number; preferredLanguage: string; preferredVoiceName: string;
+  listeningBehavior: "manual" | "push_to_talk" | "auto_after_speaking"; workflowStatuses: MailWorkflowStatusDefinition[];
+  voiceInteractionEnabled: boolean; inputMode: "push_to_talk" | "click_to_talk" | "continuous";
+  pushToTalkShortcut: "space" | "alt_space" | "ctrl_space" | "f8" | "custom"; customShortcut: string;
+  recognitionLanguage: string; continuousConversation: boolean; silenceTimeoutSeconds: number; pauseAfterSpeechMs: number;
+  disableContinuousOnBlur: boolean; transcriptPreview: boolean; submitAutomatically: boolean;
+  voiceOutputEnabled: boolean; assistantVoicePreset: "system" | "british_assistant"; speechPitch: number;
+  speakConfirmations: boolean; speakExecutionSummaries: boolean; longAnswerSpeech: "summary" | "complete";
+  interruptAssistantBySpeaking: boolean; ttsProvider: "system-browser" | "openai-tts-future" | "other-future-provider";
+  selectedMicrophoneDeviceId: string; microphoneTestDurationSeconds: number;
+  preferredVoiceId: string; preferredVoiceLocale: string; voiceFallbackStrategy: "uri_name_locale_default";
+}
 
 export interface MailAssistantClassification {
   group: MailAssistantGroup;
@@ -103,3 +121,6 @@ export interface MailAssistantBrief {
   review: number;
   explanation: string;
 }
+export type MailOpeningBriefState = "new_mail" | "pending_only" | "up_to_date" | "synchronization_unavailable";
+export interface MailOpeningBriefMetrics { newMail: number; unread: number; pendingReplies: number; pendingDrafts: number; withoutClassification: number; withoutStatus: number; followUpsDueToday: number; overdueFollowUps: number; preparedMeetings: number; openActions: number; review: number; urgent: number; informational: number; noAction: number; unresolvedSessions: number; totalPending: number }
+export interface MailOpeningBrief { state: MailOpeningBriefState; text: string; metrics: MailOpeningBriefMetrics; lastSyncAt: string | null; isLocalDataStale: boolean; isDemo: boolean; generation: "deterministic" | "cached" | "ai" }

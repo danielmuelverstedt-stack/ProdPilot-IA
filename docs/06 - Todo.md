@@ -109,3 +109,51 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Ajouter les réglages de mémoire, la sauvegarde versionnée, les effacements sélectifs et les politiques de rétention.
 - [ ] Remplacer ou synchroniser IndexedDB avec un stockage serveur chiffré, authentifié, multi-utilisateur et multi-instance avant production.
 - [ ] Ajouter la reprise transactionnelle complète d’une session active après redémarrage du serveur et la synchronisation de conflits entre appareils.
+
+## Brief de démarrage Mail — 15/07/2026
+
+- [x] Toujours afficher un brief utile : nouveaux mails, travail local en attente, boîte à jour ou synchronisation indisponible.
+- [x] Ajouter la lecture vocale navigateur automatique avec pause, arrêt, relecture et repli visuel.
+- [x] Centraliser les statuts de workflow Mail et rendre les messages sans statut visibles dans le brief.
+- [x] Ajouter les réglages de démarrage, de contenu, de voix et d’activation explicite du microphone.
+- [ ] Valider manuellement les voix et la reconnaissance vocale sur les navigateurs cibles.
+
+## Interaction vocale principale — 15/07/2026
+
+- [x] Ajouter le clic pour parler, le push-to-talk configurable et les états visuels complets du microphone.
+- [x] Ajouter la transcription intermédiaire/finale, l’annulation, la relecture et l’envoi automatique optionnel.
+- [x] Centraliser la synthèse vocale derrière un fournisseur remplaçable et conserver les fournisseurs premium désactivés.
+- [x] Ajouter le style original « Assistant britannique », le chargement asynchrone des voix système et leur prévisualisation.
+- [ ] Valider les permissions, raccourcis réservés par le système et voix disponibles sur Edge et Chrome cibles.
+
+## Diagnostic microphone et sélecteur vocal — 15/07/2026
+
+- [x] Ajouter l’énumération explicite des microphones, leur sélection persistante et l’explication des libellés masqués avant autorisation.
+- [x] Ajouter un test local limité dans le temps, un vumètre accessible, le pic, la qualité du signal et la réécoute temporaire.
+- [x] Garantir l’arrêt des pistes, la fermeture Web Audio et la suppression de l’URL audio temporaire.
+- [x] Fiabiliser le chargement, la déduplication, le filtrage, la prévisualisation et le repli des voix système.
+- [ ] Recetter le niveau d’entrée et les périphériques réels sur Edge et Chrome sous Windows.
+
+## Centre de commande Mail — 15/07/2026
+
+- [x] Séparer veille, démarrage conversationnel, travail actif et synthèse de fin.
+- [x] Remplacer l’accueil de type chatbot par un brief local sombre centré sur le travail déjà préparé.
+- [x] Ajouter les grands compteurs, résultats exécutés, validations et timeline d’exécution.
+- [x] Rendre la conversation secondaire sans retirer les commandes, la voix, les brouillons ou la mémoire.
+- [ ] Recetter le rendu sombre, les transitions et la hiérarchie responsive avec les captures de référence sur mobile et grand écran.
+
+## Moteur de raisonnement Mail — 15/07/2026
+
+- [x] Ajouter un moteur déterministe dédié qui transforme la mémoire locale en risques, opportunités, recommandations, dépendances, blocages, attentes, conflits, échéances, engagements et impacts de décision.
+- [x] Expliquer chaque détection par ses faits sources, sa confiance, sa sévérité et une action recommandée sans exécution automatique.
+- [x] Ajouter les recommandations au centre de commande et journaliser le mode local, la raison, l’appel IA et l’estimation de jetons.
+- [x] Couvrir les risques, attentes, recommandations, dépendances, conflits, opportunités et règles d’escalade IA par des tests ciblés.
+- [ ] Ajouter une synthèse IA distante uniquement pour les cas complexes, après consentement explicite et affichage de l’estimation de coût.
+
+## Fiabilité du statut Gmail — 19/07/2026
+
+- [x] Sérialiser toutes les lectures et mutations du registre local des comptes Mail.
+- [x] Remplacer atomiquement le registre avec reprise bornée des verrous de partage Windows et nettoyage des fichiers temporaires.
+- [x] Réparer automatiquement le statut et l’erreur du compte après une synchronisation Gmail réussie ou une nouvelle callback OAuth.
+- [x] Propager les échecs Gmail avec des statuts HTTP et des codes d’erreur structurés, sans les transformer en liste vide.
+- [x] Couvrir concurrence, atomicité, récupération, callback, route et absence de manipulation des jetons par des tests ciblés.

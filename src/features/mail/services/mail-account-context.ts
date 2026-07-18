@@ -16,14 +16,14 @@ export async function getActiveMailContext() {
 
 export async function searchActiveMailMessages(criteria: MailSearchCriteria) {
   const { account, provider } = await getActiveMailContext();
-  if (account.status !== "connected") return { account, messages: [] };
+  if (account.status !== "connected" && account.mode !== "oauth") return { account, messages: [] };
   const messages = await provider.searchMessages({ ...criteria, accountId: account.id, provider: account.provider });
   return { account, messages: searchMailMessages(messages, criteria) };
 }
 
 export async function listActiveMailMessages(options?: ListMessagesOptions) {
   const { account, provider } = await getActiveMailContext();
-  if (account.status !== "connected") return { account, messages: [] };
+  if (account.status !== "connected" && account.mode !== "oauth") return { account, messages: [] };
   try {
     const messages = await provider.listMessages({
       ...options,
@@ -33,9 +33,9 @@ export async function listActiveMailMessages(options?: ListMessagesOptions) {
       ),
       unreadOnly: options?.unreadOnly ?? account.settings.unreadMessagesOnly,
     });
-    await mailAccountRepository.markSynchronization(account.id, new Date().toISOString());
+    const synchronizedAccount = await mailAccountRepository.markSynchronization(account.id, new Date().toISOString());
     return {
-      account,
+      account: synchronizedAccount,
       messages: account.settings.includeAttachmentMetadata
         ? messages
         : messages.map((message) => ({ ...message, attachments: [] })),

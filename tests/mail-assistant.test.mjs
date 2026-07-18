@@ -6,10 +6,10 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("la page initiale ne lance aucune analyse ni session", async () => {
   const page = await read("src/features/mail-assistant/components/MailAssistantWorkspace.tsx");
-  const start = await read("src/features/mail-assistant/components/MailSessionStart.tsx");
+  const start = await read("src/features/mail-assistant/components/MailCommandCenterStandby.tsx");
   assert.match(page, /onStart={startSession}/);
   assert.match(start, /onClick={onStart}/);
-  assert.doesNotMatch(page, /useEffect\([\s\S]*assistant\/session/);
+  assert.match(page, /session: null/); assert.doesNotMatch(page.split("async function startSession")[0], /fetch\(/);
 });
 
 test("OK et l’intention explicite d’envoi restent distincts", async () => {
@@ -52,7 +52,7 @@ test("la voix exige une action et prévoit un état non supporté", async () => 
   const voice = await read("src/features/mail-assistant/components/MailAssistantVoiceInput.tsx");
   assert.match(voice, /onClick=/);
   assert.match(voice, /Saisie vocale non disponible/);
-  assert.match(voice, /continuous = false/);
+  assert.match(voice, /continuous = settings\.inputMode === "continuous"/);
 });
 
 test("le parcours visuel reste conversationnel et centré sur les décisions", async () => {

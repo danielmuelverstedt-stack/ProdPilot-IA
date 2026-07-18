@@ -2,7 +2,7 @@ import { MailReplyProposal } from "@/features/mail-assistant/components/MailRepl
 import type { MailAssistantReplyProposal, MailAssistantSessionMessage } from "@/features/mail-assistant/types/mail-assistant";
 
 export function MailDecisionCard({ message, reply, position, total, onCommand, onOpenOriginal }: { message: MailAssistantSessionMessage; reply?: MailAssistantReplyProposal; position: number; total: number; onCommand: (text: string) => void; onOpenOriginal: () => void }) {
-  return <article className="mail-session-enter rounded-[1.6rem] border border-black/[0.07] bg-white p-5 shadow-[0_14px_50px_rgba(27,41,35,0.055)] sm:p-7">
+  return <article className="mail-session-enter rounded-[1.6rem] border border-white/[0.07] bg-white/[0.055] p-5 shadow-[0_14px_50px_rgba(0,0,0,0.18)] sm:p-7">
     <div className="flex items-center justify-between gap-4"><span className="text-xs font-semibold text-slate-400">Mail {position} sur {total}</span>{message.classification.isUrgent ? <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">Urgent</span> : null}</div>
     <div className="mt-5"><p className="text-lg font-semibold">{message.from.name ?? message.from.email}</p><h3 className="mt-1 text-xl font-semibold tracking-[-0.02em]">{message.subject}</h3><p className="mt-3 text-sm leading-6 text-slate-500">{message.summary || message.snippet}</p></div>
     <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-xs text-slate-400"><span>{message.classification.reason}</span>{reply?.detectedDeadline ? <span>Échéance · {reply.detectedDeadline}</span> : null}</div>

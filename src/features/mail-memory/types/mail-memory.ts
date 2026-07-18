@@ -1,4 +1,5 @@
 import type { MailAddress, MailProviderType } from "@/features/mail/types/mail";
+import type { MailWorkflowStatusId } from "@/features/mail-assistant/types/mail-assistant";
 
 export type MailMemorySyncStatus = "local" | "synchronized" | "stale" | "deleted_at_source" | "error";
 export type MemoryAuthority = "user_confirmed" | "source_fact" | "deterministic" | "validated_ai" | "unconfirmed_ai";
@@ -51,6 +52,7 @@ export interface LocalAttachmentReference {
 }
 
 export interface LocalMailMessage extends MailMemoryRecord {
+  workflowStatus?: MailWorkflowStatusId | null;
   threadId: string;
   from: MailAddress;
   to: MailAddress[];

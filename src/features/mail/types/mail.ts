@@ -232,6 +232,26 @@ export interface ListMessagesOptions {
   cursor?: string;
   unreadOnly?: boolean;
   category?: MailMessageCategory;
+  retrieveAll?: boolean;
+  forceRefresh?: boolean;
+}
+
+export interface MailboxStatistics {
+  inboxMessages: number;
+  inboxThreads: number;
+  unreadInboxMessages: number;
+  totalMessages: number | null;
+  historyId: string | null;
+}
+
+export interface MailSynchronizationSummary {
+  synchronizedMessages: number;
+  detectedMessages: number | null;
+  isComplete: boolean;
+  pageCount: number;
+  durationMs: number;
+  completedAt: string;
+  cache: "hit" | "miss";
 }
 
 export interface MailConnectionStatus {

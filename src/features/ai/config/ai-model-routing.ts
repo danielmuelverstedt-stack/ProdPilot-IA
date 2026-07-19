@@ -15,7 +15,9 @@ export function getAiModelRoute(operation: MailAiOperationType): AiModelRoute {
     ? process.env.OPENAI_MAIL_ANALYSIS_MODEL
     : operation === "mail_reply"
       ? process.env.OPENAI_MAIL_REPLY_MODEL
-      : process.env.OPENAI_MAIL_REWRITE_MODEL;
+      : operation === "mail_rewrite"
+        ? process.env.OPENAI_MAIL_REWRITE_MODEL
+        : undefined;
   return {
     model: configured?.trim() || fallback,
     fallbackModel: configured?.trim() && configured.trim() !== fallback ? fallback : null,

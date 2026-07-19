@@ -178,6 +178,8 @@ Chaque enregistrement nettoyé conserve un lien vers l’import et, si possible,
 
 ## Flux de données du planning
 
+Le flux réel des exports Top / Details, ses stockages séparés, ses contrôles et ses limites sont détaillés dans `docs/39 - ERP Planning Import.md`.
+
 1. Le `settings-repository` charge et migre la configuration Production versionnée. Il constitue l’unique frontière de persistance locale et pourra être remplacé par un dépôt Supabase.
 2. Le service `planning-view` combine les données métier de démonstration avec les machines, départements, capacités, priorités, statuts et types actifs des Réglages.
 3. Les composants Planning consomment uniquement cette projection typée : ils ne lisent pas `localStorage` et ne contiennent aucun référentiel société.

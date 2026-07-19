@@ -46,7 +46,7 @@ function isSettings(value: unknown): value is AppSettings {
   const themeValid = isRecord(value.theme) && hasStrings(value.theme, ["primary", "secondary", "success", "warning", "danger", "information", "background", "card", "border", "text"]);
   const production = isRecord(value.production) ? value.production : null;
   const productionValid = production !== null &&
-    Array.isArray(production.machines) && production.machines.every((machine) => isRecord(machine) && hasStrings(machine, ["id", "name", "displayName", "department", "departmentId", "machineType", "color", "photoDataUrl", "technicalInformation"]) && typeof machine.active === "boolean" && typeof machine.order === "number") &&
+    Array.isArray(production.machines) && production.machines.every((machine) => isRecord(machine) && hasStrings(machine, ["id", "name", "displayName", "department", "departmentId", "machineType", "color", "photoDataUrl", "technicalInformation"]) && typeof machine.active === "boolean" && typeof machine.order === "number" && (machine.erpCode === undefined || typeof machine.erpCode === "string") && (machine.deleted === undefined || typeof machine.deleted === "boolean") && (machine.favorite === undefined || typeof machine.favorite === "boolean") && (machine.futureCapacityHours === undefined || machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number") && (machine.comments === undefined || typeof machine.comments === "string")) &&
     Array.isArray(production.departments) && production.departments.every(isStandard) &&
     Array.isArray(production.priorities) && production.priorities.every((item) => isStandard(item) && isRecord(item) && typeof item.highlight === "boolean") &&
     [production.statuses, production.maintenanceStatuses].every((items) => Array.isArray(items) && items.every((item) => isStandard(item) && isRecord(item) && ["planned", "in-progress", "blocked", "completed", "neutral"].includes(String(item.behavior)))) &&
@@ -79,7 +79,7 @@ function isSettings(value: unknown): value is AppSettings {
     && ["local_first", "balanced"].includes(String(value.mailMemory.aiEscalationMode))
     && (value.mailMemory.lastBackupAt === null || typeof value.mailMemory.lastBackupAt === "string");
   const assistantValid = isRecord(value.mailAssistant)
-    && hasBooleans(value.mailAssistant, ["speakOpeningBrief", "askFollowUpQuestion", "autoListenAfterBrief", "includePendingDrafts", "includeMessagesWithoutStatus", "includeOverdueFollowUps", "includeInformationalMessages", "replayButtonVisible", "voiceEnabled", "voiceInteractionEnabled", "continuousConversation", "disableContinuousOnBlur", "transcriptPreview", "submitAutomatically", "voiceOutputEnabled", "speakConfirmations", "speakExecutionSummaries", "interruptAssistantBySpeaking"])
+    && hasBooleans(value.mailAssistant, ["speakOpeningBrief", "askFollowUpQuestion", "autoListenAfterBrief", "includePendingDrafts", "includeMessagesWithoutStatus", "includeOverdueFollowUps", "includeInformationalMessages", "replayButtonVisible", "voiceEnabled", "voiceInteractionEnabled", "continuousConversation", "disableContinuousOnBlur", "transcriptPreview", "submitAutomatically", "voiceOutputEnabled", "writtenResponseEnabled", "speakConfirmations", "speakExecutionSummaries", "interruptAssistantBySpeaking"])
     && ["maximumItemsSpoken", "speechRate", "speechVolume", "silenceTimeoutSeconds", "pauseAfterSpeechMs", "speechPitch", "microphoneTestDurationSeconds"].every((key) => isRecord(value.mailAssistant) && typeof value.mailAssistant[key] === "number")
     && hasStrings(value.mailAssistant, ["briefDetail", "preferredLanguage", "preferredVoiceName", "listeningBehavior", "inputMode", "pushToTalkShortcut", "customShortcut", "recognitionLanguage", "assistantVoicePreset", "longAnswerSpeech", "ttsProvider", "selectedMicrophoneDeviceId", "preferredVoiceId", "preferredVoiceLocale", "voiceFallbackStrategy"]) && Array.isArray(value.mailAssistant.workflowStatuses);
   const templatesValid = isRecord(value.templates) && Object.values(value.templates).every((template) => typeof template === "string");
@@ -191,6 +191,11 @@ function migrateProductionMachines(savedVersion: number | undefined, value: unkn
       order: typeof machine.order === "number" ? machine.order : index,
       photoDataUrl: typeof machine.photoDataUrl === "string" ? machine.photoDataUrl : fallback?.photoDataUrl ?? "",
       technicalInformation: typeof machine.technicalInformation === "string" ? machine.technicalInformation : fallback?.technicalInformation ?? "",
+      erpCode: typeof machine.erpCode === "string" ? machine.erpCode : fallback?.erpCode ?? "",
+      deleted: typeof machine.deleted === "boolean" ? machine.deleted : fallback?.deleted ?? false,
+      favorite: typeof machine.favorite === "boolean" ? machine.favorite : fallback?.favorite ?? false,
+      futureCapacityHours: machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number" ? machine.futureCapacityHours : fallback?.futureCapacityHours ?? null,
+      comments: typeof machine.comments === "string" ? machine.comments : fallback?.comments ?? "",
     };
   });
 }

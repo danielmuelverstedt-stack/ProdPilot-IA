@@ -2,6 +2,8 @@ import type { AiProviderType } from "@/features/ai/types/ai";
 import type {
   MailAiAnalysis,
   MailAiAnalysisInput,
+  MailAiConversationInput,
+  MailAiConversationResult,
   MailAiReply,
   MailAiReplyInput,
   MailAiRewriteInput,
@@ -13,4 +15,5 @@ export interface AiProvider {
   analyzeMail(input: MailAiAnalysisInput): Promise<MailAiAnalysis>;
   proposeMailReply(input: MailAiReplyInput): Promise<MailAiReply>;
   rewriteMailReply(input: MailAiRewriteInput): Promise<MailAiReply>;
+  continueMailConversation(input: MailAiConversationInput, signal?: AbortSignal): Promise<MailAiConversationResult>;
 }

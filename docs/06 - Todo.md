@@ -157,3 +157,44 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Réparer automatiquement le statut et l’erreur du compte après une synchronisation Gmail réussie ou une nouvelle callback OAuth.
 - [x] Propager les échecs Gmail avec des statuts HTTP et des codes d’erreur structurés, sans les transformer en liste vide.
 - [x] Couvrir concurrence, atomicité, récupération, callback, route et absence de manipulation des jetons par des tests ciblés.
+
+## Gestion opérationnelle Gmail — 19/07/2026
+
+- [x] Ajouter `gmail.modify`, détecter les anciens jetons en lecture seule et présenter une reconnexion explicite sans supprimer les jetons.
+- [x] Centraliser les libellés, mutations unitaires/groupées, fils, relecture Gmail, journal local et annulation compensée.
+- [x] Ajouter les vues Nouveaux, À traiter, En attente, Traités et Archivés par IA avec compteurs, actions unitaires et groupées.
+- [x] Ajouter une classification stricte, des règles utilisateur visibles, des garde-fous métier et une migration bornée avec confirmation.
+- [x] Auditer les références open source et documenter les licences sans reprendre de code tiers.
+- [x] Vérifier qu’aucune référence à l’ancienne intégration audio retirée ne subsiste dans le projet suivi.
+- [ ] Reconnecter manuellement le compte Google pour accorder `gmail.modify`, puis recetter les mutations réelles et leur annulation dans Gmail.
+- [ ] Remplacer les journaux et règles locaux par un stockage chiffré, transactionnel et multi-tenant avant production partagée.
+- [ ] Concevoir une automatisation éventuelle compatible avec la Constitution produit; les mutations sans confirmation précise restent désactivées.
+
+## Planning ERP opérationnel — 19/07/2026
+
+- [x] Reconnaître et valider les deux exports `REQ_MacroGamme_Top.xlsx` et `REQ_MacroGamme_Details.xlsx` à partir des fichiers réels.
+- [x] Archiver les sources immuables, refuser un couple déjà importé, conserver l’historique et séparer les ajustements manuels.
+- [x] Rapprocher Top, OF et opérations tout en conservant les lignes Top multiples, les opérations orphelines et les doublons exacts.
+- [x] Ajouter le cockpit paginé sans temps de fabrication, les filtres, tris, recherche, édition rapide, glisser-déposer et détail d’un OF.
+- [x] Ajouter les correspondances machines apprenantes, les machines non définies et la suppression logique du référentiel machine.
+- [x] Relier les modules Qualité ERP et Parc Machines à la projection importée réelle.
+- [x] Auditer les bibliothèques et projets de référence, intégrer uniquement `read-excel-file` sous MIT et documenter toutes les décisions.
+- [ ] Confirmer avec le propriétaire ERP la sémantique de `Macro_Gamme_Pe` et le dictionnaire des codes `IDOperation_Status` 1 à 5.
+- [ ] Ajouter les facteurs de priorité non disponibles dans les exports : client important, blocage assemblage, qualité produit et commande urgente.
+- [ ] Centraliser les Réglages côté serveur avec authentification, autorisation, entreprise active, chiffrement et stockage multi-tenant avant production partagée.
+- [ ] Évaluer une grille virtualisée uniquement si les mesures réelles dépassent les performances de la pagination serveur.
+
+## Planning ERP personnalisable — 19/07/2026
+
+- [x] Isoler les vues par entreprise locale, site et utilisateur actif derrière un dépôt de préférences versionné.
+- [x] Enregistrer automatiquement plusieurs vues avec colonnes ordonnées, visibles, figées, redimensionnées, regroupement, tri, filtres et zoom.
+- [x] Permettre le déplacement des colonnes par glisser-déposer et par commandes clavier, sans requête Planning.
+- [x] Détecter les articles présents dans plusieurs OF avec un moteur déterministe testé, un badge, une couleur accessible et deux filtres rapides.
+- [x] Ajouter les regroupements disponibles dans les sources : article, OF, machine, atelier, client, famille, priorité, statut et date.
+- [x] Mettre en cache la projection et sa vue dérivée dans le processus local, avec invalidation après import, ajustement ou correspondance.
+- [x] Empêcher les changements de filtres de recalculer la synthèse ERP et alléger les lignes de la réponse paginée.
+- [ ] Remplacer la persistance navigateur des vues par un dépôt serveur authentifié, multi-appareil et multi-tenant avant production partagée.
+- [ ] Virtualiser les lignes et colonnes après un prototype mesuré sur les volumes cibles ; la page reste actuellement limitée à 100 lignes.
+- [ ] Ajouter le déplacement groupé transactionnel après création du moteur de décisions et d’un aperçu de confirmation complet.
+- [ ] Ajouter les recommandations IA acceptées, ignorées ou reportées après définition des contraintes de regroupement et des sources autorisées.
+- [ ] Définir et valider la formule de l’économie potentielle de changements de série avant d’afficher un pourcentage.

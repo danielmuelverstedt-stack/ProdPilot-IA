@@ -44,6 +44,9 @@ Les composants interactifs sont des Client Components ciblés. Les pages et int�
 | `mail-connections` | Ajouter, activer, tester, synchroniser, paramétrer et déconnecter un compte. |
 | `mail-search` | Appliquer une recherche et des filtres indépendants du fournisseur. |
 | `mail-intelligence` | Exposer les contrats IA et les résultats déterministes temporaires. |
+| `mail-management-service` | Valider les mutations, relire Gmail, journaliser le résultat et restaurer les libellés lors d’une annulation. |
+| `mail-workflow` | Traduire les vues et actions ProdPilot vers les identifiants de libellés Gmail. |
+| `mail-classification-service` | Produire une décision stricte et déterminer si une proposition respecte les garde-fous d’automatisation. |
 | `mail-attachments` | Décrire icône, taille et capacités futures d’une pièce jointe. |
 | `mail-drafts` | Préparer copie de travail, modifications et révisions d’un brouillon. |
 | `mail-conversations` | Construire une conversation normalisée depuis un fil. |
@@ -57,6 +60,8 @@ Les composants interactifs sont des Client Components ciblés. Les pages et int�
 
 `MailMemoryRepository` conserve dans IndexedDB une projection locale sourcée des messages synchronisés, sessions, décisions et liens. Il ne contient aucun jeton et ne remplace ni le registre des comptes ni Gmail. Son adaptateur est versionné et remplaçable par un stockage serveur futur.
 
+`MailActivityRepository` et `MailRuleRepository` conservent en développement un journal borné des mutations et les règles approuvées dans `.local-data`. Gmail reste la source de vérité des libellés : chaque mutation est relue auprès du fournisseur avant d’être annoncée comme réussie. Ces dépôts locaux doivent devenir chiffrés, transactionnels et multi-tenant avant production.
+
 ## Expérience et accessibilité
 
 - Interface française et dates européennes.
@@ -65,7 +70,7 @@ Les composants interactifs sont des Client Components ciblés. Les pages et int�
 - États explicites pour chargement, vide, erreur et connexion absente.
 - Focus visible, commandes natives, dialogues clavier et statuts textuels.
 - Aucun HTML de message non fiable n’est rendu comme HTML actif.
-- Ignorer masque seulement la vue et ne modifie pas le fournisseur.
+- Les actions de workflow confirmées modifient les libellés Gmail réels ; l’ancien masquage local reste distinct et explicitement libellé.
 - Créer un brouillon et envoyer sont deux actions distinctes ; l’envoi n’existe pas.
 
 ## Réglages Mails
@@ -121,7 +126,7 @@ Le contrat couvre nouveau message, synchronisation, perte de connexion, erreur f
 
 ## Feuille de route et intégrations futures
 
-1. Ajouter des tests automatisés des recherches, migrations, parseurs et routes.
+1. Étendre les tests automatisés aux erreurs HTTP réelles et aux volumes Gmail élevés.
 2. Ajouter authentification applicative, permissions et isolation par entreprise.
 3. Remplacer les deux stockages locaux par des dépôts chiffrés de production.
 4. Valider Google OAuth réel de bout en bout avec les identifiants autorisés.

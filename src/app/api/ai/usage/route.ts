@@ -6,7 +6,7 @@ import { parseAiBudgetPolicy, parseAiPricingRegistry } from "@/features/ai/valid
 import { apiError, apiJson, isTrustedSameOriginRequest } from "@/features/mail/server/mail-api-response";
 
 export const runtime = "nodejs";
-const OPERATIONS: Array<AiOperationType | "all"> = ["all", "mail_analysis", "mail_reply", "mail_rewrite", "connection_test"];
+const OPERATIONS: Array<AiOperationType | "all"> = ["all", "mail_analysis", "mail_reply", "mail_rewrite", "mail_conversation", "connection_test"];
 
 export async function POST(request: Request) {
   if (!isTrustedSameOriginRequest(request)) return apiError("La requête d’utilisation IA est refusée.", 403);

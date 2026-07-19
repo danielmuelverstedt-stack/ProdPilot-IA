@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MailAssistantInput } from "@/features/mail-assistant/components/MailAssistantInput";
 import { MailDecisionList } from "@/features/mail-assistant/components/MailDecisionList";
 import { MailNoActionGroup } from "@/features/mail-assistant/components/MailNoActionGroup";
@@ -12,22 +12,23 @@ import { MailCommandCenterStandby } from "@/features/mail-assistant/components/M
 import { MailExecutionTimeline } from "@/features/mail-assistant/components/MailExecutionTimeline";
 import { MailAssistantSpeechOutput } from "@/features/mail-assistant/components/MailAssistantSpeechOutput";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
+import { createMailAiConfiguration } from "@/features/ai/components/mail-ai-client-config";
 import { getBrowserMailMemoryRepository, persistMailAssistantSession } from "@/features/mail-memory/services/mail-memory-service";
 import { createMailSessionBrief } from "@/features/mail-assistant/services/mail-session-brief-service";
 import { createLocalMailReasoningReport } from "@/features/mail-reasoning/services/local-mail-reasoning-service";
 import type { MailReasoningReport } from "@/features/mail-reasoning/types/mail-reasoning";
 import type { MailMemoryContext } from "@/features/mail-memory/types/mail-memory";
-import type { MailProviderType } from "@/features/mail/types/mail";
+import type { MailAccount } from "@/features/mail/types/mail";
 import { createMailSourceLink, resolveSourceLink } from "@/features/mail-memory/services/source-link-resolver";
 import { executeLocalMemoryCommand } from "@/features/mail-memory/services/mail-memory-command-service";
 import { randomLocalId } from "@/features/mail-memory/services/random-local-id";
+import { browserTtsProvider } from "@/features/mail-assistant/services/browser-tts-provider";
 import type { SourceLink } from "@/features/mail-memory/types/mail-memory";
 import type { MailAssistantSession, MailOpeningBrief } from "@/features/mail-assistant/types/mail-assistant";
 
-interface InitialAccount { id: string; provider: MailProviderType; displayName: string; emailAddress: string; mode: "demo" | "oauth"; organizationId: string | null; lastSyncAt: string | null }
 const LOADING_PHASES = ["Synchronisation de la boîte mail…", "Analyse des nouveaux messages…", "Identification des réponses nécessaires…", "Préparation des propositions…", "Session prête."];
 
-export function MailAssistantWorkspace({ initialAccount }: { initialAccount: InitialAccount }) {
+export function MailAssistantWorkspace({ initialAccount }: { initialAccount: MailAccount }) {
   const { settings } = useSettings();
   const user = settings.users.find((item) => item.active) ?? settings.users[0];
   const [session, setSession] = useState<MailAssistantSession | null>(null);
@@ -44,9 +45,10 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Ini
   const [originalId, setOriginalId] = useState<string | null>(null);
   const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
   const [memorySources, setMemorySources] = useState<SourceLink[]>([]);
+  const activeRequest = useRef<AbortController | null>(null);
   const firstName = user?.firstName ?? "Daniel";
   const memoryContext = useMemo<MailMemoryContext>(() => ({ accountId: initialAccount.id, provider: initialAccount.provider, userId: user?.id ?? "local-user", companyId: initialAccount.organizationId ?? "local-company", mode: initialAccount.mode }), [initialAccount.id, initialAccount.mode, initialAccount.organizationId, initialAccount.provider, user?.id]);
-  useEffect(() => { const timer = window.setTimeout(() => { const repository = getBrowserMailMemoryRepository(); void Promise.all([createMailSessionBrief({ repository, context: memoryContext, session: null, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSyncAt, synchronizationAvailable: true, settings: settings.mailAssistant }), createLocalMailReasoningReport({ repository, context: memoryContext })]).then(([nextBrief, nextReasoning]) => { setBrief(nextBrief); setReasoning(nextReasoning); }).catch(() => undefined); }, 0); return () => window.clearTimeout(timer); }, [firstName, initialAccount.lastSyncAt, initialAccount.mode, memoryContext, settings.mailAssistant]);
+  useEffect(() => { const timer = window.setTimeout(() => { const repository = getBrowserMailMemoryRepository(); void Promise.all([createMailSessionBrief({ repository, context: memoryContext, session: null, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSuccessfulSyncAt, synchronizationAvailable: true, settings: settings.mailAssistant }), createLocalMailReasoningReport({ repository, context: memoryContext })]).then(([nextBrief, nextReasoning]) => { setBrief(nextBrief); setReasoning(nextReasoning); }).catch(() => undefined); }, 0); return () => window.clearTimeout(timer); }, [firstName, initialAccount.lastSuccessfulSyncAt, initialAccount.mode, memoryContext, settings.mailAssistant]);
 
   async function remember(nextSession: MailAssistantSession) {
     try { const repository = getBrowserMailMemoryRepository(); await persistMailAssistantSession(nextSession, memoryContext, settings.mailMemory, initialAccount.emailAddress); setReasoning(await createLocalMailReasoningReport({ repository, context: memoryContext })); setMemoryNotice(null); }
@@ -58,9 +60,9 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Ini
     try {
       const response = await fetch("/api/mail/assistant/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const payload = await readResponse(response);
-      for (const phase of LOADING_PHASES.slice(1)) { setLoadingStatus(phase); await pause(240); }
-      setSession(payload.session); await remember(payload.session); setBrief(await createMailSessionBrief({ repository: getBrowserMailMemoryRepository(), context: memoryContext, session: payload.session, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSyncAt, synchronizationAvailable: true, settings: settings.mailAssistant })); setScreen("session");
-    } catch (caught) { setError(caught instanceof Error ? caught.message : "La synchronisation n’a pas abouti."); setBrief(await createMailSessionBrief({ repository: getBrowserMailMemoryRepository(), context: memoryContext, session: null, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSyncAt, synchronizationAvailable: false, settings: settings.mailAssistant })); setScreen("standby"); }
+      setLoadingStatus(LOADING_PHASES.at(-1) ?? "Session prête.");
+      setSession(payload.session); await remember(payload.session); setBrief(await createMailSessionBrief({ repository: getBrowserMailMemoryRepository(), context: memoryContext, session: payload.session, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSuccessfulSyncAt, synchronizationAvailable: true, settings: settings.mailAssistant })); setScreen("session");
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "La synchronisation n’a pas abouti."); setBrief(await createMailSessionBrief({ repository: getBrowserMailMemoryRepository(), context: memoryContext, session: null, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSuccessfulSyncAt, synchronizationAvailable: false, settings: settings.mailAssistant })); setScreen("standby"); }
     finally { setIsBusy(false); }
   }
   async function executeCommand(text = input) {
@@ -72,11 +74,13 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Ini
         const now = new Date().toISOString(); const next = { ...session, conversation: [...session.conversation, { id: randomLocalId("user"), role: "user" as const, text: text.trim(), createdAt: now }, { id: randomLocalId("assistant"), role: "assistant" as const, text: local.text ?? "", createdAt: now }] };
         setSession(next); setMemorySources(local.sourceLinks ?? []); await remember(next); setInput(""); return;
       }
-      const response = await fetch("/api/mail/assistant/command", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.id, text: text.trim() }) }); const payload = await readResponse(response); setSession(payload.session); setMemorySources([]); await remember(payload.session); setInput("");
+      const controller = new AbortController(); activeRequest.current = controller;
+      const response = await fetch("/api/mail/assistant/command", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.id, text: text.trim(), configuration: createMailAiConfiguration(settings, initialAccount) }), signal: controller.signal }); const payload = await readResponse(response); setSession(payload.session); setMemorySources([]); await remember(payload.session); setInput("");
     }
-    catch (caught) { setError(caught instanceof Error ? caught.message : "La commande n’a pas pu être exécutée."); }
-    finally { setIsBusy(false); }
+    catch (caught) { if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "La commande n’a pas pu être exécutée."); }
+    finally { activeRequest.current = null; setIsBusy(false); }
   }
+  function stopResponse() { activeRequest.current?.abort(); browserTtsProvider.stop(); setIsBusy(false); }
   if (screen === "standby") return <MailSessionShell accountLabel={initialAccount.emailAddress}><MailCommandCenterStandby firstName={firstName} account={`${initialAccount.displayName} · ${initialAccount.emailAddress}`} brief={brief} reasoning={reasoning} isLoading={isBusy} error={error} onStart={startSession}/></MailSessionShell>;
   if (screen === "loading") return <MailSessionShell accountLabel={initialAccount.emailAddress} progress="Analyse en cours"><MailSessionLoading status={loadingStatus}/></MailSessionShell>;
   if (!session) return null;
@@ -92,15 +96,15 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Ini
       <MailNoActionGroup session={session} onCommand={(text) => void executeCommand(text)}/>
       </div><aside className="lg:sticky lg:top-24 lg:self-start"><MailExecutionTimeline session={session} isBusy={isBusy}/></aside></div>
       {memoryNotice ? <p role="status" className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">{memoryNotice}</p> : null}
+      {settings.mailAssistant.writtenResponseEnabled && session.conversation.at(-1)?.role === "assistant" ? <div aria-live="polite" className="mt-6 max-w-3xl whitespace-pre-wrap rounded-2xl bg-white p-4 text-sm leading-6 text-slate-800 shadow-sm">{session.conversation.at(-1)?.text}</div> : null}
       <details className="mt-10 rounded-2xl bg-white/[0.04] p-4"><summary className="cursor-pointer text-sm font-semibold text-white/50">Conversation · secondaire</summary><div className="mt-4 space-y-2" aria-live="polite">{session.conversation.slice(1).map((entry) => <div key={entry.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-5 ${entry.role === "user" ? "ml-auto bg-emerald-900/70 text-white" : "bg-white/[0.07] text-white/65"}`}>{entry.text}</div>)}</div></details>
-      {session.conversation.length > 1 && session.conversation.at(-1)?.role === "assistant" && settings.mailAssistant.speakConfirmations ? <div className="mt-3"><MailAssistantSpeechOutput text={session.conversation.at(-1)?.text ?? ""} settings={settings.mailAssistant} autoPlay onFinished={() => { if (settings.mailAssistant.continuousConversation && settings.mailAssistant.autoListenAfterBrief) setAutoListenToken(Date.now()); }}/></div> : null}
+      {session.conversation.length > 1 && session.conversation.at(-1)?.role === "assistant" && settings.mailAssistant.voiceOutputEnabled ? <div className="mt-3"><MailAssistantSpeechOutput text={session.conversation.at(-1)?.text ?? ""} settings={settings.mailAssistant} autoPlay onFinished={() => { if (settings.mailAssistant.continuousConversation && settings.mailAssistant.autoListenAfterBrief) setAutoListenToken(Date.now()); }}/></div> : null}
       {memorySources.length ? <div className="mt-3 rounded-2xl border border-black/[0.06] bg-white p-4 text-sm"><p className="font-semibold text-slate-700">Réponse basée sur {memorySources.length} source{memorySources.length > 1 ? "s" : ""} locale{memorySources.length > 1 ? "s" : ""}</p><div className="mt-2 flex flex-wrap gap-2">{memorySources.map((source) => { const resolved = resolveSourceLink(source); return resolved.href ? <a key={source.id} href={resolved.href} target="_blank" rel="noreferrer" className="rounded-lg border border-black/10 px-3 py-2 font-semibold text-[#1f5f49]">{resolved.label}</a> : null; })}</div></div> : null}
       <button type="button" onClick={() => void executeCommand("Termine la session")} className="mt-8 text-sm font-semibold text-slate-500">Terminer la session</button>
-      <MailAssistantInput value={input} isBusy={isBusy} error={error} settings={settings.mailAssistant} autoStartToken={autoListenToken} onChange={setInput} onSend={() => void executeCommand()} onVoiceSubmit={(text) => void executeCommand(text)}/>
+      <MailAssistantInput value={input} isBusy={isBusy} error={error} settings={settings.mailAssistant} autoStartToken={autoListenToken} onChange={setInput} onSend={() => void executeCommand()} onStop={stopResponse} onVoiceSubmit={(text) => void executeCommand(text)}/>
     </div>
     <MailOriginalMessageDrawer message={originalMessage} source={originalSource} onClose={() => setOriginalId(null)}/>
   </MailSessionShell>;
 }
 
 async function readResponse(response: Response): Promise<{ session: MailAssistantSession }> { const payload = await response.json() as { session?: MailAssistantSession; message?: string }; if (!response.ok || !payload.session) throw new Error(payload.message ?? "Une erreur inattendue est survenue."); return { session: payload.session }; }
-function pause(milliseconds: number) { return new Promise((resolve) => setTimeout(resolve, milliseconds)); }

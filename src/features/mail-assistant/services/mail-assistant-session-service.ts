@@ -3,9 +3,11 @@ import { randomUUID } from "node:crypto";
 import { classifyMailForAssistant, createMailAssistantBrief } from "@/features/mail-assistant/services/mail-assistant-classifier";
 import { canExecuteMailCommand } from "@/features/mail-assistant/services/mail-approval-engine";
 import { interpretMailAssistantCommand } from "@/features/mail-assistant/services/mail-command-interpreter";
+import { continueMailAssistantConversation } from "@/features/mail-assistant/services/mail-assistant-ai-service";
 import { mailAssistantSessionRepository } from "@/features/mail-assistant/server/mail-assistant-session-repository";
 import { getActiveMailContext, listActiveMailMessages } from "@/features/mail/services/mail-account-context";
 import type { CreateMailDraftInput } from "@/features/mail/types/mail";
+import type { MailAiConfiguration } from "@/features/ai/types/mail-ai";
 import type { MailAssistantAuditEvent, MailAssistantReplyProposal, MailAssistantSession, MailAssistantSessionMessage } from "@/features/mail-assistant/types/mail-assistant";
 
 export async function startMailAssistantSession(): Promise<MailAssistantSession> {
@@ -24,7 +26,7 @@ export async function startMailAssistantSession(): Promise<MailAssistantSession>
   return session;
 }
 
-export async function executeMailAssistantText(sessionId: string, text: string): Promise<MailAssistantSession> {
+export async function executeMailAssistantText(sessionId: string, text: string, configuration: MailAiConfiguration | null = null, signal?: AbortSignal): Promise<MailAssistantSession> {
   const session = await requireCurrentSession(sessionId);
   const command = interpretMailAssistantCommand(text, session.messages, session.pendingApproval?.intent);
   session.conversation.push({ id: randomUUID(), role: "user", text, createdAt: new Date().toISOString() });
@@ -40,6 +42,10 @@ export async function executeMailAssistantText(sessionId: string, text: string):
   if (command.intent === "create_draft" || command.intent === "send_email") return createDrafts(session, command.messageIds, command.intent === "send_email");
   if (/réponses? (?:sont )?(?:bonnes?|prêtes?|validées?)/i.test(text)) { session.pendingApproval = { intent: "create_draft", messageIds: session.replies.filter((reply) => reply.status === "pending").map((reply) => reply.messageId), level: 2 }; return respondAndSave(session, "Je peux créer les brouillons correspondants. Dites « OK » ou « Prépare les brouillons ». Aucun message ne sera envoyé."); }
   if (/^(ok|oui|d’accord|fais-le)[.!\s]*$/i.test(text) && !session.pendingApproval) return respondAndSave(session, "D’accord. Indiquez l’action à effectuer : préparer les brouillons, créer une action ou modifier une réponse.");
+  if (command.isConversationalFallback) {
+    if (!configuration) return respondAndSave(session, "La configuration de conversation IA est absente. Rechargez la page puis réessayez.");
+    return respondAndSave(session, await continueMailAssistantConversation({ session, text, messageIds: command.messageIds, configuration, signal }));
+  }
   return respondAndSave(session, "Je peux modifier une proposition, préparer les brouillons, créer une action locale, ignorer un message ou terminer la session.");
 }
 

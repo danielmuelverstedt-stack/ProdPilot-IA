@@ -8,13 +8,15 @@ import { getMailAiTokenBudget } from "@/features/ai/config/ai-token-budget";
 import {
   MAIL_ANALYSIS_PROMPT,
   MAIL_ANALYSIS_PROMPT_VERSION,
+  MAIL_CONVERSATION_PROMPT,
+  MAIL_CONVERSATION_PROMPT_VERSION,
   MAIL_REPLY_PROMPT,
   MAIL_REPLY_PROMPT_VERSION,
   MAIL_REWRITE_PROMPT,
   MAIL_REWRITE_PROMPT_VERSION,
 } from "@/features/ai/prompts/mail-ai-prompts";
 import { AiServiceError, type AiUsageMetadata, type MailAiOperationType } from "@/features/ai/types/ai";
-import type { MailAiAnalysis, MailAiAnalysisInput, MailAiReply, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
+import type { MailAiAnalysis, MailAiAnalysisInput, MailAiConversationInput, MailAiConversationResult, MailAiReply, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
 import { createMailAnalysisJsonSchema, MAIL_REPLY_JSON_SCHEMA, validateMailAiAnalysis, validateMailAiReply } from "@/features/ai/validation/mail-ai-schema";
 
 export class OpenAiProvider implements AiProvider {
@@ -61,6 +63,35 @@ export class OpenAiProvider implements AiProvider {
     try {
       const response = await this.client.responses.create({ model: this.model, input: "Réponds uniquement par OK.", max_output_tokens: 32, store: false });
       return { model: this.model, usage: usageFrom(response) };
+    } catch (error) {
+      throw mapOpenAiError(error);
+    }
+  }
+
+  async continueMailConversation(input: MailAiConversationInput, signal?: AbortSignal): Promise<MailAiConversationResult> {
+    const operation = "mail_conversation" as const;
+    try {
+      const route = getAiModelRoute(operation);
+      const budget = getMailAiTokenBudget(operation, {
+        maximumInputTokens: input.configuration.maximumInputContextTokens,
+        maximumOutputTokens: input.configuration.maximumReplyOutputTokens,
+      });
+      const response = await this.client.responses.create({
+        model: route.model,
+        instructions: MAIL_CONVERSATION_PROMPT,
+        input: [
+          { role: "user", content: `Contexte Mail autorisé :\n${input.mailContext}` },
+          ...input.history,
+        ],
+        max_output_tokens: budget.maximumOutputTokens,
+        prompt_cache_key: getPromptCacheKey(operation),
+        store: false,
+      }, { signal });
+      if (!response.output_text.trim()) throw invalidOutput();
+      return {
+        text: response.output_text.trim(), generatedAt: new Date().toISOString(), provider: this.type,
+        model: route.model, promptVersion: MAIL_CONVERSATION_PROMPT_VERSION, usage: usageFrom(response),
+      };
     } catch (error) {
       throw mapOpenAiError(error);
     }

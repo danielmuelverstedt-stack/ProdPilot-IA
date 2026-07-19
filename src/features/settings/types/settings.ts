@@ -2,7 +2,7 @@ import type { AiBudgetPolicy, AiPricingEntry } from "@/features/ai/types/ai";
 import type { MailMemorySettings } from "@/features/mail-memory/types/mail-memory";
 import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
 
-export const SETTINGS_VERSION = 10;
+export const SETTINGS_VERSION = 12;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -65,6 +65,11 @@ export interface MachineSettings {
   order: number;
   photoDataUrl: string;
   technicalInformation: string;
+  erpCode?: string;
+  deleted?: boolean;
+  favorite?: boolean;
+  futureCapacityHours?: number | null;
+  comments?: string;
 }
 
 export interface OrderedStandardSettings {

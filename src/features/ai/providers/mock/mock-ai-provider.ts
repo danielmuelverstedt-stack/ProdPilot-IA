@@ -1,5 +1,5 @@
 import type { AiProvider } from "@/features/ai/services/ai-provider";
-import type { MailAiAnalysisInput, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
+import type { MailAiAnalysisInput, MailAiConversationInput, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
 
 export class MockAiProvider implements AiProvider {
   readonly type = "mock" as const;
@@ -40,6 +40,17 @@ export class MockAiProvider implements AiProvider {
     else if (input.command === "more_diplomatic") body = body.replace("Nous vérifions", "Nous allons examiner avec attention");
     else if (input.command === "more_direct") body = body.replace("Nous allons examiner avec attention", "Nous vérifions");
     return this.reply(input, body, "deterministic-rewrite-v1");
+  }
+
+  async continueMailConversation(input: MailAiConversationInput) {
+    const question = input.history.at(-1)?.content ?? "";
+    return {
+      text: question
+        ? "OpenAI est indisponible ou désactivé. Je peux néanmoins exécuter les commandes Mail prévues et utiliser les résultats déterministes locaux."
+        : "Le mode conversationnel déterministe est disponible.",
+      generatedAt: new Date().toISOString(), provider: this.type, model: this.model,
+      promptVersion: "deterministic-conversation-v1", usage: null,
+    };
   }
 
   private reply(input: MailAiReplyInput, bodyText: string, promptVersion: string) {

@@ -123,3 +123,18 @@ export interface MailAiRewriteInput extends MailAiReplyInput {
   currentReply: MailAiReply;
   command: MailAiRewriteCommand;
 }
+
+export interface MailAiConversationInput {
+  history: Array<{ role: "user" | "assistant"; content: string }>;
+  mailContext: string;
+  configuration: MailAiConfiguration;
+}
+
+export interface MailAiConversationResult {
+  text: string;
+  generatedAt: string;
+  provider: AiProviderType;
+  model: string;
+  promptVersion: string;
+  usage: AiUsageMetadata | null;
+}

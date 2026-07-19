@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import {
   disconnectGoogleAccount,
   getAuthorizedGoogleClient,
+  getGooglePermissionStatus,
   testGoogleConnection,
 } from "@/features/mail/server/google/google-auth";
 import { getGoogleTokenKey } from "@/features/mail/server/google/google-account-key";
@@ -15,21 +16,24 @@ import {
   assertGmailId,
   clampGoogleMessageLimit,
   getGoogleHttpStatus,
-  receivedSinceYesterdayQuery,
   validateGoogleDraft,
 } from "@/features/mail/providers/google/google-mail-validation";
 import { googleTokenRepository } from "@/features/mail/server/google/local-google-token-repository";
 import type { MailProvider } from "@/features/mail/services/mail-provider";
+import type { MailLabelMutation, MailProviderLabel } from "@/features/mail-management/types/mail-management";
 import type {
   CreateMailDraftInput,
   ListMessagesOptions,
   MailAccount,
   MailConnectionStatus,
   MailDraft,
+  MailboxStatistics,
   MailMessage,
   MailSearchCriteria,
   MailThread,
 } from "@/features/mail/types/mail";
+
+let labelCreationQueue: Promise<void> = Promise.resolve();
 
 export class GoogleMailProvider implements MailProvider {
   readonly type = "google" as const;
@@ -95,27 +99,34 @@ export class GoogleMailProvider implements MailProvider {
 
   async listMessages(options: ListMessagesOptions = {}): Promise<MailMessage[]> {
     const limit = clampGoogleMessageLimit(options.limit);
-    const queries = [
-      receivedSinceYesterdayQuery(),
-      options.unreadOnly ? "is:unread" : "",
-      "-in:spam",
-      "-in:trash",
-    ].filter(Boolean);
     return this.withGmail(async (gmail, emailAddress) => {
-      const list = await gmail.users.messages.list({
-        userId: "me",
-        maxResults: limit,
-        q: queries.join(" "),
+      const ids = await listMessageIds(gmail, {
+        limit,
+        retrieveAll: options.retrieveAll === true,
+        pageToken: options.cursor,
+        labelIds: ["INBOX"],
+        query: options.unreadOnly ? "is:unread" : undefined,
       });
-      const messages = await Promise.all((list.data.messages ?? []).map(async ({ id }) => {
-        if (!id) return null;
-        const result = await gmail.users.messages.get({ userId: "me", id, format: "full" });
-        return this.withAccountId(parseGmailMessage(result.data, emailAddress));
-      }));
+      const messages = await getMessagesInBatches(gmail, ids, emailAddress, (message) => this.withAccountId(message));
       await googleTokenRepository.updateSynchronization(this.key, new Date().toISOString());
       return messages
-        .filter((message): message is MailMessage => message !== null)
         .filter((message) => !options.category || message.category === options.category);
+    });
+  }
+
+  async getMailboxStatistics(): Promise<MailboxStatistics> {
+    return this.withGmail(async (gmail) => {
+      const [profile, inbox] = await Promise.all([
+        gmail.users.getProfile({ userId: "me" }),
+        gmail.users.labels.get({ userId: "me", id: "INBOX" }),
+      ]);
+      return {
+        inboxMessages: inbox.data.messagesTotal ?? 0,
+        inboxThreads: inbox.data.threadsTotal ?? 0,
+        unreadInboxMessages: inbox.data.messagesUnread ?? 0,
+        totalMessages: profile.data.messagesTotal ?? null,
+        historyId: profile.data.historyId ?? null,
+      };
     });
   }
 
@@ -160,15 +171,12 @@ export class GoogleMailProvider implements MailProvider {
     const query = buildGmailSearchQuery(criteria);
     if (!query) return [];
     return this.withGmail(async (gmail, emailAddress) => {
-      const list = await gmail.users.messages.list({
-        userId: "me",
-        maxResults: clampGoogleMessageLimit(this.account.settings.maximumMessagesRetrieved),
-        q: query,
+      const ids = await listMessageIds(gmail, {
+        limit: clampGoogleMessageLimit(this.account.settings.maximumMessagesRetrieved),
+        retrieveAll: false,
+        query,
       });
-      return Promise.all((list.data.messages ?? []).flatMap(({ id }) => id ? [
-        gmail.users.messages.get({ userId: "me", id, format: "full" })
-          .then((result) => this.withAccountId(parseGmailMessage(result.data, emailAddress))),
-      ] : []));
+      return getMessagesInBatches(gmail, ids, emailAddress, (message) => this.withAccountId(message));
     });
   }
 
@@ -222,8 +230,86 @@ export class GoogleMailProvider implements MailProvider {
     });
   }
 
-  async archiveMessage(): Promise<void> {
-    throw new Error("L’archivage nécessite la portée Gmail Modify et n’est pas disponible dans cette version.");
+  async archiveMessage(messageId: string): Promise<void> {
+    await this.modifyLabels({
+      messageIds: [messageId],
+      target: "message",
+      addLabelIds: [],
+      removeLabelIds: ["INBOX"],
+    });
+  }
+
+  async getManagementPermission(): Promise<{ canModifyMail: boolean; reconnectRequired: boolean }> {
+    const permission = await getGooglePermissionStatus(this.key);
+    return { canModifyMail: permission.canModifyMail, reconnectRequired: !permission.canModifyMail };
+  }
+
+  async listLabels(): Promise<MailProviderLabel[]> {
+    return this.withGmail(async (gmail) => {
+      const result = await gmail.users.labels.list({ userId: "me" });
+      return (result.data.labels ?? []).flatMap((label) => label.id && label.name ? [{
+        id: label.id,
+        name: label.name,
+        type: label.type === "system" ? "system" as const : "user" as const,
+      }] : []);
+    });
+  }
+
+  async ensureLabels(names: string[]): Promise<MailProviderLabel[]> {
+    await this.assertManagementPermission();
+    const operation = labelCreationQueue.catch(() => undefined).then(() => this.ensureLabelsUnlocked(names));
+    labelCreationQueue = operation.then(() => undefined, () => undefined);
+    return operation;
+  }
+
+  private async ensureLabelsUnlocked(names: string[]): Promise<MailProviderLabel[]> {
+    const existing = await this.listLabels();
+    const byName = new Map(existing.map((label) => [label.name, label]));
+    for (const name of [...new Set(names)]) {
+      if (byName.has(name)) continue;
+      const created = await this.withGmail(async (gmail) => gmail.users.labels.create({
+        userId: "me",
+        requestBody: { name, labelListVisibility: "labelShow", messageListVisibility: "show" },
+      }));
+      if (!created.data.id || !created.data.name) throw new Error(`Gmail n’a pas confirmé la création du libellé « ${name} ».`);
+      byName.set(name, { id: created.data.id, name: created.data.name, type: "user" });
+    }
+    return names.map((name) => byName.get(name)).filter((label): label is MailProviderLabel => Boolean(label));
+  }
+
+  async modifyLabels(input: MailLabelMutation): Promise<MailMessage[]> {
+    await this.assertManagementPermission();
+    const messageIds = [...new Set(input.messageIds)];
+    if (!messageIds.length || messageIds.length > 1000) throw new Error("La sélection de messages Gmail est invalide.");
+    messageIds.forEach(assertGmailId);
+    input.addLabelIds.forEach(assertLabelId);
+    input.removeLabelIds.forEach(assertLabelId);
+    if (input.target === "thread") {
+      if (!input.threadId) throw new Error("Le fil Gmail ciblé est invalide.");
+      assertGmailId(input.threadId);
+      await this.withGmail(async (gmail) => gmail.users.threads.modify({
+        userId: "me",
+        id: input.threadId,
+        requestBody: { addLabelIds: input.addLabelIds, removeLabelIds: input.removeLabelIds },
+      }));
+      return (await this.getThread(input.threadId))?.messages ?? [];
+    }
+    await this.withGmail(async (gmail) => {
+      if (messageIds.length === 1) {
+        await gmail.users.messages.modify({
+          userId: "me",
+          id: messageIds[0],
+          requestBody: { addLabelIds: input.addLabelIds, removeLabelIds: input.removeLabelIds },
+        });
+      } else {
+        await gmail.users.messages.batchModify({
+          userId: "me",
+          requestBody: { ids: messageIds, addLabelIds: input.addLabelIds, removeLabelIds: input.removeLabelIds },
+        });
+      }
+    });
+    const messages = await Promise.all(messageIds.map((id) => this.getMessage(id)));
+    return messages.filter((message): message is MailMessage => message !== null);
   }
 
   private get key() {
@@ -232,6 +318,12 @@ export class GoogleMailProvider implements MailProvider {
 
   private withAccountId(message: MailMessage): MailMessage {
     return { ...message, accountId: this.account.id };
+  }
+
+  private async assertManagementPermission(): Promise<void> {
+    if (!(await getGooglePermissionStatus(this.key)).canModifyMail) {
+      throw new Error("Une nouvelle autorisation Google est nécessaire pour classer et archiver les mails.");
+    }
   }
 
   private async withGmail<T>(
@@ -261,5 +353,50 @@ export class GoogleMailProvider implements MailProvider {
       await googleTokenRepository.updateError(this.key, message);
       throw new Error(message);
     }
+  }
+}
+
+async function listMessageIds(
+  gmail: ReturnType<typeof google.gmail>,
+  input: { limit: number; retrieveAll: boolean; pageToken?: string; labelIds?: string[]; query?: string },
+): Promise<string[]> {
+  const ids: string[] = [];
+  let pageToken = input.pageToken;
+  do {
+    const remaining = input.retrieveAll ? 500 : Math.max(1, input.limit - ids.length);
+    const page = await gmail.users.messages.list({
+      userId: "me",
+      maxResults: Math.min(500, remaining),
+      pageToken,
+      labelIds: input.labelIds,
+      q: input.query,
+      includeSpamTrash: false,
+    });
+    ids.push(...(page.data.messages ?? []).flatMap(({ id }) => id ? [id] : []));
+    pageToken = page.data.nextPageToken ?? undefined;
+  } while (pageToken && (input.retrieveAll || ids.length < input.limit));
+  return input.retrieveAll ? ids : ids.slice(0, input.limit);
+}
+
+async function getMessagesInBatches(
+  gmail: ReturnType<typeof google.gmail>,
+  ids: string[],
+  emailAddress: string,
+  withAccountId: (message: MailMessage) => MailMessage,
+): Promise<MailMessage[]> {
+  const messages: MailMessage[] = [];
+  for (let index = 0; index < ids.length; index += 10) {
+    const batch = await Promise.all(ids.slice(index, index + 10).map(async (id) => {
+      const result = await gmail.users.messages.get({ userId: "me", id, format: "full" });
+      return withAccountId(parseGmailMessage(result.data, emailAddress));
+    }));
+    messages.push(...batch);
+  }
+  return messages;
+}
+
+function assertLabelId(value: string): void {
+  if (!/^(?:[A-Z][A-Z0-9_]*|Label_[A-Za-z0-9_-]+)$/.test(value)) {
+    throw new Error("Un identifiant de libellé Gmail est invalide.");
   }
 }

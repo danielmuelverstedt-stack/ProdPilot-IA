@@ -4,11 +4,13 @@ import type {
   MailAccount,
   MailConnectionStatus,
   MailDraft,
+  MailboxStatistics,
   MailMessage,
   MailSearchCriteria,
   MailProviderType,
   MailThread,
 } from "@/features/mail/types/mail";
+import type { MailLabelMutation, MailProviderLabel } from "@/features/mail-management/types/mail-management";
 
 export interface MailProvider {
   readonly type: MailProviderType;
@@ -22,9 +24,14 @@ export interface MailProvider {
   getConnectionStatus(accountId?: string): Promise<MailConnectionStatus>;
   testConnection(): Promise<MailConnectionStatus>;
   listMessages(options?: ListMessagesOptions): Promise<MailMessage[]>;
+  getMailboxStatistics(): Promise<MailboxStatistics>;
   getMessage(messageId: string): Promise<MailMessage | null>;
   getThread(threadId: string): Promise<MailThread | null>;
   searchMessages(criteria: MailSearchCriteria): Promise<MailMessage[]>;
   createDraft(input: CreateMailDraftInput): Promise<MailDraft>;
   archiveMessage(messageId: string): Promise<void>;
+  getManagementPermission(): Promise<{ canModifyMail: boolean; reconnectRequired: boolean }>;
+  listLabels(): Promise<MailProviderLabel[]>;
+  ensureLabels(names: string[]): Promise<MailProviderLabel[]>;
+  modifyLabels(input: MailLabelMutation): Promise<MailMessage[]>;
 }

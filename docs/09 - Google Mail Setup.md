@@ -4,7 +4,7 @@
 
 ProdPilot IA utilise le flux OAuth 2.0 existant côté serveur avec `googleapis`. Cette procédure prépare un environnement local sans modifier le flux OAuth ni l’architecture Mails.
 
-Les portées restent limitées à l’identité du compte, à la lecture Gmail et à la création de brouillons :
+Les portées restent limitées à l’identité du compte, à la lecture et au classement Gmail, ainsi qu’à la création de brouillons :
 
 ```text
 openid
@@ -12,9 +12,10 @@ email
 profile
 https://www.googleapis.com/auth/gmail.readonly
 https://www.googleapis.com/auth/gmail.compose
+https://www.googleapis.com/auth/gmail.modify
 ```
 
-Les portées `gmail.send` et `gmail.modify` ne sont pas demandées. ProdPilot IA ne peut donc ni envoyer ni archiver un message.
+La portée `gmail.modify` permet d’ajouter ou retirer des libellés Gmail, d’archiver et de marquer lu/non lu. La portée `gmail.send` n’est pas demandée : ProdPilot IA ne peut toujours pas envoyer un message.
 
 ## 1. Créer le projet Google Cloud
 
@@ -97,6 +98,12 @@ Si la configuration est incomplète, corriger la variable nommée dans le messag
 6. Vérifier le retour vers l’application, l’adresse connectée et l’état de connexion.
 7. Utiliser **Tester** avant de consulter les messages.
 
+### Compte connecté avant l’ajout de `gmail.modify`
+
+Un jeton déjà enregistré ne gagne jamais une nouvelle portée automatiquement. Si l’écran Mails indique **Autorisation Gmail à renouveler**, cliquer sur **Reconnecter Google**, sélectionner le même compte et accepter le nouvel écran de consentement. ProdPilot IA demande `access_type=offline`, `prompt=consent` et `include_granted_scopes=true` afin de conserver les autorisations existantes et de solliciter un nouveau jeton de renouvellement.
+
+La reconnexion est volontairement interactive : l’application ne supprime pas le jeton existant et ne modifie aucun mail avant que Google ait confirmé `gmail.modify`. Si Google refuse cette portée, la lecture et les brouillons restent disponibles, mais toutes les commandes de classement restent désactivées avec une erreur `403` explicite.
+
 ## Sécurité et stockage des jetons
 
 Les variables Google sont lues exclusivement par des modules marqués `server-only`. Elles ne portent pas le préfixe `NEXT_PUBLIC_` et ne sont pas transmises aux composants client. Les réponses API ne contiennent ni secret ni jeton, et les journaux de configuration n’affichent que le nom d’une variable ou une règle de validation.
@@ -111,3 +118,5 @@ Le dépôt local de développement écrit les jetons dans `.local-data/google-ma
 - Microsoft Graph n’est pas implémenté.
 - Les pièces jointes restent limitées à leurs métadonnées et le HTML non fiable n’est jamais exécuté.
 - La création d’un brouillon reste distincte de tout envoi ; aucune fonctionnalité d’envoi n’est disponible.
+- Les libellés de workflow sont créés à la demande après confirmation : `ProdPilot/À traiter`, `ProdPilot/En attente`, `ProdPilot/Traités` et `ProdPilot/Archivé par IA`.
+- Une action appliquée à un fil modifie les messages actuellement présents dans ce fil. Gmail n’applique pas automatiquement ce changement aux futurs messages reçus dans le même fil.

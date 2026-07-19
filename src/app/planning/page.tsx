@@ -1,4 +1,4 @@
 import { AppShell } from "@/components/layout/AppShell";
-import { PlanningModule } from "@/features/planning/components/PlanningModule";
+import { PlanningWorkspace } from "@/features/planning/components/PlanningWorkspace";
 
-export default function PlanningPage() { return <AppShell activeSection="planning" headerTitle="Planning"><PlanningModule /></AppShell>; }
+export default function PlanningPage() { return <AppShell activeSection="planning" headerTitle="Planning"><PlanningWorkspace /></AppShell>; }

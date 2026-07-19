@@ -1,6 +1,6 @@
 export type AiProviderType = "openai" | "mock";
 export type AiConfidence = "low" | "medium" | "high";
-export type AiOperationType = "mail_analysis" | "mail_reply" | "mail_rewrite" | "connection_test";
+export type AiOperationType = "mail_analysis" | "mail_reply" | "mail_rewrite" | "mail_conversation" | "connection_test";
 export type MailAiOperationType = Exclude<AiOperationType, "connection_test">;
 
 export type AiCurrency = "EUR" | "USD";

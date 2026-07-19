@@ -3,6 +3,7 @@ import "server-only";
 import { google } from "googleapis";
 import {
   getGoogleServerConfig,
+  GOOGLE_GMAIL_MODIFY_SCOPE,
   GOOGLE_OAUTH_SCOPES,
   isGoogleEmailAllowed,
 } from "@/features/mail/server/google/google-config";
@@ -110,6 +111,19 @@ export async function testGoogleConnection(
   }
 }
 
+export async function getGooglePermissionStatus(key: GoogleTokenKey): Promise<{
+  canModifyMail: boolean;
+  grantedScopes: string[];
+}> {
+  const record = await googleTokenRepository.get(key);
+  if (!record) return { canModifyMail: false, grantedScopes: [] };
+  const grantedScopes = parseGoogleScopes(record.tokens.scope);
+  return {
+    canModifyMail: grantedScopes.includes(GOOGLE_GMAIL_MODIFY_SCOPE),
+    grantedScopes,
+  };
+}
+
 export async function disconnectGoogleAccount(key: GoogleTokenKey): Promise<void> {
   const record = await googleTokenRepository.get(key);
   if (!record) return;
@@ -155,4 +169,8 @@ interface GoogleLibraryCredentials {
   expiry_date?: number | null;
   scope?: string;
   token_type?: string | null;
+}
+
+export function parseGoogleScopes(value?: string): string[] {
+  return [...new Set((value ?? "").split(/\s+/).map((scope) => scope.trim()).filter(Boolean))];
 }

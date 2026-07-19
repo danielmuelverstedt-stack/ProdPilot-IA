@@ -4,6 +4,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Planning ERP opérationnel — 19/07/2026
+
+- Ajout du moteur d’import contrôlé des exports Top et Details : reconnaissance automatique, validation des 33 colonnes, limite de taille, signature XLSX, empreintes SHA-256, anti-doublon et archivage immuable.
+- Ajout d’une projection versionnée reliant 3 284 lignes Top, 3 004 OF uniques et 23 558 opérations, sans supprimer les lignes de commande multiples, opérations orphelines ou doublons détectés.
+- Ajout du cockpit Planning sans temps de fabrication avec tableau de bord, pagination serveur, recherche différée, filtres, vues triées, édition rapide, glisser-déposer, détail OF et calcul du retard.
+- Ajout des ajustements locaux conservés entre imports, des correspondances apprenantes machine ERP vers machine ProdPilot et de la catégorie OF sans machine.
+- Extension du référentiel machine avec code ERP, suppression logique, favorite, capacité future et commentaires ; raccordement des modules Parc Machines et Qualité ERP aux données importées réelles.
+- Ajout des contrôles qualité ERP, du score de vigilance transparent et du refus d’inventer les libellés des codes de statut absents des exports.
+- Ajout de `read-excel-file@9.3.2` sous licence MIT, audit des alternatives et références dans `THIRD_PARTY_NOTICES.md`.
+
 ### Moteur de raisonnement local Mail — 15/07/2026
 
 - Ajout d’un moteur typé et déterministe qui croise messages, réponses, brouillons, suivis, engagements, décisions, réunions, actions et sessions de la mémoire locale.
@@ -291,3 +301,53 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 - Le compte local a été réparé sans manipulation directe des jetons Google ni modification de la configuration OAuth.
 - Validation runtime : `/api/mail/connection` répond `200` avec un compte connecté et `/api/mail/messages` répond `200` avec des messages Gmail réels.
 - Tests automatisés : 83 réussites ; TypeScript, ESLint et build Next.js validés.
+
+## [Gestion opérationnelle Gmail] — 19/07/2026
+
+### Ajouté
+
+- Portée OAuth `gmail.modify` avec détection du scope réellement enregistré, bannière de reconnexion et maintien de `gmail.readonly`/`gmail.compose`.
+- Service de gestion séparant proposition, confirmation, exécution Gmail, relecture, journal d’activité et annulation exacte des anciens libellés.
+- Quatre libellés Gmail idempotents : `ProdPilot/À traiter`, `ProdPilot/En attente`, `ProdPilot/Traités` et `ProdPilot/Archivé par IA`.
+- Vues de workflow avec compteurs/non lus, actions de fil, lots `batchModify`, annulation sur la carte et historique explicable.
+- Règles utilisateur isolées par compte, date de dernière utilisation, classification locale stricte et assistant de migration limité à 25 mails.
+- Documentation d’architecture, guide OAuth actualisé et `THIRD_PARTY_NOTICES.md` avec révisions et licences auditées.
+
+### Sécurité et fiabilité
+
+- Aucune mutation n’est simulée dans React : Gmail est relu avant succès et une compensation restaure les instantanés en cas d’échec partiel.
+- Questions, échéances, pièces jointes, importance et termes métier protégés empêchent l’archivage proposé.
+- Les mutations automatiques sans confirmation précise restent désactivées conformément à la Constitution produit; aucun envoi ni suppression n’a été ajouté.
+- Aucun secret, jeton ou corps intégral de mail n’est ajouté au journal; aucun code tiers n’a été copié ou adapté.
+
+### Validation
+
+- 95 tests réussis, TypeScript strict, ESLint, build Next.js et `git diff --check` validés.
+- Runtime réel : compte Gmail connecté, 17 messages chargés en `200`, gestion accessible en `200`, ancien jeton sans `gmail.modify` et bootstrap correctement refusé en `403` jusqu’à reconnexion.
+- L’URL OAuth locale vérifiée demande `gmail.modify`, `gmail.readonly`, `gmail.compose`, `access_type=offline`, `prompt=consent` et `include_granted_scopes=true`.
+
+## [Planning ERP personnalisable et cache local] — 19/07/2026
+
+### Ajouté
+
+- Vues personnelles versionnées et isolées par entreprise locale, site et utilisateur actif, avec sauvegarde automatique derrière un dépôt navigateur.
+- Ordre, largeur, visibilité et figement des colonnes, déplacement par glisser-déposer ou commandes clavier, zoom, filtres, tri et regroupements mémorisés.
+- Regroupements article, OF, machine, atelier, client, famille, priorité, statut et date, avec ouverture et fermeture locale des groupes.
+- Moteur déterministe d’articles identiques comptant les OF distincts, badges accessibles, couleurs stables, compteurs globaux et filtres multiples/uniques.
+- Colonne Commentaires reliée aux ajustements locaux existants, sans écriture dans l’ERP.
+
+### Optimisé
+
+- La projection JSON et les lignes dérivées sont partagées dans le processus local et invalidées après import, ajustement ou correspondance.
+- Les filtres Planning ne rechargent plus la synthèse des imports.
+- Les réponses paginées transportent un résumé d’OF ; le détail complet n’est demandé qu’à l’ouverture de l’OF.
+- Les changements purement visuels ne déclenchent aucune requête Planning.
+
+### Mesures et validation
+
+- Réponse de 100 lignes : 147 191 → 84 961 octets, soit environ 42 % de réduction.
+- Requête chaude avec `Invoke-WebRequest` : environ 139–161 ms → 71–78 ms ; `curl` mesure 16–20 ms hors surcoût PowerShell.
+- Pic après dix requêtes : environ 553 → 321 Mo ; mémoire stabilisée : environ 238 → 263 Mo en contrepartie du cache.
+- Analyse de 23 558 opérations pour les articles identiques : 2,7 ms en médiane.
+- Première requête froide encore à environ 1,2 s, à traiter par le futur dépôt indexé.
+- 105 tests réussis ; TypeScript strict, ESLint et build Next.js 16.2.10 validés. Aucune dépendance ajoutée.

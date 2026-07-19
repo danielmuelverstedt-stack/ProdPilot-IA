@@ -24,7 +24,7 @@ export interface MailAssistantStartSettings {
   pushToTalkShortcut: "space" | "alt_space" | "ctrl_space" | "f8" | "custom"; customShortcut: string;
   recognitionLanguage: string; continuousConversation: boolean; silenceTimeoutSeconds: number; pauseAfterSpeechMs: number;
   disableContinuousOnBlur: boolean; transcriptPreview: boolean; submitAutomatically: boolean;
-  voiceOutputEnabled: boolean; assistantVoicePreset: "system" | "british_assistant"; speechPitch: number;
+  voiceOutputEnabled: boolean; writtenResponseEnabled: boolean; assistantVoicePreset: "system" | "british_assistant"; speechPitch: number;
   speakConfirmations: boolean; speakExecutionSummaries: boolean; longAnswerSpeech: "summary" | "complete";
   interruptAssistantBySpeaking: boolean; ttsProvider: "system-browser" | "openai-tts-future" | "other-future-provider";
   selectedMicrophoneDeviceId: string; microphoneTestDurationSeconds: number;
@@ -93,6 +93,7 @@ export interface MailAssistantCommand {
   isExplicitSend: boolean;
   isAmbiguous: boolean;
   clarification?: string;
+  isConversationalFallback: boolean;
 }
 
 export interface MailAssistantSession {

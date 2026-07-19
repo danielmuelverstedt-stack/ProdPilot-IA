@@ -8,7 +8,7 @@ const COMMANDS: MailAiRewriteCommand[] = ["shorter", "more_diplomatic", "more_di
 
 export function parseMailAiBaseRequest(value: unknown): { messageId: string; configuration: MailAiConfiguration } | null {
   if (!isRecord(value) || !isGmailId(value.messageId)) return null;
-  const configuration = parseConfiguration(value.configuration);
+  const configuration = parseMailAiConfiguration(value.configuration);
   return configuration ? { messageId: value.messageId, configuration } : null;
 }
 
@@ -29,7 +29,7 @@ export function parseMailAiRewriteRequest(value: unknown) {
   return { ...base, currentReply, instructions: value.instructions, command: value.command as MailAiRewriteCommand, tone: value.tone as MailAiReplyTone, length: value.length as MailAiReplyLength };
 }
 
-function parseConfiguration(value: unknown): MailAiConfiguration | null {
+export function parseMailAiConfiguration(value: unknown): MailAiConfiguration | null {
   if (!isRecord(value) || !Array.isArray(value.categories) || !Array.isArray(value.priorities)) return null;
   const categories = value.categories.filter(isRecord).map((item) => ({ id: item.id, label: item.label }));
   const priorities = value.priorities.filter(isRecord).map((item) => ({ id: item.id, label: item.label, level: item.level }));

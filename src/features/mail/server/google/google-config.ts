@@ -1,11 +1,14 @@
 import "server-only";
 
+export const GOOGLE_GMAIL_MODIFY_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
+
 export const GOOGLE_OAUTH_SCOPES = [
   "openid",
   "email",
   "profile",
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.compose",
+  GOOGLE_GMAIL_MODIFY_SCOPE,
 ] as const;
 
 export const GOOGLE_LOCAL_REDIRECT_URI = "http://localhost:3000/api/auth/google/callback";

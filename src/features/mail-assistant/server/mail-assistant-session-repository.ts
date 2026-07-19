@@ -7,9 +7,15 @@ export interface MailAssistantSessionRepository {
 }
 
 class LocalMailAssistantSessionRepository implements MailAssistantSessionRepository {
-  private readonly sessions = new Map<string, MailAssistantSession>();
+  private readonly sessions = getSharedSessions();
   async get(sessionId: string) { return structuredClone(this.sessions.get(sessionId) ?? null); }
   async save(session: MailAssistantSession) { this.sessions.set(session.id, structuredClone(session)); }
+}
+
+interface MailAssistantGlobal { __prodpilotMailAssistantSessions?: Map<string, MailAssistantSession> }
+function getSharedSessions() {
+  const shared = globalThis as typeof globalThis & MailAssistantGlobal;
+  return shared.__prodpilotMailAssistantSessions ??= new Map<string, MailAssistantSession>();
 }
 
 export const mailAssistantSessionRepository: MailAssistantSessionRepository = new LocalMailAssistantSessionRepository();

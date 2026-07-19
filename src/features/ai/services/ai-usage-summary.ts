@@ -2,7 +2,7 @@ import type { AiBudgetPolicy, AiOperationType, AiPricingEntry, AiUsageRecord } f
 import type { AiBudgetAlert, AiBudgetStatus, AiUsageQuery, AiUsageSummary } from "@/features/ai/types/ai-usage";
 import { estimateAiUsageCost, hasValidatedPricing } from "@/features/ai/services/ai-cost-estimation";
 
-const OPERATIONS: AiOperationType[] = ["mail_analysis", "mail_reply", "mail_rewrite", "connection_test"];
+const OPERATIONS: AiOperationType[] = ["mail_analysis", "mail_reply", "mail_rewrite", "mail_conversation", "connection_test"];
 
 export function summarizeAiUsage(entries: AiUsageRecord[], query: AiUsageQuery, policy: AiBudgetPolicy, pricing: AiPricingEntry[], now = new Date()): AiUsageSummary {
   const period = resolvePeriod(query, now);

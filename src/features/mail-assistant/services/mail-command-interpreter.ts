@@ -18,7 +18,7 @@ export function interpretMailAssistantCommand(rawText: string, messages: MailAss
   else if (/plus court|diplomatique|plus direct|dis plutôt|traduis|tutoie|vouvoie|retire|ajoute que|ne promets/.test(normalized)) intent = "modify_reply";
   else if (/^(ok|oui|d’accord|fais-le)[.!\s]*$/.test(normalized)) intent = pendingIntent ?? "mark_processed";
   const defaultTargets = reference.messageIds.length ? reference.messageIds : /les deux/.test(normalized) && intent === "mark_processed" ? messages.filter((message) => message.classification.requiresReply && !message.ignored).slice(0, 2).map((message) => message.id) : targetAllApproved(intent, messages);
-  return { intent, rawText: text, messageIds: defaultTargets, instruction: intent === "modify_reply" ? text : undefined, isExplicitSend, isAmbiguous: reference.isAmbiguous, clarification: reference.clarification };
+  return { intent, rawText: text, messageIds: defaultTargets, instruction: intent === "modify_reply" ? text : undefined, isExplicitSend, isAmbiguous: reference.isAmbiguous, clarification: reference.clarification, isConversationalFallback: intent === "summarize_new_mail" };
 }
 
 function targetAllApproved(intent: MailAssistantIntent, messages: MailAssistantSessionMessage[]) {

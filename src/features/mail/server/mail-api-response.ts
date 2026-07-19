@@ -26,14 +26,16 @@ export function getSafeMailError(error: unknown): { message: string; status: num
   if (message.includes("n’est pas connecté") || message.includes("expiré") || message.includes("révoquée")) {
     return { message, status: 401, code: "MAIL_AUTHENTICATION_REQUIRED" };
   }
-  if (message.includes("refuse l’accès") || message.includes("autorisations Gmail")) {
+  if (message.includes("refuse l’accès") || message.includes("autorisations Gmail") || message.includes("nouvelle autorisation Google")) {
     return { message, status: 403, code: "MAIL_PERMISSION_DENIED" };
   }
   if (message.includes("Gmail") || message.includes("Google")) {
     return { message, status: 502, code: "MAIL_PROVIDER_ERROR" };
   }
-  if (message.includes("invalide")) return { message, status: 400, code: "MAIL_INVALID_REQUEST" };
-  if (message.includes("registre local")) return { message, status: 500, code: "MAIL_INTERNAL_ERROR" };
+  if (message.includes("invalide") || message.includes("confirmation explicite") || message.includes("ne peut plus être annulée") || message.includes("désactivées par les règles produit")) {
+    return { message, status: 400, code: "MAIL_INVALID_REQUEST" };
+  }
+  if (message.includes("registre local") || message.includes("journal local")) return { message, status: 500, code: "MAIL_INTERNAL_ERROR" };
   return { message: "La connexion Gmail doit être vérifiée.", status: 502, code: "MAIL_CONNECTION_ERROR" };
 }
 

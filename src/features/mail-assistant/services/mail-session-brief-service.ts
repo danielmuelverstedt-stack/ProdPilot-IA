@@ -29,6 +29,8 @@ export async function createMailSessionBrief(input: CreateBriefInput): Promise<M
     informational: settings.includeInformationalMessages ? current.filter((message) => message.classification.group === "information").length : 0,
     noAction: current.filter((message) => message.classification.group === "no_action").length,
     unresolvedSessions: sessions.filter((item) => item.sourceId !== session?.id && item.status !== "finished" && item.unresolvedItems.length > 0).reduce((sum, item) => sum + item.unresolvedItems.length, 0), totalPending: 0,
+    processedTotal: messages.filter((message) => message.workflowStatus === "processed").length,
+    noActionTotal: messages.filter((message) => message.workflowStatus === "no_action").length,
   };
   metrics.totalPending = metrics.pendingReplies + metrics.pendingDrafts + metrics.withoutStatus + metrics.followUpsDueToday + metrics.overdueFollowUps + metrics.preparedMeetings + metrics.openActions + metrics.review + metrics.unresolvedSessions;
   const state = !input.synchronizationAvailable ? "synchronization_unavailable" : metrics.newMail > 0 ? "new_mail" : metrics.totalPending > 0 ? "pending_only" : "up_to_date";
@@ -38,12 +40,17 @@ export async function createMailSessionBrief(input: CreateBriefInput): Promise<M
 
 export function buildDeterministicBrief(state: MailOpeningBrief["state"], m: MailOpeningBriefMetrics, firstName: string, isDemo: boolean, lastSyncAt: string | null, settings: MailAssistantStartSettings): string {
   const hello = `Bonjour ${firstName}. ${isDemo ? "Mode démonstration. " : ""}`;
-  if (state === "synchronization_unavailable") return `${hello}Je n’ai pas pu actualiser la boîte. ${lastSyncAt ? `Les données locales datent de ${formatTime(lastSyncAt)}. ` : "Les données locales disponibles sont utilisées. "}${pendingSentence(m)}.`;
-  if (state === "up_to_date") return `${hello}Aucun nouveau mail et aucun élément en attente. Votre boîte est à jour.`;
+  const handled = alreadyHandledSentence(m);
+  if (state === "synchronization_unavailable") return `${hello}${handled}Je n’ai pas pu actualiser la boîte. ${lastSyncAt ? `Les données locales datent de ${formatTime(lastSyncAt)}. ` : "Les données locales disponibles sont utilisées. "}${pendingSentence(m)}.`;
+  if (state === "up_to_date") return `${hello}${handled}Aucun nouveau mail et aucun élément en attente. Votre boîte est à jour.`;
   const start = state === "new_mail" ? `Vous avez reçu ${count(m.newMail, "nouveau mail", "nouveaux mails")}. ` : "Vous n’avez reçu aucun nouveau mail depuis la dernière synchronisation. ";
   const details = orderedDetails(m).slice(0, Math.max(1, settings.maximumItemsSpoken));
   const follow = settings.askFollowUpQuestion && orderedDetails(m).length > settings.maximumItemsSpoken ? " Souhaitez-vous le détail ?" : "";
-  return `${hello}${start}${details.length ? `Il reste ${joinFrench(details)}. ` : ""}${suggestion(m)}${follow}`.trim();
+  return `${hello}${handled}${start}${details.length ? `Il reste ${joinFrench(details)}. ` : ""}${suggestion(m)}${follow}`.trim();
+}
+function alreadyHandledSentence(m: MailOpeningBriefMetrics): string {
+  const parts = [[m.processedTotal, "mail déjà traité", "mails déjà traités"], [m.noActionTotal, "mail classé sans action nécessaire", "mails classés sans action nécessaire"]].filter(([value]) => Number(value) > 0).map(([value, one, many]) => count(Number(value), String(one), String(many)));
+  return parts.length ? `Pour rappel, ${joinFrench(parts)}. ` : "";
 }
 function orderedDetails(m: MailOpeningBriefMetrics): string[] { return [[m.urgent, "élément urgent", "éléments urgents"], [m.overdueFollowUps, "relance en retard", "relances en retard"], [m.pendingReplies, "réponse à valider", "réponses à valider"], [m.pendingDrafts, "brouillon en attente", "brouillons en attente"], [m.followUpsDueToday, "relance à faire aujourd’hui", "relances à faire aujourd’hui"], [m.withoutStatus, "mail sans statut", "mails sans statut"], [m.review, "mail à vérifier", "mails à vérifier"], [m.informational, "message d’information", "messages d’information"], [m.noAction, "message sans action", "messages sans action"]].filter(([value]) => Number(value) > 0).map(([value, one, many]) => count(Number(value), String(one), String(many))); }
 function pendingSentence(m: MailOpeningBriefMetrics): string { return m.totalPending ? `${count(m.totalPending, "élément reste", "éléments restent")} à traiter` : "Aucun élément ne reste à traiter"; }

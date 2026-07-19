@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Correctif du brief vocal de la session mail — 19/07/2026
+
+- Corrige le Morning Brief (`/mails/assistant`, écran de veille) : la lecture vocale automatique n’était en réalité câblée que dans une session déjà active (`MailAssistantWorkspace`), jamais sur l’écran de démarrage quotidien (`MailCommandCenterStandby`), qui ne parlait donc jamais malgré le réglage « Lire le brief à voix haute » activé par défaut.
+- Ajoute deux mesures locales déterministes au brief (`processedTotal`, `noActionTotal`, calculées depuis la mémoire locale déjà chargée, sans appel réseau supplémentaire) afin que la voix annonce aussi les mails déjà traités et classés sans action, en plus des éléments en attente de validation ou de réponse.
+- N’emploie jamais le terme « archivé » tant qu’aucune mutation Gmail réelle n’est confirmée : la gestion Mail (libellés Gmail) reste un système séparé, server-only, qui exige une confirmation explicite avant tout archivage ; le brief ne décrit que ce qui est réellement vérifiable localement.
+- Validation : TypeScript, lint, build et 109 tests automatisés réussis (y compris les tests qui interdisent tout `fetch(`/appel IA dans le chemin de démarrage) ; vérification par navigateur headless que `speechSynthesis.speak` est bien appelé avec le texte du brief à l’ouverture de l’écran. La lecture audio réelle sur poste utilisateur (Edge/Chrome) reste à valider manuellement.
+
 ### Refonte visuelle forte — icônes et palette — 19/07/2026
 
 - Remplacement du jeu de pictogrammes maison par `lucide-react` (MIT), avec conservation stricte des mêmes identifiants d’icône (`mail`, `calendar`, `factory`, etc.) pour ne pas invalider les choix d’icône déjà enregistrés dans Réglages.

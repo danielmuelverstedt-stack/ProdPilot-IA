@@ -81,7 +81,7 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Mai
     finally { activeRequest.current = null; setIsBusy(false); }
   }
   function stopResponse() { activeRequest.current?.abort(); browserTtsProvider.stop(); setIsBusy(false); }
-  if (screen === "standby") return <MailSessionShell accountLabel={initialAccount.emailAddress}><MailCommandCenterStandby firstName={firstName} account={`${initialAccount.displayName} · ${initialAccount.emailAddress}`} brief={brief} reasoning={reasoning} isLoading={isBusy} error={error} onStart={startSession}/></MailSessionShell>;
+  if (screen === "standby") return <MailSessionShell accountLabel={initialAccount.emailAddress}><MailCommandCenterStandby firstName={firstName} account={`${initialAccount.displayName} · ${initialAccount.emailAddress}`} brief={brief} reasoning={reasoning} isLoading={isBusy} error={error} settings={settings.mailAssistant} onStart={startSession}/></MailSessionShell>;
   if (screen === "loading") return <MailSessionShell accountLabel={initialAccount.emailAddress} progress="Analyse en cours"><MailSessionLoading status={loadingStatus}/></MailSessionShell>;
   if (!session) return null;
   if (session.status === "finished") return <MailSessionShell accountLabel={session.account.emailAddress} progress="Session terminée"><MailSessionCompletion session={session} onResume={() => setSession({ ...session, status: "ready", endedAt: null })} onReturn={() => { setSession(null); setScreen("standby"); }}/></MailSessionShell>;

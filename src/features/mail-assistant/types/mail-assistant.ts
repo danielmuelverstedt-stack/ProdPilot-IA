@@ -123,5 +123,5 @@ export interface MailAssistantBrief {
   explanation: string;
 }
 export type MailOpeningBriefState = "new_mail" | "pending_only" | "up_to_date" | "synchronization_unavailable";
-export interface MailOpeningBriefMetrics { newMail: number; unread: number; pendingReplies: number; pendingDrafts: number; withoutClassification: number; withoutStatus: number; followUpsDueToday: number; overdueFollowUps: number; preparedMeetings: number; openActions: number; review: number; urgent: number; informational: number; noAction: number; unresolvedSessions: number; totalPending: number }
+export interface MailOpeningBriefMetrics { newMail: number; unread: number; pendingReplies: number; pendingDrafts: number; withoutClassification: number; withoutStatus: number; followUpsDueToday: number; overdueFollowUps: number; preparedMeetings: number; openActions: number; review: number; urgent: number; informational: number; noAction: number; unresolvedSessions: number; totalPending: number; processedTotal: number; noActionTotal: number }
 export interface MailOpeningBrief { state: MailOpeningBriefState; text: string; metrics: MailOpeningBriefMetrics; lastSyncAt: string | null; isLocalDataStale: boolean; isDemo: boolean; generation: "deterministic" | "cached" | "ai" }

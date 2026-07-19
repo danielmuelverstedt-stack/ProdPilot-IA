@@ -118,6 +118,8 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Ajouter la lecture vocale navigateur automatique avec pause, arrêt, relecture et repli visuel.
 - [x] Centraliser les statuts de workflow Mail et rendre les messages sans statut visibles dans le brief.
 - [x] Ajouter les réglages de démarrage, de contenu, de voix et d’activation explicite du microphone.
+- [x] Corriger le Morning Brief (écran de veille) qui ne parlait jamais : la lecture vocale automatique n’était câblée que dans une session déjà active, jamais à l’ouverture quotidienne.
+- [x] Faire annoncer par la voix les mails déjà traités et classés sans action nécessaire depuis la mémoire locale, en plus des éléments en attente de validation ou de réponse.
 - [ ] Valider manuellement les voix et la reconnaissance vocale sur les navigateurs cibles.
 
 ## Interaction vocale principale — 15/07/2026

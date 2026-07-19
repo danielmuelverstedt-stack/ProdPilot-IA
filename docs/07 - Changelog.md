@@ -4,6 +4,32 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Refonte visuelle forte — icônes et palette — 19/07/2026
+
+- Remplacement du jeu de pictogrammes maison par `lucide-react` (MIT), avec conservation stricte des mêmes identifiants d’icône (`mail`, `calendar`, `factory`, etc.) pour ne pas invalider les choix d’icône déjà enregistrés dans Réglages.
+- Rafraîchissement de la palette par défaut (accent indigo `#4f46e5`, menu latéral `#0f172a`) dans `default-settings.ts` et `globals.css`, sans modifier le mécanisme de personnalisation : toute entreprise garde la main sur ses couleurs depuis Réglages → Identité.
+- Redesign des cartes de Mon Espace : badge d’icône teinté (fond pastel dérivé de la couleur de la carte) au lieu d’un aplat saturé, hiérarchie et survol plus soignés.
+- Harmonisation du Centre de réglages (onglets de catégories et de personnalisation) avec la nouvelle couleur d’accent.
+- Validation : TypeScript, lint, build et 109 tests automatisés réussis ; vérification visuelle par capture d’écran sur 10 pages (Mon Espace, Réglages, Parc Machines, Planning, Qualité ERP, Réunions, Actions, Analyses, OF, Suivi) en desktop et mobile, sans erreur console.
+
+### Modernisation des fondations visuelles — 19/07/2026
+
+- Remplacement de la police système codée en dur (Arial) par la police Geist déjà chargée, avec repli système.
+- Ajout de jetons d’ombre, de rayon et de transition dans `globals.css`, sans modifier les couleurs configurables (`--app-primary`, `--app-secondary`, etc.) qui restent pilotées depuis Réglages → Identité.
+- Rafraîchissement de l’AppShell : dégradé de profondeur sur la barre latérale, état actif de navigation plus lisible, en-tête avec ombre et flou, focus des champs et boutons plus visibles.
+- Harmonisation des primitives partagées (`ModuleUi`, `SettingsUi`) : boutons, champs, pastilles de statut et panneaux avec ombres et anneaux de focus cohérents sur tous les modules.
+- Validation : TypeScript, lint, build et 109 tests automatisés réussis ; vérification visuelle par capture d’écran sur Mon Espace, Réglages et un viewport mobile, sans erreur console.
+
+### Fiabilisation du module Mail — 19/07/2026
+
+- Synchronisation de toutes les pages de `INBOX` sans filtre temporel, comparaison au total Gmail, mesure de durée et cache serveur de 60 secondes invalidé après mutation.
+- Ajout de `/mails/diagnostic` pour OAuth, Gmail, volumes, synchronisation, erreurs, OpenAI, quota et capacités audio du navigateur, sans secret ni contenu de mail.
+- Suppression du statut Plaud fantôme : aucun connecteur, jeton ou session Plaud n’existe ; un périphérique homonyme reste signalé comme simple matériel local.
+- Conversation OpenAI multi-tour explicitement déclenchée, sessions serveur partagées entre bundles Next, budgets conservés et annulation de la requête active.
+- Ajout des préférences **Réponse écrite** et **Réponse vocale**, du repli texte sur erreur TTS et suppression de 960 ms de délais artificiels par commande.
+- Validation locale : 87 messages Gmail détectés et 87 synchronisés, cache chaud en 52–76 ms, conversation réelle sur deux tours, TypeScript, lint et 109 tests automatisés réussis.
+- Les tests matériels Edge/Chrome et les captures restent à réaliser manuellement, le navigateur intégré n’étant pas disponible pendant cette validation.
+
 ### Planning ERP opérationnel — 19/07/2026
 
 - Ajout du moteur d’import contrôlé des exports Top et Details : reconnaissance automatique, validation des 33 colonnes, limite de taille, signature XLSX, empreintes SHA-256, anti-doublon et archivage immuable.

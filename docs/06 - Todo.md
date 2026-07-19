@@ -13,6 +13,8 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Stabiliser le socle existant : audit global, validation stricte des sauvegardes de réglages, nettoyage du code mort et contrôles qualité complets.
 - [x] Auditer le prototype historique et documenter la stratégie de migration dans `docs/08 - Legacy Migration.md`.
 - [x] Migrer l’identité visuelle historique vers un shell responsive avec menu configurable, en-tête, profil et notifications.
+- [x] Moderniser les fondations visuelles du shell (typographie Geist, ombres, rayons, transitions) sans toucher aux couleurs configurables par l’entreprise dans Réglages.
+- [x] Remplacer les pictogrammes maison par une bibliothèque d’icônes professionnelle (lucide-react) et rafraîchir la palette par défaut, en conservant le mécanisme de personnalisation par Réglages.
 - [x] Rendre les cartes de Mon Espace configurables : ordre, visibilité, libellé, icône, couleur et taille.
 - [x] Créer le centre de réglages local avec identité société, thème, production, utilisateurs, rôles, impression, sauvegardes et journal.
 - [x] Centraliser les réglages dans un service TypeScript versionné basé sur `localStorage` et remplaçable par Supabase.
@@ -198,3 +200,15 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [ ] Ajouter le déplacement groupé transactionnel après création du moteur de décisions et d’un aperçu de confirmation complet.
 - [ ] Ajouter les recommandations IA acceptées, ignorées ou reportées après définition des contraintes de regroupement et des sources autorisées.
 - [ ] Définir et valider la formule de l’économie potentielle de changements de série avant d’afficher un pourcentage.
+
+## Fiabilisation complète du module Mail — 19/07/2026
+
+- [x] Remplacer la fenêtre Gmail limitée et filtrée par une pagination complète de `INBOX`, avec comparaison au total Gmail et cache serveur borné.
+- [x] Ajouter `/mails/diagnostic` avec OAuth, comptes, volumes, date/durée, erreurs, OpenAI, quota, TTS, STT, micro, haut-parleurs et statut Plaud non fictif.
+- [x] Relier la conversation naturelle explicitement déclenchée à OpenAI, conserver le contexte multi-tour et partager les sessions entre les bundles Next locaux.
+- [x] Supprimer les délais artificiels de la conversation, ajouter l’annulation et séparer les préférences de réponse écrite et vocale.
+- [x] Garantir le repli texte et un avertissement non bloquant quand la synthèse vocale échoue.
+- [x] Valider TypeScript, lint, les tests Mail ciblés, la suite automatisée et les routes HTTP locales.
+- [ ] Recetter manuellement TTS, STT, micro, haut-parleurs, alternance voix/clavier et interruption dans Edge et Chrome ; le navigateur intégré n’était pas exposé lors de la validation automatisée.
+- [ ] Recetter la déconnexion/reconnexion OAuth, le changement de compte réel et la création de brouillons Gmail avec confirmation explicite.
+- [ ] Remplacer le cache et les sessions en mémoire par un stockage chiffré multi-instance avant tout déploiement partagé.

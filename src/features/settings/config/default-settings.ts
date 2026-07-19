@@ -139,9 +139,9 @@ export const defaultSettings: AppSettings = {
     footerText: "Document généré par ProdPilot IA",
   },
   theme: {
-    primary: "#1d4ed8",
-    secondary: "#020617",
-    success: "#059669",
+    primary: "#4f46e5",
+    secondary: "#0f172a",
+    success: "#16a34a",
     warning: "#d97706",
     danger: "#dc2626",
     information: "#2563eb",

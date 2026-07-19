@@ -2,7 +2,7 @@
 
 ## Statut et périmètre
 
-Le domaine Mails est une couche d’assistance au traitement des signaux reçus, pas une boîte de messagerie complète. Il fonctionne avec des comptes de démonstration et conserve l’intégration Google Workspace existante. Microsoft 365, IMAP, OpenAI, l’envoi, la suppression, l’OCR et le stockage de production ne sont pas implémentés.
+Le domaine Mails est une couche d’assistance au traitement des signaux reçus, pas une boîte de messagerie complète. Il fonctionne avec des comptes de démonstration et l’intégration Google Workspace. La conversation explicitement déclenchée peut utiliser OpenAI côté serveur. Microsoft 365, IMAP, l’envoi, la suppression, l’OCR et le stockage de production ne sont pas implémentés.
 
 L’architecture est prête à recevoir des implémentations réelles derrière ses contrats, mais elle n’est pas déployable en production partagée tant que l’authentification applicative, les permissions et le stockage chiffré des jetons ne sont pas disponibles.
 
@@ -41,6 +41,7 @@ Les composants interactifs sont des Client Components ciblés. Les pages et int�
 | Service | Responsabilité |
 | --- | --- |
 | `mail-account-context` | Résoudre le compte actif et son fournisseur. |
+| `mail-message-cache` | Mettre en cache pendant 60 secondes une synchronisation Gmail complète, isolée par compte et options. |
 | `mail-connections` | Ajouter, activer, tester, synchroniser, paramétrer et déconnecter un compte. |
 | `mail-search` | Appliquer une recherche et des filtres indépendants du fournisseur. |
 | `mail-intelligence` | Exposer les contrats IA et les résultats déterministes temporaires. |
@@ -51,6 +52,7 @@ Les composants interactifs sont des Client Components ciblés. Les pages et int�
 | `mail-drafts` | Préparer copie de travail, modifications et révisions d’un brouillon. |
 | `mail-conversations` | Construire une conversation normalisée depuis un fil. |
 | `mail-notifications` | Créer des événements de notification normalisés, sans envoi externe. |
+| `mail-server-diagnostics` | Vérifier OAuth, Gmail, volumes, synchronisation, erreurs, OpenAI et quota interne sans exposer de secret. |
 
 ## Dépôts
 
@@ -83,6 +85,14 @@ La préparation automatique de brouillons est désactivée par défaut. L’envo
 
 `MailSearchCriteria` couvre objet, expéditeur, destinataire, corps, pièce jointe, lecture, importance, indicateur, réponse attendue, période, fournisseur, compte, labels, tags, priorité, catégorie et futurs mots-clés IA. Le mode démonstration applique les critères localement. Google traduit le même contrat vers une requête Gmail limitée et validée, puis les résultats restent filtrés par le service commun.
 
+## Synchronisation Gmail
+
+La page Mails charge toutes les pages de `INBOX` avec `nextPageToken`, par lots Gmail de 500 identifiants, puis récupère les détails par lots bornés. Aucun filtre temporel n’est appliqué. `includeSpamTrash` reste désactivé : les messages archivés, le spam et la corbeille ne font pas partie de la boîte de réception, tandis que toutes les catégories Gmail encore étiquetées `INBOX` sont incluses.
+
+Le total synchronisé est comparé à `messagesTotal` du libellé `INBOX`. Le résultat expose le nombre détecté, le nombre chargé, le nombre de pages, la durée, la date et l’origine cache/Gmail. Une différence rend la synchronisation incomplète au lieu d’être masquée. Les mutations confirmées invalident le cache.
+
+L’écran `/mails/diagnostic` complète ces contrôles serveur par les capacités navigateur TTS, STT, microphone et haut-parleurs. ProdPilot ne contient aucun connecteur ni session Plaud : un périphérique dont le nom contient Plaud reste un simple périphérique audio et n’est jamais déclaré connecté.
+
 ## Fournisseurs
 
 Le catalogue commun décrit Google Workspace, Microsoft 365, IMAP et démonstration, avec leurs capacités. La factory retourne :
@@ -105,9 +115,11 @@ Le modèle de brouillon prévoit états, modifications non enregistrées, versio
 
 Le modèle de conversation couvre participants, chronologie, messages cités et mémoire IA future. Aucune réponse, réponse à tous ou transmission externe supplémentaire n’est déclenchée dans cette version.
 
-## Préparation IA
+## IA et conversation
 
-Les interfaces `MailSummaryService`, `MailClassificationService`, `MailReplySuggestionService`, `MailPriorityService`, `MailActionDetectionService`, `MailEntityExtractionService` et `MailConversationService` sont implémentées par un moteur déterministe local. Chaque résultat indique le moteur, les messages sources, la date et un niveau de confiance. Aucun appel OpenAI n’est effectué.
+Les interfaces `MailSummaryService`, `MailClassificationService`, `MailReplySuggestionService`, `MailPriorityService`, `MailActionDetectionService` et `MailEntityExtractionService` conservent leur moteur déterministe local. Une instruction conversationnelle explicite de l’utilisateur passe par `MailConversationService` et l’API Responses OpenAI lorsque la configuration et le consentement de confidentialité sont valides. L’historique récent de la session est transmis de manière bornée et la session serveur est partagée entre les bundles Next locaux.
+
+Les actions sur Gmail restent interprétées et autorisées par le moteur déterministe. Une conversation OpenAI ne peut ni envoyer un mail, ni contourner la confirmation d’un brouillon, ni déclencher une mutation. Les appels sont bornés par les budgets, journalisés sans contenu de mail et annulables par `AbortSignal`.
 
 ## Notifications
 
@@ -132,6 +144,6 @@ Le contrat couvre nouveau message, synchronisation, perte de connexion, erreur f
 4. Valider Google OAuth réel de bout en bout avec les identifiants autorisés.
 5. Implémenter Microsoft OAuth et Microsoft Graph dans l’adaptateur prévu.
 6. Qualifier IMAP avant toute implémentation et définir ses garanties de sécurité.
-7. Remplacer progressivement les services déterministes par une IA contrôlée et sourcée.
+7. Étendre l’IA contrôlée uniquement aux opérations explicitement déclenchées, sans remplacer les garde-fous déterministes des mutations.
 8. Ajouter aperçu/téléchargement sécurisé, OCR et analyse seulement après validation produit.
 9. Concevoir l’envoi séparément avec relecture complète et confirmation explicite ; il reste hors périmètre actuel.

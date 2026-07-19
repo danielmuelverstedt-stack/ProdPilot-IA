@@ -127,6 +127,13 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [x] Ajouter le clic pour parler, le push-to-talk configurable et les états visuels complets du microphone.
 - [x] Ajouter la transcription intermédiaire/finale, l’annulation, la relecture et l’envoi automatique optionnel.
 - [x] Centraliser la synthèse vocale derrière un fournisseur remplaçable et conserver les fournisseurs premium désactivés.
+- [x] Exposer les réglages « Conversation mains libres » et « Envoyer automatiquement » : le champ `continuousConversation` existait déjà dans le modèle mais n’avait aucun contrôle dans Réglages, rendant la conversation vocale continue impossible à activer.
+
+## Alignement visuel de la session mail — 19/07/2026
+
+- [x] Remplacer le shell minimal et sombre de `/mails/assistant` par le shell applicatif standard (menu latéral, en-tête) partagé avec le reste de ProdPilot IA.
+- [x] Recolorer l’ensemble de la session (veille, travail actif, timeline, fin de session) sur le thème clair et la couleur d’accent configurable de l’entreprise, au lieu de la palette sombre vert sarcelle / citron propre à ce module.
+- [x] Supprimer `MailSessionShell`, devenu inutile après le passage à l’AppShell standard.
 - [x] Ajouter le style original « Assistant britannique », le chargement asynchrone des voix système et leur prévisualisation.
 - [ ] Valider les permissions, raccourcis réservés par le système et voix disponibles sur Edge et Chrome cibles.
 

@@ -67,12 +67,11 @@ test("le parcours visuel reste conversationnel et centré sur les décisions", a
   assert.match(noAction, /sans action recommandée/);
 });
 
-test("le shell de session remplace le menu complet sans toucher à la liste traditionnelle", async () => {
-  const shell = await read("src/features/mail-assistant/components/MailSessionShell.tsx");
+test("la session mail utilise le shell applicatif standard sans toucher à la liste traditionnelle", async () => {
   const page = await read("src/app/mails/assistant/page.tsx");
   const traditional = await read("src/app/mails/page.tsx");
-  assert.match(shell, /href="\/mails"/);
-  assert.doesNotMatch(page, /AppShell/);
+  assert.match(page, /AppShell/);
+  assert.match(page, /activeSection="mails"/);
   assert.match(traditional, /MailWorkspaceLoader/);
 });
 

@@ -8,11 +8,11 @@ Le brief indique les nouveaux messages, réponses recommandées, actions suggér
 
 ## Expérience de session
 
-La route utilise un shell focalisé qui conserve l’identité ProdPilot IA, le retour à Mon Espace, le compte actif, la progression et la sortie. Le menu applicatif complet reste inchangé hors session.
+La route utilise le shell applicatif standard (menu latéral, en-tête, compte actif) partagé avec le reste de ProdPilot IA, afin que la session mail reste cohérente visuellement et navigable comme tout autre module.
 
 Le parcours suit cinq temps : accueil minimal, analyse progressive sans pourcentage artificiel, brief central, décisions une par une puis synthèse de fin. La vue **Un par un** est proposée par défaut ; la vue synthèse reste accessible. Les messages sans action sont repliés et le corps original s’ouvre dans un panneau secondaire.
 
-L’interface utilise une colonne centrale, un fond neutre clair, des cartes sobres, une seule couleur d’accent et des animations courtes désactivées lorsque `prefers-reduced-motion` est actif.
+L’interface utilise une colonne centrale, le fond et la couleur d’accent configurables de l’entreprise (`--app-background`, `--app-primary`, identiques à Mon Espace, Planning, etc.), des cartes sobres et des animations courtes désactivées lorsque `prefers-reduced-motion` est actif.
 
 ## État et sécurité
 
@@ -37,7 +37,7 @@ Les comptes proviennent de la mémoire locale isolée du compte actif : messages
 
 # Architecture UX en quatre états
 
-1. **Veille** : centre de commande sombre alimenté uniquement par la mémoire locale, sans conversation ni champ texte.
+1. **Veille** : centre de commande clair, alimenté uniquement par la mémoire locale, sans conversation ni champ texte.
 2. **Conversation** : créée après « Démarrer la session » ; le brief devient vocal si le réglage l’autorise.
 3. **Travail actif** : validations, brouillons et timeline occupent l’espace principal ; l’historique conversationnel reste secondaire et replié.
 4. **Session terminée** : résultats exécutés, éléments restant à vérifier et retour au centre de commande.

@@ -4,6 +4,15 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Conversation vocale mains libres et alignement visuel de la session mail — 19/07/2026
+
+- Ajoute les réglages « Conversation mains libres » et « Envoyer automatiquement dès la fin de la transcription » dans Réglages → Mails → Voix. Le champ `continuousConversation` existait déjà dans le modèle de données et conditionnait déjà la ré-écoute automatique après chaque réponse, mais n’avait jamais eu de contrôle dans l’interface : impossible à activer, ce qui rendait la conversation vocale laborieuse (redéclenchement manuel du micro après chaque échange).
+- Bascule ces deux réglages à `true` par défaut pour les nouvelles installations, afin qu’une conversation vocale mains libres (brief parlé → écoute → réponse parlée → écoute…) fonctionne dès le premier usage sans réglage préalable.
+- Remplace le shell minimal et sombre (`MailSessionShell`, fond `#0b0e0d`, accents vert sarcelle `#1f5f49` et citron `#d8f567`) de `/mails/assistant` par le shell applicatif standard (menu latéral, en-tête) et la palette claire configurable partagés avec Mon Espace, Planning et le reste de l’application.
+- Recolore l’intégralité des écrans de la session (veille « Morning Brief », travail actif, timeline d’exécution, fin de session) sur `var(--app-primary)`, `var(--app-background)`, `var(--app-border)` et `var(--app-text)`, y compris les mesures « déjà traité » ajoutées précédemment.
+- Supprime `MailSessionShell`, devenu inutile, et met à jour les tests qui figeaient l’ancien shell et la palette sombre en dur.
+- Validation : TypeScript, lint, build et 109 tests automatisés réussis ; vérification par capture d’écran de la veille, de la session active avec 20 décisions et des réglages vocaux, sans erreur console. Le rendu audio réel (Edge/Chrome) reste à valider manuellement par l’utilisateur.
+
 ### Correctif du brief vocal de la session mail — 19/07/2026
 
 - Corrige le Morning Brief (`/mails/assistant`, écran de veille) : la lecture vocale automatique n’était en réalité câblée que dans une session déjà active (`MailAssistantWorkspace`), jamais sur l’écran de démarrage quotidien (`MailCommandCenterStandby`), qui ne parlait donc jamais malgré le réglage « Lire le brief à voix haute » activé par défaut.

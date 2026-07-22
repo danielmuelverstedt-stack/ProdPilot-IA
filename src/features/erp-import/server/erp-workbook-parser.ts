@@ -3,11 +3,15 @@ import "server-only";
 import { readSheet, type CellValue, type Row } from "read-excel-file/node";
 import {
   ERP_DETAILS_HEADERS,
+  ERP_DETAILS_OPTIONAL_HEADERS,
   ERP_MAX_ROWS,
   ERP_TOP_HEADERS,
   assertExpectedHeaders,
+  normalizeErpHeader,
 } from "@/features/erp-import/config/macro-range-profile";
 import type { ErpOperation, ErpWorkOrder } from "@/features/erp-import/types/erp-import";
+import { operationIdentityService } from "@/features/erp-import/services/operation-identity-service";
+import { extractDetailsMachineFields } from "@/features/erp-import/services/details-machine-mapping";
 
 type NullableCellValue = CellValue | null | undefined;
 
@@ -21,7 +25,7 @@ export interface ParsedErpWorkbookPair {
 export async function parseErpWorkbookPair(top: Buffer, details: Buffer): Promise<ParsedErpWorkbookPair> {
   const [topRows, detailsRows] = await Promise.all([readSheet(top), readSheet(details)]);
   validateSheet(topRows, ERP_TOP_HEADERS, "REQ_MacroGamme_Top.xlsx");
-  validateSheet(detailsRows, ERP_DETAILS_HEADERS, "REQ_MacroGamme_Details.xlsx");
+  validateSheet(detailsRows, ERP_DETAILS_HEADERS, "REQ_MacroGamme_Details.xlsx", ERP_DETAILS_OPTIONAL_HEADERS);
 
   return {
     topRows,
@@ -31,10 +35,10 @@ export async function parseErpWorkbookPair(top: Buffer, details: Buffer): Promis
   };
 }
 
-function validateSheet(rows: Row[], headers: readonly string[], fileName: string): void {
+function validateSheet(rows: Row[], headers: readonly string[], fileName: string, optionalHeaders: readonly string[] = []): void {
   if (!rows.length) throw new Error(`${fileName} est vide.`);
   if (rows.length - 1 > ERP_MAX_ROWS) throw new Error(`${fileName} dépasse la limite de ${ERP_MAX_ROWS.toLocaleString("fr-BE")} lignes.`);
-  assertExpectedHeaders(rows[0], headers, fileName);
+  assertExpectedHeaders(rows[0], headers, fileName, optionalHeaders);
 }
 
 function parseWorkOrders(rows: Row[]): ErpWorkOrder[] {
@@ -100,18 +104,21 @@ function parseOperations(rows: Row[]): ErpOperation[] {
     const workOrderId = requiredIdentifier(cell(row, headers, "Num_OF"), "Num_OF", sourceRow);
     const operationNumber = finiteNumber(cell(row, headers, "Operation_Num"));
     const taskCode = identifier(cell(row, headers, "Code_Tâche"));
-    const baseId = `${workOrderId}::${operationNumber}::${taskCode}`;
+    const baseId = operationIdentityService.createStableId({ workOrderId, operationNumber, taskCode });
     const occurrence = (occurrences.get(baseId) ?? 0) + 1;
     occurrences.set(baseId, occurrence);
     const actualStartAt = dateTime(cell(row, headers, "debut_reel"));
     const actualEndAt = dateTime(cell(row, headers, "fin_reel"));
     const operationStatusId = finiteNumber(cell(row, headers, "IDOperation_Status"));
-    const id = occurrence === 1 ? baseId : `${baseId}::${occurrence}`;
+    const id = operationIdentityService.createOperationId(baseId, occurrence);
     const fingerprint = JSON.stringify(row.map((value) => value instanceof Date ? value.toISOString() : value));
     const duplicateOf = firstByFingerprint.get(fingerprint) ?? null;
     if (!duplicateOf) firstByFingerprint.set(fingerprint, id);
+    const machineFields = extractDetailsMachineFields(row, headers);
     return {
       id,
+      stableId: baseId,
+      erpStatus: "Active",
       workOrderId,
       operationNumber,
       operationStatusId,
@@ -125,7 +132,7 @@ function parseOperations(rows: Row[]): ErpOperation[] {
       description: optionalString(cell(row, headers, "Description")),
       macroRangeCode: identifier(cell(row, headers, "Macro_Gamme")),
       erpPriority: finiteNumber(cell(row, headers, "Priorite")),
-      erpMachineCode: identifier(cell(row, headers, "Macro_Gamme_Pe")),
+      ...machineFields,
       normalizedStatus: normalizeStatus(operationStatusId, actualStartAt, actualEndAt),
       sourceRow,
       duplicateOf,
@@ -143,11 +150,11 @@ function normalizeStatus(statusId: number, actualStartAt: string | null, actualE
 }
 
 function headerIndex(row: Row): Map<string, number> {
-  return new Map(row.map((value, index) => [String(value ?? "").trim(), index]));
+  return new Map(row.map((value, index) => [normalizeErpHeader(value), index]));
 }
 
 function cell(row: Row, headers: Map<string, number>, name: string): NullableCellValue {
-  const index = headers.get(name);
+  const index = headers.get(normalizeErpHeader(name));
   return index === undefined ? undefined : row[index];
 }
 

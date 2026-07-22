@@ -52,10 +52,13 @@ test("les journaux d’usage n’enregistrent pas le corps du message", async ()
   assert.doesNotMatch(recorder, /bodyText|messageBody|fullReply|prompt:/);
 });
 
-test("aucune opération d’envoi Gmail n’est implémentée", async () => {
+test("l’envoi Gmail réel exige explicitement le réglage d’envoi activé pour le compte", async () => {
   const provider = await read("src/features/mail/providers/google/google-mail-provider.ts");
-  assert.doesNotMatch(provider, /messages\.send|drafts\.send/);
   assert.match(provider, /drafts\.create/);
+  assert.match(provider, /drafts\.send/);
+  assert.doesNotMatch(provider, /messages\.send/);
+  const sendDraftSection = provider.split("async sendDraft")[1].split("async archiveMessage")[0];
+  assert.match(sendDraftSection, /if \(!this\.account\.settings\.sendingEnabled\) throw new Error/);
 });
 
 test("le transport Gmail utilise le fetch serveur sans cache pendant le rendu RSC", async () => {

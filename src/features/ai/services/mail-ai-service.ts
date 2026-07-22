@@ -15,8 +15,12 @@ import { reduceMailContext, type ReducedMailContext } from "@/features/ai/servic
 import { AiServiceError, type AiError, type AiOperationType, type AiUsageRecord, type MailAiOperationType } from "@/features/ai/types/ai";
 import type {
   MailAiAnalysis,
+  MailAiCompose,
+  MailAiComposeInput,
+  MailAiComposeTemplate,
   MailAiConfiguration,
   MailAiMessageContext,
+  MailAiProductionContext,
   MailAiReply,
   MailAiReplyLength,
   MailAiReplyTone,
@@ -109,6 +113,66 @@ export async function rewriteActiveMailReply(input: {
   const key = hash(JSON.stringify({ accountId: prepared.account.id, messageId: input.messageId, operation: "mail_rewrite", current: input.currentReply.bodyText, command: input.command, instructions: input.instructions }));
   const result = await executePaidAware(prepared, provider.type, provider.type === "openai" ? getAiModelRoute("mail_rewrite").model : provider.model, "mail_rewrite", key, () => provider.rewriteMailReply({ ...prepared.providerInput, currentReply: input.currentReply, command: input.command, instructions: input.instructions, intent: "reply", tone: input.tone, length: input.length }));
   return operationResult(result, provider.type, status, prepared.reduced);
+}
+
+export async function composeActiveMail(input: {
+  configuration: MailAiConfiguration;
+  instruction: string;
+  recipientEmail: string;
+  productionContext: MailAiProductionContext | null;
+  template: MailAiComposeTemplate | null;
+  tone: MailAiReplyTone;
+  length: MailAiReplyLength;
+}): Promise<MailAiOperationResult<MailAiCompose>> {
+  const { account } = await getActiveMailContext();
+  if (account.status !== "connected") throw serviceError("message_unavailable", "Le compte de messagerie actif n’est pas connecté.", 409);
+  const { provider, status } = await resolveAiProvider();
+  ensurePrivacy(provider.type, input.configuration.privacyAcknowledged);
+  const owner = getCurrentMailOwnerContext();
+  const model = provider.type === "openai" ? getAiModelRoute("mail_compose").model : provider.model;
+  const requestKey = hash(JSON.stringify({ accountId: account.id, operation: "mail_compose", instruction: input.instruction, recipientEmail: input.recipientEmail, productionContext: input.productionContext, template: input.template, tone: input.tone, length: input.length }));
+  const safeReference = hash(`${account.id}:compose:${requestKey}`);
+  const providerInput: MailAiComposeInput = {
+    context: { accountId: account.id, mailProvider: account.provider, accountEmail: account.emailAddress, preferredLanguage: input.configuration.preferredLanguage, organizationId: account.organizationId },
+    instruction: input.instruction, productionContext: input.productionContext, template: input.template,
+    tone: input.tone, length: input.length, configuration: input.configuration,
+  };
+  if (provider.type === "openai") {
+    try {
+      await enforceAiUsageLimit({ ...owner, messageReference: safeReference, operation: "mail_compose", model, budgetPolicy: input.configuration.budgetPolicy, pricingRegistry: input.configuration.pricingRegistry, projectedUsage: { inputTokens: input.configuration.maximumInputContextTokens, cachedInputTokens: 0, outputTokens: input.configuration.maximumReplyOutputTokens, totalTokens: input.configuration.maximumInputContextTokens + input.configuration.maximumReplyOutputTokens } });
+    } catch (error) {
+      const detail = error instanceof AiServiceError ? error.detail : serviceError("provider_unavailable", "Le contrôle du budget IA est indisponible.", 502).detail;
+      await recordSafeAiUsage({ operation: "mail_compose", provider: provider.type, model, accountId: account.id, companyId: owner.companyId, userId: owner.userId, messageReference: safeReference, usage: null, durationMs: 0, providerRequestAttempted: false, cacheStatus: "not_applicable", success: false, errorCode: detail.code, budgetPolicy: input.configuration.budgetPolicy, pricingRegistry: input.configuration.pricingRegistry });
+      throw error;
+    }
+  }
+  const composed = await aiRequestCoordinator.run(`${account.id}:${requestKey}`, async () => {
+    const startedAt = Date.now();
+    try {
+      const result = await provider.composeMail(providerInput);
+      const currentContext = await getActiveMailContext();
+      if (currentContext.account.id !== account.id) {
+        throw serviceError("account_changed", "Le compte actif a changé pendant l’opération. Le résultat a été écarté pour éviter tout mélange de comptes.", 409);
+      }
+      await recordSafeAiUsage({ operation: "mail_compose", provider: provider.type, model, accountId: account.id, companyId: owner.companyId, userId: owner.userId, messageReference: safeReference, usage: result.usage, durationMs: Date.now() - startedAt, providerRequestAttempted: provider.type === "openai", cacheStatus: "miss", success: true, errorCode: null, budgetPolicy: input.configuration.budgetPolicy, pricingRegistry: input.configuration.pricingRegistry });
+      return result;
+    } catch (error) {
+      const detail = error instanceof AiServiceError ? error.detail : serviceError("provider_unavailable", "Le service IA est indisponible.", 502).detail;
+      await recordSafeAiUsage({ operation: "mail_compose", provider: provider.type, model, accountId: account.id, companyId: owner.companyId, userId: owner.userId, messageReference: safeReference, usage: null, durationMs: Date.now() - startedAt, providerRequestAttempted: provider.type === "openai", cacheStatus: "miss", success: false, errorCode: detail.code, budgetPolicy: input.configuration.budgetPolicy, pricingRegistry: input.configuration.pricingRegistry });
+      throw error;
+    }
+  });
+  return {
+    result: composed,
+    mode: provider.type === "openai" ? "openai" : "deterministic",
+    configurationMessage: status.configured ? undefined : status.message,
+    context: {
+      fieldsTransferred: ["instruction", ...(input.productionContext ? ["contexte de production résumé"] : []), ...(input.template ? ["modèle sélectionné"] : [])],
+      includesMessageBody: true, threadMessageCount: 0, attachmentMetadataCount: 0,
+      includesBinaryAttachments: false, includesOAuthTokens: false, includesSecrets: false,
+      wasTruncated: false, notes: [], estimatedInputTokens: estimateTokens(input.instruction),
+    },
+  };
 }
 
 async function prepareOperation(operation: MailAiOperationType, messageId: string, configuration: MailAiConfiguration) {

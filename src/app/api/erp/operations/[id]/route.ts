@@ -16,8 +16,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if ("plannedDate" in body) patch.plannedDate = nullableDate(body.plannedDate);
     if ("machineId" in body) patch.machineId = nullableShortString(body.machineId, 100);
     if ("priority" in body) patch.priority = nullablePriority(body.priority);
+    if ("manualOrder" in body) patch.manualOrder = nullablePriority(body.manualOrder);
     if ("status" in body) patch.status = nullableStatus(body.status);
     if ("comment" in body) patch.comment = nullableShortString(body.comment, 500);
+    if ("visible" in body) patch.visible = nullableBoolean(body.visible);
+    if ("locked" in body) patch.locked = nullableBoolean(body.locked);
     if (!Object.keys(patch).length) return erpJson({ message: "Aucun champ modifiable n’a été fourni." }, 400);
     return erpJson({ override: await erpImportRepository.setOverride(id, patch) });
   } catch (error) { return erpError(error); }
@@ -31,4 +34,5 @@ function nullableDate(value: unknown): string | null {
 function nullablePriority(value: unknown): number | null { if (value === null || value === "") return null; if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 999) throw new Error("La priorité doit être comprise entre 0 et 999."); return Math.round(value); }
 function nullableStatus(value: unknown): ErpOperationStatus | null { if (value === null || value === "") return null; if (!["not-started", "in-progress", "completed", "blocked", "unknown"].includes(String(value))) throw new Error("Le statut Planning est invalide."); return value as ErpOperationStatus; }
 function nullableShortString(value: unknown, max: number): string | null { if (value === null || value === "") return null; if (typeof value !== "string" || value.trim().length > max) throw new Error("La valeur Planning est invalide."); return value.trim(); }
+function nullableBoolean(value: unknown): boolean | null { if (value === null) return null; if (typeof value !== "boolean") throw new Error("La valeur Planning doit être booléenne."); return value; }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }

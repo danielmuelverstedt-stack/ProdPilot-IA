@@ -6,7 +6,7 @@ export function MailAccountPreferencesFields({ settings, onChange }: {
   settings: MailAccountSettings;
   onChange: (settings: MailAccountSettings) => void;
 }) {
-  const update = (partial: Partial<MailAccountSettings>) => onChange({ ...settings, ...partial, sendingEnabled: false });
+  const update = (partial: Partial<MailAccountSettings>) => onChange({ ...settings, ...partial });
   return <div className="space-y-5 sm:col-span-2">
     <PreferenceSection title="Affichage et lecture">
       <Select label="Densité" value={settings.displayDensity} onChange={(displayDensity) => update({ displayDensity: displayDensity as MailAccountSettings["displayDensity"] })}><option value="comfortable">Confortable</option><option value="compact">Compacte</option></Select>
@@ -40,7 +40,7 @@ export function MailAccountPreferencesFields({ settings, onChange }: {
       <Check label="Notifier les synchronisations" checked={settings.notifyOnSynchronization} onChange={(notifyOnSynchronization) => update({ notifyOnSynchronization })} />
       <Check label="Notifier les pertes de connexion" checked={settings.notifyOnConnectionLoss} onChange={(notifyOnConnectionLoss) => update({ notifyOnConnectionLoss })} />
     </PreferenceSection>
-    <label className="flex cursor-not-allowed gap-3 rounded-xl border border-[#e0e6e3] bg-slate-50 p-3 text-sm text-slate-500"><input type="checkbox" disabled checked={false} readOnly className="mt-0.5 size-4" /><span><strong className="block text-slate-600">Autoriser l’envoi d’e-mails</strong>Indisponible dans cette version. Aucun e-mail ne peut être envoyé.</span></label>
+    <label className="flex gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm"><input type="checkbox" checked={settings.sendingEnabled} onChange={(event) => update({ sendingEnabled: event.target.checked })} className="mt-0.5 size-4 accent-[#195c45]" /><span><strong className="block text-amber-900">Autoriser l’envoi depuis ProdPilot pour ce compte</strong><span className="mt-1 block text-xs text-amber-800">Une fois activé, un bouton « Envoyer » apparaît sur les brouillons prêts. L’IA ne peut jamais envoyer automatiquement : seul un clic explicite de votre part déclenche un envoi réel.</span></span></label>
   </div>;
 }
 

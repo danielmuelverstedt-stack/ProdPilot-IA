@@ -5,7 +5,7 @@ import { EmptyState, fieldClass, secondaryButton, StatusPill } from "@/component
 import { ErpPlanningViewToolbar } from "@/features/erp-import/components/ErpPlanningViewToolbar";
 import { articleColor, groupErpPlanningRows } from "@/features/erp-import/services/erp-planning-grouping";
 import { ERP_PLANNING_COLUMN_LABELS, moveErpPlanningColumn } from "@/features/erp-import/services/erp-planning-view-preferences";
-import type { ErpOperationStatus, ErpPlanningQueryResult, ErpPlanningRow } from "@/features/erp-import/types/erp-import";
+import type { ErpOperationStatus, ErpPlanningQueryResult, OperationView } from "@/features/erp-import/types/erp-import";
 import type { ErpPlanningColumnId, ErpPlanningSavedView } from "@/features/erp-import/types/erp-planning-view";
 import type { MachineSettings } from "@/features/settings/types/settings";
 
@@ -34,6 +34,7 @@ export function ErpPlanningOperations(props: ErpPlanningOperationsProps) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
   const visibleColumns = activeView.columns.filter((column) => column.visible);
   const groups = useMemo(() => groupErpPlanningRows(rows?.rows ?? [], activeView.groupBy, machines), [activeView.groupBy, machines, rows?.rows]);
+  const activeMachines = useMemo(() => machines.filter((entry) => entry.active && !entry.deleted), [machines]);
   const pinnedOffsets = useMemo(() => {
     let offset = 0;
     const result = new Map<ErpPlanningColumnId, number>();
@@ -42,11 +43,6 @@ export function ErpPlanningOperations(props: ErpPlanningOperationsProps) {
   }, [visibleColumns]);
   const tableWidth = visibleColumns.reduce((total, column) => total + column.width, 0);
 
-  function updateFilter(patch: Partial<ErpPlanningSavedView["filters"]>) {
-    onUpdateView((view) => ({ ...view, filters: { ...view.filters, ...patch } }));
-    onPage(1);
-  }
-
   function moveColumn(sourceId: ErpPlanningColumnId, targetId: ErpPlanningColumnId) {
     onUpdateView((view) => ({ ...view, columns: moveErpPlanningColumn(view.columns, sourceId, targetId) }));
   }
@@ -54,19 +50,11 @@ export function ErpPlanningOperations(props: ErpPlanningOperationsProps) {
   return <section className="space-y-3">
     <ErpPlanningViewToolbar activeView={activeView} views={props.views} persistenceError={props.persistenceError} onSelect={props.onSelectView} onUpdate={onUpdateView} onSaveAs={props.onSaveViewAs} onRename={props.onRenameView} onDelete={props.onDeleteView} onReset={props.onResetView} />
 
-    <div className="grid gap-2 rounded-2xl border border-[var(--app-border)] bg-white p-4 md:grid-cols-5">
-      <input className={fieldClass} value={activeView.filters.search} onChange={(event) => updateFilter({ search: event.target.value })} placeholder="OF, client, article, tâche…" />
-      <select className={fieldClass} value={activeView.filters.machine} disabled={unmappedOnly} onChange={(event) => updateFilter({ machine: event.target.value })}><option value="">Toutes les machines</option>{machines.map((entry) => <option key={entry.id} value={entry.id}>{entry.displayName} · {entry.department}</option>)}</select>
-      <select className={fieldClass} value={activeView.filters.status} onChange={(event) => updateFilter({ status: event.target.value })}><option value="">Tous les statuts</option>{STATUS_OPTIONS.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select>
-      <select className={fieldClass} value={activeView.filters.late} onChange={(event) => updateFilter({ late: event.target.value })}><option value="">Tous les délais</option><option value="late">En retard</option><option value="on-time">À l’heure / en avance</option></select>
-      <select className={fieldClass} value={activeView.sort} onChange={(event) => { onUpdateView((view) => ({ ...view, sort: event.target.value as ErpPlanningSavedView["sort"] })); onPage(1); }}><option value="priority">Score de priorité</option><option value="due-date">Date</option><option value="work-order">Vue OF</option><option value="machine">Vue machine</option><option value="client">Vue client</option><option value="article">Vue article</option></select>
-    </div>
-
-    {unmappedOnly ? <MachineDropTargets machines={machines} onUpdate={onUpdateOperation} /> : null}
+    {unmappedOnly ? <MachineDropTargets machines={activeMachines} onUpdate={onUpdateOperation} /> : null}
     {!visibleColumns.length ? <EmptyState title="Aucune colonne visible" description="Ouvrez la personnalisation de l’affichage pour réactiver au moins une colonne." /> : rows?.rows.length ? <div className="max-h-[70vh] overflow-auto rounded-2xl border border-[var(--app-border)] bg-white">
       <table className="table-fixed text-left text-sm" style={{ width: tableWidth, minWidth: "100%", fontSize: `${activeView.zoom}%` }}>
         <thead className="sticky top-0 z-30 bg-slate-50 text-xs uppercase text-slate-500"><tr>{visibleColumns.map((column) => <th key={column.id} draggable onDragStart={(event) => event.dataTransfer.setData("application/x-prodpilot-column", column.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const source = event.dataTransfer.getData("application/x-prodpilot-column") as ErpPlanningColumnId; if (source) moveColumn(source, column.id); }} className={cellClass(column.pinned, true)} style={cellStyle(column.width, column.pinned ? pinnedOffsets.get(column.id) : undefined)}><span className="cursor-grab" title="Déplacer la colonne">↔ {ERP_PLANNING_COLUMN_LABELS[column.id]}</span></th>)}</tr></thead>
-        <tbody>{groups.map((group) => <PlanningGroup key={group.id} group={group} groupBy={activeView.groupBy} isCollapsed={collapsedGroups.has(group.id)} columns={visibleColumns} pinnedOffsets={pinnedOffsets} machines={machines} busy={busy} onToggle={() => setCollapsedGroups((current) => toggleSetValue(current, group.id))} onUpdate={onUpdateOperation} onOpenWorkOrder={onOpenWorkOrder} />)}</tbody>
+        <tbody>{groups.map((group) => <PlanningGroup key={group.id} group={group} groupBy={activeView.groupBy} isCollapsed={collapsedGroups.has(group.id)} columns={visibleColumns} pinnedOffsets={pinnedOffsets} machines={activeMachines} busy={busy} onToggle={() => setCollapsedGroups((current) => toggleSetValue(current, group.id))} onUpdate={onUpdateOperation} onOpenWorkOrder={onOpenWorkOrder} />)}</tbody>
       </table>
     </div> : <EmptyState title={busy ? "Chargement…" : "Aucune opération"} description="Aucune opération ne correspond aux filtres actifs." />}
 
@@ -83,11 +71,11 @@ function PlanningGroup({ group, groupBy, isCollapsed, columns, pinnedOffsets, ma
   </>;
 }
 
-function OperationRow({ row, columns, pinnedOffsets, machines, busy, onUpdate, onOpenWorkOrder }: { row: ErpPlanningRow; columns: ErpPlanningSavedView["columns"]; pinnedOffsets: Map<ErpPlanningColumnId, number>; machines: MachineSettings[]; busy: boolean; onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>; onOpenWorkOrder: (id: string) => void }) {
+function OperationRow({ row, columns, pinnedOffsets, machines, busy, onUpdate, onOpenWorkOrder }: { row: OperationView; columns: ErpPlanningSavedView["columns"]; pinnedOffsets: Map<ErpPlanningColumnId, number>; machines: MachineSettings[]; busy: boolean; onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>; onOpenWorkOrder: (id: string) => void }) {
   return <tr draggable={!busy} onDragStart={(event) => event.dataTransfer.setData("application/x-prodpilot-operation", row.id)} className="border-t border-slate-100 align-top hover:bg-slate-50">{columns.map((column) => <td key={column.id} className={cellClass(column.pinned, false)} style={cellStyle(column.width, column.pinned ? pinnedOffsets.get(column.id) : undefined)}>{renderCell(column.id, row, machines, busy, onUpdate, onOpenWorkOrder)}</td>)}</tr>;
 }
 
-function renderCell(column: ErpPlanningColumnId, row: ErpPlanningRow, machines: MachineSettings[], busy: boolean, onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>, onOpenWorkOrder: (id: string) => void): ReactNode {
+function renderCell(column: ErpPlanningColumnId, row: OperationView, machines: MachineSettings[], busy: boolean, onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>, onOpenWorkOrder: (id: string) => void): ReactNode {
   if (column === "score") return <><strong className="text-lg tabular-nums">{row.priorityScore}</strong>{row.hasManualOverride ? <span title="Ajustement local" className="ml-1 text-blue-600">●</span> : null}</>;
   if (column === "work-order") return <button className="font-semibold text-[var(--app-primary)] hover:underline" onClick={() => onOpenWorkOrder(row.workOrderId)}>{row.workOrderId}</button>;
   if (column === "operation") return <><span>Op. {row.operationNumber}</span><span className="block text-xs text-slate-500">Tâche {row.taskCode || "—"}</span></>;
@@ -102,15 +90,15 @@ function renderCell(column: ErpPlanningColumnId, row: ErpPlanningRow, machines: 
     const tone = row.delayDays === null ? "neutral" : row.delayDays > 15 ? "danger" : row.delayDays > 0 ? "warning" : "success";
     return <StatusPill tone={tone}>{row.delayDays === null ? "Sans date" : row.delayDays > 0 ? `${row.delayDays} j retard` : row.delayDays < 0 ? `${Math.abs(row.delayDays)} j avance` : "Aujourd’hui"}</StatusPill>;
   }
-  if (column === "machine") return <><select className={`${fieldClass} w-full`} value={row.machineId ?? ""} disabled={busy} onChange={(event) => void onUpdate(row.id, { machineId: event.target.value || null })}><option value="">Machine non définie</option>{machines.filter((entry) => entry.active && !entry.deleted).map((entry) => <option key={entry.id} value={entry.id}>{entry.displayName}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Code ERP {row.erpMachineCode || "vide"}</span></>;
-  if (column === "priority") return <input type="number" min="0" max="999" className={`${fieldClass} w-full`} defaultValue={row.effectivePriority} disabled={busy} onBlur={(event) => { const value = Number(event.target.value); if (value !== row.effectivePriority) void onUpdate(row.id, { priority: value }); }} />;
-  if (column === "status") return <select className={`${fieldClass} w-full`} value={row.effectiveStatus} disabled={busy} onChange={(event) => void onUpdate(row.id, { status: event.target.value })}>{STATUS_OPTIONS.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select>;
+  if (column === "machine") return <><select className={`${fieldClass} w-full`} value={row.machineId ?? ""} disabled={busy} onChange={(event) => void onUpdate(row.id, { machineId: event.target.value || null })}><option value="">Machine non définie</option>{machines.map((entry) => <option key={entry.id} value={entry.id}>{entry.displayName}</option>)}</select><span className="mt-1 block text-xs text-slate-500">Code ERP {row.sourceMachineCode || "vide"}</span></>;
+  if (column === "priority") return <input type="number" min="0" max="999" className={`${fieldClass} w-full`} defaultValue={row.priority} disabled={busy} onBlur={(event) => { const value = Number(event.target.value); if (value !== row.priority) void onUpdate(row.id, { priority: value }); }} />;
+  if (column === "status") return <select className={`${fieldClass} w-full`} value={row.status} disabled={busy} onChange={(event) => void onUpdate(row.id, { status: event.target.value })}>{STATUS_OPTIONS.map((entry) => <option key={entry.value} value={entry.value}>{entry.label}</option>)}</select>;
   if (column === "comment") return <textarea className={`${fieldClass} min-h-16 w-full resize-y py-2`} defaultValue={row.comment ?? ""} maxLength={500} disabled={busy} placeholder="Ajouter un commentaire" onBlur={(event) => { if (event.target.value.trim() !== (row.comment ?? "")) void onUpdate(row.id, { comment: event.target.value }); }} />;
   return row.issues.length ? <span className="text-xs text-amber-800">{row.issues.slice(0, 2).join(" · ")}{row.issues.length > 2 ? ` +${row.issues.length - 2}` : ""}</span> : <StatusPill tone="success">Conforme</StatusPill>;
 }
 
 function MachineDropTargets({ machines, onUpdate }: { machines: MachineSettings[]; onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void> }) {
-  return <div className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white p-3"><p className="mb-2 text-xs font-semibold text-slate-500">Glissez une opération vers une machine, ou utilisez sa liste déroulante.</p><div className="flex gap-2 overflow-x-auto">{machines.filter((entry) => entry.active && !entry.deleted).map((entry) => <button key={entry.id} type="button" className={`${secondaryButton} whitespace-nowrap`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData("application/x-prodpilot-operation"); if (id && window.confirm(`Affecter cette opération à ${entry.displayName} ?`)) void onUpdate(id, { machineId: entry.id }); }}>{entry.displayName}</button>)}</div></div>;
+  return <div className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white p-3"><p className="mb-2 text-xs font-semibold text-slate-500">Glissez une opération vers une machine, ou utilisez sa liste déroulante.</p><div className="flex gap-2 overflow-x-auto">{machines.map((entry) => <button key={entry.id} type="button" className={`${secondaryButton} whitespace-nowrap`} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData("application/x-prodpilot-operation"); if (id && window.confirm(`Affecter cette opération à ${entry.displayName} ?`)) void onUpdate(id, { machineId: entry.id }); }}>{entry.displayName}</button>)}</div></div>;
 }
 
 function cellClass(isPinned: boolean, isHeader: boolean): string {

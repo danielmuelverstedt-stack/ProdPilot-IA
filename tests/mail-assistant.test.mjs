@@ -52,7 +52,7 @@ test("la voix exige une action et prévoit un état non supporté", async () => 
   const voice = await read("src/features/mail-assistant/components/MailAssistantVoiceInput.tsx");
   assert.match(voice, /onClick=/);
   assert.match(voice, /Saisie vocale non disponible/);
-  assert.match(voice, /continuous = settings\.inputMode === "continuous"/);
+  assert.match(voice, /continuous = settings\.inputMode !== "push_to_talk"/);
 });
 
 test("le parcours visuel reste conversationnel et centré sur les décisions", async () => {

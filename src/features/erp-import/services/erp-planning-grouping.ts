@@ -1,16 +1,16 @@
 import type { MachineSettings } from "@/features/settings/types/settings";
-import type { ErpPlanningRow } from "@/features/erp-import/types/erp-import";
+import type { OperationView } from "@/features/erp-import/types/erp-import";
 import type { ErpPlanningGroupBy } from "@/features/erp-import/types/erp-planning-view";
 
 export interface ErpPlanningRowGroup {
   id: string;
   label: string;
-  rows: ErpPlanningRow[];
+  rows: OperationView[];
   workOrderCount: number;
   articleCode: string | null;
 }
 
-export function groupErpPlanningRows(rows: ErpPlanningRow[], groupBy: ErpPlanningGroupBy, machines: MachineSettings[]): ErpPlanningRowGroup[] {
+export function groupErpPlanningRows(rows: OperationView[], groupBy: ErpPlanningGroupBy, machines: MachineSettings[]): ErpPlanningRowGroup[] {
   if (groupBy === "none") return [{ id: "all", label: "Toutes les opérations", rows, workOrderCount: distinctWorkOrders(rows), articleCode: null }];
   const machineById = new Map(machines.map((machine) => [machine.id, machine]));
   const groups = new Map<string, ErpPlanningRowGroup>();
@@ -37,7 +37,7 @@ export function articleColor(articleCode: string): { background: string; text: s
   return palettes[Math.abs(hash) % palettes.length];
 }
 
-function groupDescriptor(row: ErpPlanningRow, groupBy: Exclude<ErpPlanningGroupBy, "none">, machineById: Map<string, MachineSettings>): Omit<ErpPlanningRowGroup, "rows" | "workOrderCount"> {
+function groupDescriptor(row: OperationView, groupBy: Exclude<ErpPlanningGroupBy, "none">, machineById: Map<string, MachineSettings>): Omit<ErpPlanningRowGroup, "rows" | "workOrderCount"> {
   if (groupBy === "article") return { id: `article:${articleKey(row)}`, label: `Article ${row.articleCode || "non renseigné"}`, articleCode: row.articleCode || null };
   if (groupBy === "work-order") return { id: `of:${row.workOrderId}`, label: `OF ${row.workOrderId}`, articleCode: row.articleCode || null };
   if (groupBy === "machine") {
@@ -57,21 +57,21 @@ function groupDescriptor(row: ErpPlanningRow, groupBy: Exclude<ErpPlanningGroupB
     const family = row.workOrder?.articleGroupId || "Famille non définie";
     return { id: `family:${family}`, label: `Famille ${family}`, articleCode: null };
   }
-  if (groupBy === "priority") return { id: `priority:${row.effectivePriority}`, label: `Priorité ${row.effectivePriority}`, articleCode: null };
-  if (groupBy === "status") return { id: `status:${row.effectiveStatus}`, label: statusLabel(row.effectiveStatus), articleCode: null };
+  if (groupBy === "priority") return { id: `priority:${row.priority}`, label: `Priorité ${row.priority}`, articleCode: null };
+  if (groupBy === "status") return { id: `status:${row.status}`, label: statusLabel(row.status), articleCode: null };
   const date = row.plannedDate || "Sans date";
   return { id: `date:${date}`, label: row.plannedDate ? formatDate(row.plannedDate) : date, articleCode: null };
 }
 
-function articleKey(row: ErpPlanningRow): string {
+function articleKey(row: OperationView): string {
   return row.workOrder?.articleId || row.articleCode.trim().toLocaleUpperCase("fr");
 }
 
-function distinctWorkOrders(rows: ErpPlanningRow[]): number {
+function distinctWorkOrders(rows: OperationView[]): number {
   return new Set(rows.map((row) => row.workOrderId)).size;
 }
 
-function statusLabel(status: ErpPlanningRow["effectiveStatus"]): string {
+function statusLabel(status: OperationView["status"]): string {
   return { "not-started": "À faire", "in-progress": "En cours", completed: "Terminée", blocked: "Bloquée", unknown: "À qualifier" }[status];
 }
 

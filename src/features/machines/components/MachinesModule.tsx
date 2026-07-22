@@ -31,7 +31,7 @@ export function MachinesModule() {
       const department = settings.production.departments.find((entry) => entry.id === machine.departmentId);
       const demoMachine = data.machines.find((entry) => entry.id === machine.id);
       const maintenance = data.maintenance.filter((entry) => entry.machineId === machine.id && entry.status !== "Terminée").sort((a, b) => a.date.localeCompare(b.date))[0];
-      const actions = data.actions.filter((entry) => entry.machineId === machine.id && entry.status !== "Terminée");
+      const actions = data.actions.filter((entry) => entry.contextLink?.module === "machine" && entry.contextLink.id === machine.id && entry.statut !== "Fait");
       const status = machine.deleted ? "Supprimée" : demoMachine?.status ?? (machine.active ? "Active" : "Inactive");
       const tone = machine.deleted || status === "En panne" ? "danger" : status === "Disponible" || status === "Active" ? "success" : status === "Maintenance prévue" ? "warning" : "neutral";
       return <article key={machine.id} className={`rounded-2xl border border-[var(--app-border)] bg-white p-5 shadow-sm ${machine.deleted ? "opacity-60" : ""}`}>

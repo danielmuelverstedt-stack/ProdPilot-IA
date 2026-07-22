@@ -4,6 +4,81 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Réinitialisation locale des imports ERP — 22/07/2026
+
+- Remise à zéro des données ERP locales à la demande de l’utilisateur : aucun import actif, aucun OF et aucune opération ne restent exposés par les API ERP.
+- Les historiques d’import, ajustements, correspondances machines, rapports de synchronisation et décisions Planning ont été retirés ensemble afin d’éviter tout état résiduel lors du prochain import.
+- Une sauvegarde récupérable a été créée sous `.local-data/backups/erp-reset-2026-07-22_19-08-26/`. Les données Mail et Calendrier ainsi que les classeurs d’exemple n’ont pas été modifiés.
+
+### Optimisation de performance — 22/07/2026
+
+- Audit ciblé des points de ralentissement les plus concrets du dépôt (accès disque répétés, filtrage/tri non mémorisé, recalculs React inutiles, config de développement) plutôt qu'une refonte générale — conforme à la règle « pas de refactorisation non demandée ».
+- Correctif principal : `ErpImportRepository.findDuplicate()` (vérification de doublon à chaque tentative d'import) relisait et reparsait tout le fichier `erp-planning.json` (16,7 Mo, 23 558 opérations) au lieu d'utiliser le cache en mémoire déjà en place pour le reste du dépôt — mesuré à environ 130 ms de blocage par appel. Route maintenant systématiquement via le cache.
+- `getErpPlanningRows()` (route `/api/erp/planning`, appelée à chaque recherche/tri/pagination) mémorise désormais le résultat filtré et trié par signature de filtres, au lieu de reparcourir et retrier les 23 558 lignes à chaque requête identique (navigation entre pages, par exemple).
+- `WorkspaceDashboard` (Mon Espace) et `ErpPlanningOperations` (tableau Planning ERP) recalculaient des tableaux dérivés à chaque rendu sans mémorisation — cartes/métriques de Mon Espace et liste des machines actives par ligne de tableau sont désormais mémorisées avec `useMemo`.
+- `npm run dev` repasse de Webpack à Turbopack (comportement par défaut de Next.js 16) : le flag `--webpack` avait été introduit le 15/07/2026 sans raison documentée dans ce journal ; le build de production utilisait déjà Turbopack sans le moindre problème. Vérifié après bascule : `tsc`, `lint`, `build` et les 139 tests passent, et un serveur de développement Turbopack propre répond correctement sur `/`, `/mails/assistant`, `/actions` et `/reglages/connexions/calendrier`. Point non couvert par cette vérification, à tester manuellement par l'utilisateur : le flux micro/voix de l'Assistant mails (permissions et enregistrement navigateur, hors de portée d'un test par requêtes HTTP).
+- Non-problèmes confirmés lors de l'audit : la page d'accueil paralléllise déjà ses chargements (`Promise.all`), aucun `middleware.ts` n'ajoute de coût par requête, aucune boucle de sondage (`setInterval`) ne rafraîchit inutilement des données, et les icônes ne sont pas importées en bloc.
+- Reste identifié mais non traité (voir `docs/06 - Todo.md`) : `SerializedAtomicJsonFile`, la primitive de stockage JSON partagée par plusieurs domaines, n'a pas de cache intégré — chaque dépôt qui l'utilise doit le réimplémenter lui-même, et la plupart ne le font pas. Sans risque aujourd'hui vu la taille des fichiers concernés, mais à surveiller si un autre domaine grossit comme `erp-planning.json`.
+
+### Calendrier Google réel dans Mon Espace — 21/07/2026
+
+- Ajoute un connecteur Google Calendar complet (`src/features/calendar/`) : agenda du jour visible dans Mon Espace et planification de réunions par l'assistant local, en plus de sa capacité Actions existante.
+- Décision actée avec l'utilisateur : calendrier **réel** (Google Calendar, pas un calendrier interne), et connexion **séparée** de celle de Mail — connecter la messagerie n'accorde pas silencieusement l'accès au calendrier, et réciproquement. Nouvelle variable serveur `GOOGLE_CALENDAR_REDIRECT_URI` (voir `.env.example`) et nouvelle URI de rappel à déclarer dans le même projet Google Cloud que Mail, avec le scope minimal `calendar.events`.
+- Choix architectural délibéré : plutôt que de refactoriser le mécanisme OAuth de Mail (`google-auth.ts`) — actuellement en usage réel avec un compte connecté par l'utilisateur — pour le rendre générique, le connecteur Calendrier duplique le petit nombre de fonctions génériques nécessaires (client OAuth2, état signé, échange de code, rafraîchissement de jeton) dans son propre module server-only. Aucun fichier du module Mail n'a été modifié ; les 132 tests Mail existants passent sans changement (7 nouveaux tests Calendrier ajoutés, 139 au total).
+- Nouveau domaine `src/features/calendar/` sur le modèle exact de `src/features/mail/` : types (`CalendarAccount`, `CalendarEvent`), contrat `CalendarProvider`, implémentation Google (`calendar.events.list`/`.insert`) et de démonstration, dépôt de compte local (fichier JSON atomique, réutilise `SerializedAtomicJsonFile` déjà partagé par Mail, ERP-import et la gestion Mail), service de connexions.
+- Réglages → Connexions → Calendrier (connecter, activer, tester, déconnecter) — version volontairement plus simple que Messagerie (pas de réglages par compte, un compte de démonstration toujours disponible par défaut).
+- Mon Espace affiche désormais l'agenda du jour (nouvelle carte `TodayAgendaCard`, pleine largeur, avant l'assistant) : heure, titre, lieu, participants, lien vers l'événement réel dans Google Calendar. État vide explicite si rien n'est prévu ou si aucun compte n'est connecté — jamais présenté comme une connexion active tant qu'elle ne l'est pas.
+- L'assistant local de Mon Espace (déjà utilisé pour la revue des Actions et la redirection vers le Mail Copilot) reconnaît désormais une troisième capacité : résumer l'agenda du jour (« qu'est-ce que j'ai aujourd'hui ? ») et proposer la planification d'une réunion (« planifie une réunion à 14h pour... »). Comme pour les Actions et Mail, toute création reste reformulée puis soumise à confirmation explicite avant le moindre appel réseau ; l'heure et l'adresse d'un participant ne sont jamais devinées — seulement extraites du texte de la demande, sinon l'assistant les redemande.
+- Validation : TypeScript, lint, build et 139 tests automatisés réussis. La connexion Google Calendar réelle n'a pas été recettée manuellement (nécessite de déclarer `GOOGLE_CALENDAR_REDIRECT_URI` dans Google Cloud puis `.env.local`) ; un sélecteur de participants/formulaire de création dans l'interface (au-delà de la commande en langage naturel) reste à construire.
+
+### Mail Copilot — rédaction assistée et envoi manuel — 20/07/2026
+
+- Ajoute la rédaction d’un mail neuf (« écris un mail à… pour… ») au Mail Copilot, jusqu’ici capable uniquement de répondre à un message déjà reçu. Nouvel intent `compose_new_mail`, raccordé au moteur de commandes, au moteur d’approbation et à l’orchestrateur central (`assistant-core`) déjà en place pour Mail — aucune duplication de service.
+- Résout le contexte de production (OF, client, échéance, statut, projet) depuis le texte libre de la demande, entièrement côté client (`data.workOrders` vit en `localStorage`, jamais accessible depuis la session serveur) puis le transmet au serveur avec l’instruction : le serveur ne lit jamais directement le dépôt de démonstration, conformément à la Règle 6 de la Constitution.
+- Ajoute `AiProvider.composeMail` (implémentations OpenAI structurée et démonstration déterministe) : l’IA ne reçoit jamais d’accès libre aux données et ne peut jamais inventer une adresse e-mail — le destinataire est résolu de façon déterministe avant l’appel IA ; toute information manquante est signalée dans `missingInformation` plutôt que devinée.
+- Ajoute les modèles de mails réutilisables dans Réglages → Mails (`mailTemplates`, ajout/édition/suppression/réordonnancement), seedés avec trois exemples explicitement cités par l’utilisateur (relance client en retard, relance fournisseur, notification qualité) et entièrement remplaçables — aucun modèle en dur dans le code.
+- Implémente l’envoi Gmail réel, absent du dépôt jusqu’ici (`MailProvider` n’avait pas de méthode d’envoi ; `sendingEnabled` était un verrou typé littéralement `false`). Décision actée avec l’utilisateur : l’IA ne doit jamais envoyer, l’utilisateur doit cliquer lui-même. En conséquence, `sendingEnabled` devient un `boolean` désactivable par compte dans Réglages → Connexions → Messagerie (désactivé par défaut), et le bouton « Envoyer » vit dans un composant dédié (`MailDraftReviewCard`) totalement séparé du champ de conversation : aucune commande de chat ni confirmation IA ne peut l’atteindre — seul un clic humain explicite, après relecture complète du destinataire/objet/corps, appelle `POST /api/mail/drafts/[draftId]/send`, qui revérifie le réglage côté serveur avant d’appeler `gmail.users.drafts.send`.
+- Relie Mon Espace/Accueil : l’assistant local des Actions détecte désormais une demande de rédaction de mail et redirige vers le Mail Copilot avec l’instruction transmise via `sessionStorage`, au lieu de dupliquer un second pipeline IA/réseau dans un panneau conçu pour rester local et synchrone.
+- Réutilise le pont Mail → Actions déjà construit : une action de suivi peut être créée depuis un mail composé, uniquement sur demande explicite dans la conversation (jamais systématique, décision actée avec l’utilisateur).
+- Ajoute 13 tests ciblés (interprétation de la demande, non-invention de destinataire, niveau d’approbation, mapping capacité/risque de l’orchestrateur, résolution du contexte de production, garde-fous de la route d’envoi) et met à jour un test existant qui verrouillait l’absence totale d’envoi Gmail pour refléter le nouveau garde-fou (`sendingEnabled` requis) au lieu de l’absence de fonctionnalité.
+- Validation : TypeScript, lint, build et 132 tests automatisés réussis. L’envoi réel sur un compte Google Workspace effectivement connecté n’a pas été recetté manuellement ; le sélecteur de modèle dans l’interface reste à construire (le modèle n’est aujourd’hui reconnu que s’il est cité par son nom dans la commande).
+
+### Correctif critique Assistant Mail voix — 20/07/2026
+
+- Corrige la destruction de `SpeechRecognition` au premier résultat partiel en stabilisant les callbacks et le cycle de vie de l’instance.
+- Rend le clic micro persistant, fiabilise arrêt/reprise et écoute mains libres, évite les doubles démarrages et déduplique les résultats avec `resultIndex`.
+- Migre le raccourci initial `Ctrl+Espace`, susceptible d’être capturé par Plaud au niveau système, vers `F8` ; aucun connecteur Plaud n’est ajouté.
+- Empêche les rendus React d’interrompre la synthèse vocale, améliore les réglages initiaux et conserve la sélection, vitesse, volume, langue et moteur TTS.
+- Ajoute un diagnostic intégré et condense l’historique ancien avant les dix tours complets les plus récents.
+
+### Orchestrateur central ProdPilot IA — 20/07/2026
+
+- Ajoute le catalogue transversal de capacités, les contrats d’outil, le registre contrôlé, le plan d’exécution et l’orchestrateur central sans logique métier Mail.
+- Isole chaque exécution par entreprise, utilisateur, module, mode et corrélation ; contrôle la capacité, la frontière de module et la confirmation selon le risque avant l’appel d’un outil.
+- Raccorde toutes les commandes de session Mail existantes à cette couche centrale tout en conservant l’interpréteur, les services, fournisseurs, mémoires et approbations spécialisés.
+- Documente l’ajout futur d’outils et distingue explicitement les contrats cibles des capacités déjà implémentées.
+
+### Socle de décisions durables — 20/07/2026
+
+- Identité métier stable des opérations ERP, indépendante de la ligne et de la version d’import.
+- Journal séparé et historisé des décisions Planning avec ancienne/nouvelle valeur, acteur, origine, module et état d’application.
+- Migration automatique et non destructive des anciens ajustements, réconciliation après import, conservation des décisions ambiguës ou orphelines et rapport explicatif.
+- Architecture Undo/Redo par événements inverses et sauvegarde automatique versionnée après chaque mutation du registre.
+- Documentation des garanties locales, limites industrielles et étapes nécessaires avant un déploiement partagé.
+
+### Registre unique d’actions — 20/07/2026
+
+- Refond le module Actions en registre unique et transversal, conformément aux Règles 4 et 6 de la Constitution (source unique, communication par services centraux). Le registre existait déjà comme dépôt partagé (`data.actions`) ; QRQC, Réunion de production, Parc machines et Centre de demandes y écrivaient déjà, mais chaque module utilisait son propre formulaire ad hoc avec des champs codés en dur (`responsible: "Daniel Mülverstedt"`, `priority: "Haute"`, `dueDate: "2026-07-15"` dans `MeetingWorkflow.tsx`).
+- Simplifie le modèle `ProductionAction` : suppression de `title`, `department`, `priority`, `comments` et `history` (fils de commentaires et sous-tâches explicitement interdits par la demande), remplacés par `dateEncodage`, `introduitPar`, `origine` (configurable), `contextLink` (lien contexte unique et cliquable), `description`, `responsable`, `échéance`, un statut à exactement trois valeurs (À faire / Fait / Reporté, volontairement non configurable) et `dateCloture`/`remarque`. Une migration automatique (`demo-data-migration.ts`) convertit les données `localStorage` existantes vers le nouveau format au premier chargement, sans perte.
+- Ajoute Réglages → Actions : liste des origines modifiable (ajout, renommage, suppression, réordonnancement, sert de preuve de traçabilité EN 9100) et colonnes du tableau du registre configurables (affichage, ordre).
+- Crée un service central (`action-service.ts`) et une fenêtre de saisie unique (`ActionFormDialog`) qui remplace les quatre formulaires existants et est désormais utilisée par QRQC, Réunion de production, Centre de demandes, Parc machines (nouveau bouton sur la fiche machine, qui n’en avait aucun), fiches OF (nouveau bouton) et Qualité ERP.
+- Ajoute les regroupements « par personne » (retards en premier), « par origine » et « par échéance » (En retard / Aujourd’hui / Cette semaine / Plus tard) sur la page Actions, ainsi que les filtres statut/origine/responsable/recherche.
+- Ajoute l’étape 1 obligatoire des réunions QRQC et Production : revue des actions « À faire » de cette origine avec Fait / Reporté / Réassigner avant les nouveaux sujets ; le compte rendu de clôture affiche désormais le résultat de cette revue (faites / reportées / restantes).
+- Corrige l’assistant Mail : `createActions()` écrivait dans une copie de session (`session.actionsCreated`) explicitement documentée comme « pas encore enregistrée durablement dans le module Actions ». La session serveur prépare désormais un brouillon d’action réel, appliqué au registre par le client après confirmation dans la conversation, avec origine « Mail » et lien vers le message d’origine — conforme à l’exemple donné par `02 - Global Architecture.md`.
+- Ajoute une revue des actions en langage naturel dans l’assistant de Mon Espace (jusqu’ici un stub à trois mots-clés sans état) : « revue des actions », « montre les actions de X », « qu’est-ce qui est en retard », création et mise à jour (fait / reporte / réassigne / remarque) d’une action référencée, toujours reformulées et soumises à confirmation explicite avant application. Entièrement local et déterministe, sans appel IA payant, conformément au principe d’escalade locale avant IA.
+- Tournée atelier n’existe pas encore comme module dans `src/` (seulement dans `legacy-reference/`) ; seule l’origine correspondante a été ajoutée à la liste configurable, à la demande explicite de l’utilisateur — le module lui-même reste à construire.
+- Validation : TypeScript, lint, build et 109 tests automatisés existants réussis. Aucun test dédié n’a été ajouté pour le nouveau regroupement (`action-grouping.ts`) ni pour l’interprète de commandes de la revue IA (`action-assistant-interpreter.ts`) ; la revue IA conversationnelle et la revue de réunion restent à recetter manuellement dans le navigateur.
+
 ### Conversation vocale mains libres et alignement visuel de la session mail — 19/07/2026
 
 - Ajoute les réglages « Conversation mains libres » et « Envoyer automatiquement dès la fin de la transcription » dans Réglages → Mails → Voix. Le champ `continuousConversation` existait déjà dans le modèle de données et conditionnait déjà la ré-écoute automatique après chaque réponse, mais n’avait jamais eu de contrôle dans l’interface : impossible à activer, ce qui rendait la conversation vocale laborieuse (redéclenchement manuel du micro après chaque échange).
@@ -393,3 +468,60 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 - Analyse de 23 558 opérations pour les articles identiques : 2,7 ms en médiane.
 - Première requête froide encore à environ 1,2 s, à traiter par le futur dépôt indexé.
 - 105 tests réussis ; TypeScript strict, ESLint et build Next.js 16.2.10 validés. Aucune dépendance ajoutée.
+## [Fondation de synchronisation ERP] — 22/07/2026
+
+### Ajouté
+
+- `OperationIdentityService`, seule autorité de construction des identités métier stables et des identifiants d'occurrence.
+- `SynchronizationService` pour mettre à jour les données ERP, créer les nouvelles opérations et conserver les opérations retirées avec le statut `Removed`.
+- Entité `PlanningDecision` indépendante avec priorité, ordre manuel, machine planifiée, commentaire, visibilité, verrouillage et horodatages.
+- Rapports durables : nouveaux OF, nouvelles opérations, mises à jour, retraits, décisions préservées, décisions perdues et durée.
+
+### Corrigé
+
+- Un import quotidien ne remplace plus aveuglément toutes les opérations ; les retraits restent auditables et les décisions demeurent dans leur journal séparé.
+- Le Planning courant ignore les opérations retirées tout en les conservant dans la projection commune des futurs modules.
+## [Modèle métier OperationView] — 22/07/2026
+
+### Ajouté
+
+- Contrat `OperationView` commun aux futurs consommateurs métier.
+- `OperationViewService`, unique responsable de la fusion entre opérations ERP, décisions Planning, OF et correspondances machines.
+- Indicateurs `hasPlannedMachine`, `hasUserPriority`, `hasComment`, `hasManualOrder`, `isRemoved`, `isVisible` et `isWithoutMachine`.
+- Propriétés futures non calculées pour retard, démarrage, fin, blocage, dates estimées et groupe de capacité.
+
+### Modifié
+
+- Le Planning et ses regroupements consomment désormais `OperationView` et ne réalisent plus la fusion ERP/décisions.
+- Les opérations retirées restent consultables dans la projection métier mais sont exclues du Planning actif.
+## [Vues de travail et FilterEngine] — 22/07/2026
+
+### Ajouté
+
+- `FilterEngine` pur et réutilisable pour Planning, ERP Explorer, Dashboard et futurs outils IA.
+- `PlanningFilters` centralisé avec recherche, clients, production, priorités, statuts ERP et états techniques.
+- Panneau latéral de filtres dynamiques, multisélection, catégories repliables, compteur et remise à zéro.
+- Chargement unique des `OperationView`, filtrage et pagination instantanés en mémoire.
+
+### Modifié
+
+- Les vues personnelles passent en version 2 et restaurent automatiquement leurs filtres après redémarrage.
+- Les statuts proposés proviennent exclusivement de `IDOperation_Status` et `Status` présents dans l'ERP.
+## [Correctif du bouton d'import ERP] — 22/07/2026
+
+### Corrigé
+
+- Le bouton « Contrôler et importer » n'est plus désactivé avant la sélection des fichiers.
+- Le clic ouvre désormais immédiatement le sélecteur natif limité aux fichiers `.xlsx` et autorisant la sélection multiple.
+- Les fichiers sélectionnés sont transmis à l'import, tandis que l'annulation reste sans effet.
+- La valeur de l'input est remise à zéro après lecture pour permettre de sélectionner à nouveau les mêmes fichiers.
+- Les échecs POST restent affichés en français et produisent un journal console concis.
+
+## [Correctif du profil machine Details] — 22/07/2026
+
+### Corrigé
+
+- `CODE_MACH_INT` et `DESCRIPTION_MACHINE` sont désormais des colonnes optionnelles autorisées du profil `REQ_MacroGamme_Details.xlsx`.
+- Le code machine ERP et sa description sont projetés sans doublon dans `ErpOperation`, puis exposés par `OperationView` ; les cellules vides deviennent `null`.
+- Les en-têtes sont comparés après normalisation sûre de la casse, des espaces, du BOM et des caractères invisibles, tandis que toute colonne réellement inconnue reste refusée.
+- L'import réel du 22/07/2026 a été accepté en HTTP 201 avec 3 037 OF et 23 935 opérations.

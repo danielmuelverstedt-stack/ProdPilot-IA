@@ -12,6 +12,8 @@ Le filtre de contexte interdit tout résultat provenant d’un autre compte, uti
 - Niveau 1 : résumé, analyse, entité ou préférence locale encore valide.
 - Niveau 2 : synthèse nouvelle, comparaison complexe, nouvelle réponse ou ambiguïté difficile.
 
+Ces niveaux choisissent le coût et la source d’une réponse Mail. Ils sont complémentaires de l’orchestrateur central décrit dans `docs/42 - Central AI Orchestrator.md`, qui contrôle les capacités et outils de tous les modules.
+
 L’orchestrateur choisit toujours le niveau valide le moins coûteux. Une interface conversationnelle ne justifie jamais à elle seule un appel OpenAI. Un appel de niveau 2 reste soumis aux budgets, consentements et routes serveur existants.
 
 ## Réutilisation

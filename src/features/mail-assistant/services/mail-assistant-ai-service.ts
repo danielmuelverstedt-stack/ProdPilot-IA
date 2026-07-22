@@ -31,7 +31,7 @@ export async function continueMailAssistantConversation(input: {
   if (provider.type === "openai") {
     await enforceAiUsageLimit({ ...owner, messageReference: reference, operation: "mail_conversation", model, budgetPolicy: input.configuration.budgetPolicy, pricingRegistry: input.configuration.pricingRegistry, projectedUsage: { inputTokens: budget.maximumInputTokens, cachedInputTokens: 0, outputTokens: budget.maximumOutputTokens, totalTokens: budget.maximumInputTokens + budget.maximumOutputTokens } });
   }
-  const history = input.session.conversation.slice(-10).map((entry) => ({ role: entry.role, content: entry.text.slice(0, 2_000) }));
+  const history = buildConversationHistory(input.session);
   const mailContext = buildMailContext(input.session, input.messageIds, input.text);
   const startedAt = Date.now();
   try {
@@ -62,6 +62,14 @@ function buildMailContext(session: MailAssistantSession, messageIds: string[], t
   const urgent = session.messages.filter((message) => message.classification.isUrgent).length;
   const replies = session.messages.filter((message) => message.classification.requiresReply).length;
   return `${session.messages.length} messages dans la session, ${urgent} urgents, ${replies} réponses recommandées. Aucun contenu de mail n’est fourni pour cette question générale.`;
+}
+
+function buildConversationHistory(session: MailAssistantSession): Array<{ role: "user" | "assistant"; content: string }> {
+  const recent = session.conversation.slice(-10).map((entry) => ({ role: entry.role, content: entry.text.slice(0, 2_000) }));
+  const older = session.conversation.slice(0, -10);
+  if (!older.length) return recent;
+  const condensed = older.map((entry) => `${entry.role === "user" ? "Utilisateur" : "Assistant"}: ${entry.text.replace(/\s+/g, " ").slice(0, 300)}`).join("\n").slice(-4_000);
+  return [{ role: "assistant", content: `Contexte antérieur conservé sous forme condensée :\n${condensed}` }, ...recent];
 }
 
 function hash(value: string) { return createHash("sha256").update(value).digest("hex"); }

@@ -230,6 +230,16 @@ export class GoogleMailProvider implements MailProvider {
     });
   }
 
+  async sendDraft(draftId: string): Promise<{ messageId: string; threadId: string }> {
+    if (!this.account.settings.sendingEnabled) throw new Error("L’envoi n’est pas autorisé pour ce compte. Activez-le dans Réglages → Connexions → Messagerie avant d’envoyer.");
+    assertGmailId(draftId);
+    return this.withGmail(async (gmail) => {
+      const result = await gmail.users.drafts.send({ userId: "me", requestBody: { id: draftId } });
+      if (!result.data.id) throw new Error("Gmail n’a pas confirmé l’envoi du message.");
+      return { messageId: result.data.id, threadId: result.data.threadId ?? result.data.id };
+    });
+  }
+
   async archiveMessage(messageId: string): Promise<void> {
     await this.modifyLabels({
       messageIds: [messageId],

@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { initialDemoData } from "@/features/demo/mock/demo-data";
+import { migrateDemoData } from "@/features/demo/services/demo-data-migration";
 import type { DemoData } from "@/features/demo/types/demo";
 
 const STORAGE_KEY = "prodpilot.demo-data.v1";
@@ -17,7 +18,11 @@ function hydrate(): void {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
-      if (isDemoData(parsed)) snapshot = parsed;
+      const migrated = migrateDemoData(parsed);
+      if (migrated && isDemoData(migrated)) {
+        snapshot = migrated;
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      }
     }
   } catch {
     snapshot = structuredClone(initialDemoData);
@@ -58,7 +63,7 @@ export function resetDemoData(): void {
 function isDemoData(value: unknown): value is DemoData {
   if (typeof value !== "object" || value === null) return false;
   const item = value as Partial<DemoData>;
-  return item.version === 1
+  return item.version === 2
     && [item.actions, item.workOrders, item.planning, item.machines, item.maintenance,
       item.meetings, item.requests, item.erpQuality, item.notifications]
       .every(Array.isArray);

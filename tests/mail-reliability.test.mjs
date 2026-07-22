@@ -42,8 +42,15 @@ test("les canaux écrit et vocal sont indépendants et Plaud ne peut jamais êtr
   const speech = await read("src/features/mail-assistant/components/MailAssistantSpeechOutput.tsx");
   const diagnostic = await read("src/features/mail-diagnostics/components/MailDiagnosticsScreen.tsx");
   assert.match(settings, /Réponse écrite/);
-  assert.match(settings, /Réponse vocale/);
+  assert.match(settings, /Lecture automatique des réponses/);
   assert.match(speech, /La conversation continue en texte/);
   assert.match(diagnostic, /"plaud", "Plaud", "warning"/);
   assert.match(diagnostic, /aucun connecteur ni session Plaud n’existe/);
+});
+
+test("une conversation longue conserve les anciens tours sous forme condensée", async () => {
+  const conversation = await read("src/features/mail-assistant/services/mail-assistant-ai-service.ts");
+  assert.match(conversation, /buildConversationHistory/);
+  assert.match(conversation, /Contexte antérieur conservé sous forme condensée/);
+  assert.match(conversation, /session\.conversation\.slice\(0, -10\)/);
 });

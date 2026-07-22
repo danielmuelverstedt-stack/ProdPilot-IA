@@ -33,6 +33,7 @@ export class UnavailableMailProvider implements MailProvider {
   async getThread(): Promise<MailThread | null> { return this.unavailable(); }
   async searchMessages(): Promise<MailMessage[]> { return this.unavailable(); }
   async createDraft(): Promise<MailDraft> { return this.unavailable(); }
+  async sendDraft(): Promise<{ messageId: string; threadId: string }> { return this.unavailable(); }
   async archiveMessage(): Promise<void> { return this.unavailable(); }
   async getManagementPermission(): Promise<{ canModifyMail: boolean; reconnectRequired: boolean }> { return { canModifyMail: false, reconnectRequired: true }; }
   async listLabels(): Promise<MailProviderLabel[]> { return this.unavailable(); }

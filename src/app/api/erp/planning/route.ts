@@ -18,6 +18,7 @@ export async function GET(request: Request) {
       validMachineIds: params.get("validMachines")?.split(",").filter((value) => /^[a-zA-Z0-9_-]{1,100}$/.test(value)).slice(0, 200),
       articleMultiplicity: params.get("articleMultiplicity") === "multiple" || params.get("articleMultiplicity") === "unique" ? params.get("articleMultiplicity") as "multiple" | "unique" : undefined,
       includeWorkOrderDetails: params.get("include") === "work-order-details",
+      includeInactive: params.get("scope") === "workbench",
     }));
   } catch (error) { return erpError(error); }
 }

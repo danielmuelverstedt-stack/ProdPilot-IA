@@ -59,7 +59,7 @@ export function createDefaultErpPlanningView(now = new Date().toISOString()): Er
     })),
     groupBy: "none",
     sort: "priority",
-    filters: { search: "", machine: "", status: "", late: "", articleMultiplicity: "all" },
+    filters: emptyPlanningFilters(),
     zoom: 100,
     updatedAt: now,
   };
@@ -71,7 +71,7 @@ export function createDefaultErpPlanningViewState(): ErpPlanningViewState {
 }
 
 export function parseErpPlanningViewState(value: unknown): ErpPlanningViewState {
-  if (!isRecord(value) || value.version !== ERP_PLANNING_VIEW_VERSION || !Array.isArray(value.views)) return createDefaultErpPlanningViewState();
+  if (!isRecord(value) || (value.version !== 1 && value.version !== ERP_PLANNING_VIEW_VERSION) || !Array.isArray(value.views)) return createDefaultErpPlanningViewState();
   const views = value.views.map(parseView).filter((view): view is ErpPlanningSavedView => Boolean(view));
   if (!views.length) return createDefaultErpPlanningViewState();
   const activeViewId = typeof value.activeViewId === "string" && views.some((view) => view.id === value.activeViewId) ? value.activeViewId : views[0].id;
@@ -117,14 +117,33 @@ function parseView(value: unknown): ErpPlanningSavedView | null {
     sort: SORTS.includes(value.sort as ErpPlanningSort) ? value.sort as ErpPlanningSort : "priority",
     filters: {
       search: typeof filters.search === "string" ? filters.search.slice(0, 200) : "",
-      machine: typeof filters.machine === "string" ? filters.machine.slice(0, 100) : "",
-      status: typeof filters.status === "string" ? filters.status.slice(0, 50) : "",
-      late: typeof filters.late === "string" ? filters.late.slice(0, 20) : "",
+      clients: stringArray(filters.clients),
+      departments: stringArray(filters.departments),
+      resourceGroups: stringArray(filters.resourceGroups),
+      machines: stringArray(filters.machines, typeof filters.machine === "string" ? filters.machine : undefined),
+      erpPriorities: numberArray(filters.erpPriorities),
+      userPriorities: numberArray(filters.userPriorities),
+      erpStatusIds: numberArray(filters.erpStatusIds),
+      erpStatuses: stringArray(filters.erpStatuses),
+      technicalStates: stringArray(filters.technicalStates).filter((value): value is "without-machine" | "with-machine" | "removed" | "visible" | "hidden" => ["without-machine", "with-machine", "removed", "visible", "hidden"].includes(value)),
       articleMultiplicity: ARTICLE_FILTERS.includes(filters.articleMultiplicity as ErpPlanningArticleFilter) ? filters.articleMultiplicity as ErpPlanningArticleFilter : "all",
     },
     zoom: clampNumber(value.zoom, 80, 120, 100),
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString(),
   };
+}
+
+export function emptyPlanningFilters(): ErpPlanningSavedView["filters"] {
+  return { search: "", clients: [], departments: [], resourceGroups: [], machines: [], erpPriorities: [], userPriorities: [], erpStatusIds: [], erpStatuses: [], technicalStates: [], articleMultiplicity: "all" };
+}
+
+function stringArray(value: unknown, legacy?: string): string[] {
+  const values = Array.isArray(value) ? value : legacy ? [legacy] : [];
+  return [...new Set(values.filter((entry): entry is string => typeof entry === "string" && Boolean(entry.trim())).map((entry) => entry.trim().slice(0, 100)))].slice(0, 200);
+}
+
+function numberArray(value: unknown): number[] {
+  return Array.isArray(value) ? [...new Set(value.filter((entry): entry is number => typeof entry === "number" && Number.isFinite(entry)))].slice(0, 200) : [];
 }
 
 function isColumnId(value: unknown): value is ErpPlanningColumnId {

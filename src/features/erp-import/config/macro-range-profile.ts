@@ -13,17 +13,41 @@ export const ERP_DETAILS_HEADERS = [
   "Status", "Nouveau_Délais", "Code_Article", "Description", "Macro_Gamme", "Priorite", "Macro_Gamme_Pe",
 ] as const;
 
+export const ERP_DETAILS_OPTIONAL_HEADERS = [
+  "CODE_MACH_INT",
+  "DESCRIPTION_MACHINE",
+] as const;
+
 export const ERP_MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
 export const ERP_MAX_ROWS = 100_000;
 
-export function assertExpectedHeaders(actual: unknown[], expected: readonly string[], fileName: string): void {
-  const normalized = actual.map((value) => String(value ?? "").trim());
-  const missing = expected.filter((header) => !normalized.includes(header));
-  const unexpected = normalized.filter((header) => header && !expected.includes(header));
-  if (missing.length || unexpected.length || normalized.length !== expected.length) {
+export function normalizeErpHeader(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFKC")
+    .replace(/[\u200B-\u200D\u2060\uFEFF]/g, "")
+    .trim()
+    .toLocaleUpperCase("fr");
+}
+
+export function assertExpectedHeaders(
+  actual: unknown[],
+  required: readonly string[],
+  fileName: string,
+  optional: readonly string[] = [],
+): void {
+  const normalized = actual.map(normalizeErpHeader);
+  const requiredHeaders = required.map(normalizeErpHeader);
+  const allowedHeaders = new Set([...required, ...optional].map(normalizeErpHeader));
+  const missing = required.filter((_, index) => !normalized.includes(requiredHeaders[index]));
+  const unexpected = normalized.filter((header) => header && !allowedHeaders.has(header));
+  const duplicates = normalized.filter((header, index) => header && normalized.indexOf(header) !== index);
+  const hasBlankHeader = normalized.some((header) => !header);
+  if (missing.length || unexpected.length || duplicates.length || hasBlankHeader) {
     const details = [
       missing.length ? `colonnes manquantes : ${missing.join(", ")}` : "",
       unexpected.length ? `colonnes inattendues : ${unexpected.join(", ")}` : "",
+      duplicates.length ? `colonnes dupliquées : ${duplicates.join(", ")}` : "",
+      hasBlankHeader ? "en-tête vide" : "",
     ].filter(Boolean).join(" ; ");
     throw new Error(`Le format de ${fileName} ne correspond pas au profil ERP attendu${details ? ` (${details})` : ""}.`);
   }

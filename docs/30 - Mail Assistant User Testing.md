@@ -18,3 +18,14 @@
 16. Vérifier que Plaud reste « Non connecté » en l’absence de connecteur, même si un périphérique audio porte ce nom.
 
 À tester manuellement avec un compte réel : création de deux brouillons, expiration OAuth, changement de compte pendant un lot, échec partiel du fournisseur, permissions micro, TTS/STT, périphériques et interruption audio dans Edge et Chrome.
+
+## Recette voix critique Edge et Chrome
+
+1. Cliquer **Micro** sans raccourci : aucune application externe ne doit s’ouvrir et l’écoute doit rester active pendant plusieurs phrases.
+2. Vérifier la transcription partielle puis finale et confirmer qu’un seul texte est envoyé, sans duplication.
+3. Enchaîner au moins dix échanges texte/voix dans la même session et vérifier que l’historique ne disparaît pas.
+4. Pendant la lecture TTS, saisir du texte puis ouvrir le diagnostic : la voix ne doit pas être coupée.
+5. Comparer au moins trois voix françaises aux vitesses 0,8, 0,9 et 1,0, avec volume et hauteur à 1.
+6. Refuser la permission microphone : la conversation texte doit continuer normalement.
+7. Vérifier les neuf lignes du diagnostic intégré, notamment Plaud comme périphérique éventuel et jamais comme connexion ProdPilot.
+8. Tester arrêt, reprise, interruption, conversation mains libres et perte de focus dans les deux navigateurs.

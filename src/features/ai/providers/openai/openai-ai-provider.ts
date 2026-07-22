@@ -8,6 +8,8 @@ import { getMailAiTokenBudget } from "@/features/ai/config/ai-token-budget";
 import {
   MAIL_ANALYSIS_PROMPT,
   MAIL_ANALYSIS_PROMPT_VERSION,
+  MAIL_COMPOSE_PROMPT,
+  MAIL_COMPOSE_PROMPT_VERSION,
   MAIL_CONVERSATION_PROMPT,
   MAIL_CONVERSATION_PROMPT_VERSION,
   MAIL_REPLY_PROMPT,
@@ -16,8 +18,8 @@ import {
   MAIL_REWRITE_PROMPT_VERSION,
 } from "@/features/ai/prompts/mail-ai-prompts";
 import { AiServiceError, type AiUsageMetadata, type MailAiOperationType } from "@/features/ai/types/ai";
-import type { MailAiAnalysis, MailAiAnalysisInput, MailAiConversationInput, MailAiConversationResult, MailAiReply, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
-import { createMailAnalysisJsonSchema, MAIL_REPLY_JSON_SCHEMA, validateMailAiAnalysis, validateMailAiReply } from "@/features/ai/validation/mail-ai-schema";
+import type { MailAiAnalysis, MailAiAnalysisInput, MailAiCompose, MailAiComposeInput, MailAiConversationInput, MailAiConversationResult, MailAiReply, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
+import { createMailAnalysisJsonSchema, MAIL_COMPOSE_JSON_SCHEMA, MAIL_REPLY_JSON_SCHEMA, validateMailAiAnalysis, validateMailAiCompose, validateMailAiReply } from "@/features/ai/validation/mail-ai-schema";
 
 export class OpenAiProvider implements AiProvider {
   readonly type = "openai" as const;
@@ -57,6 +59,26 @@ export class OpenAiProvider implements AiProvider {
 
   async rewriteMailReply(input: MailAiRewriteInput): Promise<MailAiReply> {
     return this.createReply("mail_rewrite", MAIL_REWRITE_PROMPT, MAIL_REWRITE_PROMPT_VERSION, buildRewritePayload(input), input.configuration.maximumRewriteOutputTokens);
+  }
+
+  async composeMail(input: MailAiComposeInput): Promise<MailAiCompose> {
+    const operation = "mail_compose" as const;
+    try {
+      const { response, model } = await this.createStructuredResponse(operation, {
+        instructions: MAIL_COMPOSE_PROMPT,
+        input: JSON.stringify(buildComposePayload(input)),
+        name: "mail_ai_compose",
+        schema: MAIL_COMPOSE_JSON_SCHEMA,
+      }, input.configuration.maximumReplyOutputTokens);
+      const result = validateMailAiCompose(parseOutput(response.output_text), {
+        generatedAt: new Date().toISOString(), provider: this.type, model,
+        promptVersion: MAIL_COMPOSE_PROMPT_VERSION, usage: usageFrom(response),
+      });
+      if (!result) throw invalidOutput();
+      return result;
+    } catch (error) {
+      throw mapOpenAiError(error);
+    }
   }
 
   async testConnection(): Promise<{ model: string; usage: AiUsageMetadata }> {
@@ -178,6 +200,18 @@ function buildRewritePayload(input: MailAiRewriteInput) {
       sender: input.message.sender,
       bodyText: input.message.bodyText,
     },
+  };
+}
+
+function buildComposePayload(input: MailAiComposeInput) {
+  return {
+    language: input.configuration.preferredLanguage,
+    tone: input.tone,
+    length: input.length,
+    userInstruction: input.instruction,
+    signature: input.configuration.includeSignature ? input.configuration.signature : "",
+    productionContext: input.productionContext,
+    template: input.template,
   };
 }
 

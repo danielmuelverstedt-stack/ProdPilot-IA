@@ -53,7 +53,7 @@ async function loadDiagnostics() {
   return { server, browserItems };
 }
 
-async function inspectBrowserCapabilities(): Promise<MailDiagnosticItem[]> {
+export async function inspectBrowserCapabilities(): Promise<MailDiagnosticItem[]> {
   const items: MailDiagnosticItem[] = [];
   const synthSupported = "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
   const voices = synthSupported ? window.speechSynthesis.getVoices() : [];

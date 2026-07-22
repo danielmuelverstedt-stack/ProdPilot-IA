@@ -4,7 +4,7 @@ import { isMailAccountSettings } from "@/features/mail/config/mail-account-defau
 import { getMailProviderForAccount } from "@/features/mail/providers/provider-factory";
 import { mailAccountRepository } from "@/features/mail/server/accounts/local-mail-account-repository";
 import type { CreateMailAccountInput } from "@/features/mail/server/accounts/mail-account-repository";
-import type { MailAccount, MailAccountSettings } from "@/features/mail/types/mail";
+import type { MailAccount } from "@/features/mail/types/mail";
 
 export async function getMailAccounts(): Promise<MailAccount[]> {
   const accounts = await mailAccountRepository.list();
@@ -53,11 +53,10 @@ export async function updateMailAccountSettings(
   if (!isMailAccountSettings(settings)) {
     throw new Error("Les paramètres du compte de messagerie sont invalides.");
   }
-  const safeSettings: MailAccountSettings = { ...settings, sendingEnabled: false };
   return mailAccountRepository.updateSettings(
     accountId,
     normalizeDisplayName(displayName),
-    safeSettings,
+    settings,
   );
 }
 

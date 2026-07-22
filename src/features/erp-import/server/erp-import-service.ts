@@ -7,6 +7,7 @@ import { parseErpWorkbookPair } from "@/features/erp-import/server/erp-workbook-
 import type { ErpImportSummary } from "@/features/erp-import/types/erp-import";
 
 export async function importErpFiles(files: File[]): Promise<ErpImportSummary> {
+  const startedAt = new Date().toISOString();
   if (files.length !== 2) throw new Error("Sélectionnez exactement les deux exports ERP attendus.");
   const topFile = files.find((file) => file.name.toLocaleLowerCase("fr") === ERP_TOP_FILE_NAME.toLocaleLowerCase("fr"));
   const detailsFile = files.find((file) => file.name.toLocaleLowerCase("fr") === ERP_DETAILS_FILE_NAME.toLocaleLowerCase("fr"));
@@ -33,7 +34,7 @@ export async function importErpFiles(files: File[]): Promise<ErpImportSummary> {
   const workOrderIds = new Set(parsed.workOrders.map((order) => order.id));
   const linkedOperationCount = parsed.operations.filter((operation) => workOrderIds.has(operation.workOrderId)).length;
   const duplicateOperationCount = parsed.operations.filter((operation) => operation.duplicateOf !== null).length;
-  const missingMachineCount = parsed.operations.filter((operation) => operation.erpMachineCode === "" || operation.erpMachineCode === "0").length;
+  const missingMachineCount = parsed.operations.filter((operation) => operation.erpMachineCode === null || operation.erpMachineCode === "0").length;
   const issueCount = (parsed.operations.length - linkedOperationCount) + duplicateOperationCount + missingMachineCount;
   const importedAt = new Date().toISOString();
   const summary: ErpImportSummary = {
@@ -56,6 +57,7 @@ export async function importErpFiles(files: File[]): Promise<ErpImportSummary> {
     operations: parsed.operations,
     topBuffer,
     detailsBuffer,
+    startedAt,
   });
   return summary;
 }

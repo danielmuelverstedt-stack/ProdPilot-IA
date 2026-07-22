@@ -117,7 +117,7 @@ export class LocalMailAccountRepository implements MailAccountRepository {
     return this.updateAccount(accountId, (account) => ({
       ...account,
       displayName,
-      settings: { ...settings, sendingEnabled: false },
+      settings,
     }));
   }
 

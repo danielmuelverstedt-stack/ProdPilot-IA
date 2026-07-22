@@ -1,6 +1,6 @@
 # Guide vocal de l’Assistant mails
 
-La dictée utilise `SpeechRecognition` ou son préfixe navigateur lorsqu’il existe. Elle ne démarre qu’après un clic sur **Micro**, s’arrête à la demande ou à la fin de la phrase et n’écoute jamais en arrière-plan.
+La dictée utilise `SpeechRecognition` ou son préfixe navigateur lorsqu’il existe. En mode « Cliquer pour parler », un clic démarre une écoute persistante jusqu’au clic sur **Arrêter**, à l’envoi automatique d’une transcription finale ou à une erreur navigateur. L’instance n’est plus recréée lors de la mise à jour du texte transcrit.
 
 La transcription apparaît dans le champ texte et reste modifiable avant envoi. Le bouton annonce son état avec `aria-pressed`, un statut visible indique l’écoute et les erreurs renvoient vers la saisie clavier. Aucun audio n’est transmis à un service ajouté par ProdPilot IA.
 
@@ -15,7 +15,7 @@ Le microphone reste coupé et visible par défaut. L’écoute automatique ne co
 
 # Interaction vocale principale
 
-Le mode initial est le push-to-talk avec `Ctrl + Espace`. Le maintien démarre la reconnaissance et le relâchement l’arrête. Espace seul est ignoré dans les champs de saisie ; un raccourci comportant un modificateur reste utilisable. Le clic sur Micro offre le même contrôle démarrer/arrêter.
+Le mode initial est « Cliquer pour parler ». Le clic sur Micro contrôle démarrer/arrêter. Le push-to-talk reste disponible avec `F8` par défaut ; `Ctrl + Espace` n’est plus proposé initialement afin d’éviter les conflits avec des raccourcis système comme celui de Plaud.
 
 L’écran expose toujours l’état du microphone, la durée, la transcription courante et l’annulation. La permission n’est demandée qu’après une action explicite. La conversation continue est opt-in, possède un arrêt visible et peut être coupée lorsque la page perd le focus.
 

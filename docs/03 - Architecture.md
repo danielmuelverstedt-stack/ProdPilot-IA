@@ -93,6 +93,8 @@ Chaque fonctionnalité contient, selon ses besoins, ses composants, opérations 
 
 ## Architecture par fonctionnalités
 
+L’assistance transversale ajoute une frontière par capacités au monolithe modulaire. Son contrat et ses points d’extension sont décrits dans `docs/42 - Central AI Orchestrator.md`. Les modules restent propriétaires de leur logique métier ; l’orchestrateur central ne fait qu’exécuter leurs plans via des outils déclarés.
+
 Une page de l’App Router orchestre une fonctionnalité, mais n’héberge pas toute sa logique. Le flux normal est :
 
 ```text

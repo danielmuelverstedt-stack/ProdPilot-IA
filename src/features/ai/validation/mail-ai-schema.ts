@@ -1,6 +1,7 @@
 import type { AiUsageMetadata } from "@/features/ai/types/ai";
 import type {
   MailAiAnalysis,
+  MailAiCompose,
   MailAiConfiguration,
   MailAiReply,
   MailAiReplyTone,
@@ -74,6 +75,26 @@ export const MAIL_REPLY_JSON_SCHEMA = objectSchema({
   tone: { type: "string", enum: REPLY_TONES },
   language: stringSchema(2, 40),
 }, ["recipients", "cc", "bcc", "subject", "bodyText", "tone", "language"]);
+
+export const MAIL_COMPOSE_JSON_SCHEMA = objectSchema({
+  subject: stringSchema(1, 998),
+  bodyText: stringSchema(1, 12_000),
+  tone: { type: "string", enum: REPLY_TONES },
+  language: stringSchema(2, 40),
+  missingInformation: arraySchema(stringSchema(1, 500), 10),
+}, ["subject", "bodyText", "tone", "language", "missingInformation"]);
+
+export function validateMailAiCompose(
+  value: unknown,
+  metadata: Omit<MailAiCompose, "subject" | "bodyText" | "tone" | "language" | "missingInformation">,
+): MailAiCompose | null {
+  if (!isRecord(value) || !hasExactKeys(value, ["subject", "bodyText", "tone", "language", "missingInformation"])) return null;
+  if (!isBoundedString(value.subject, 1, 998) || /[\r\n]/.test(value.subject)) return null;
+  if (!isBoundedString(value.bodyText, 1, 12_000) || !REPLY_TONES.includes(value.tone as MailAiReplyTone) || !isBoundedString(value.language, 2, 40)) return null;
+  const missingInformation = parseStringArray(value.missingInformation, 10, 500);
+  if (!missingInformation) return null;
+  return { subject: value.subject, bodyText: value.bodyText, tone: value.tone as MailAiReplyTone, language: value.language, missingInformation, ...metadata };
+}
 
 export function validateMailAiAnalysis(
   value: unknown,

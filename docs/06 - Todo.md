@@ -221,3 +221,127 @@ Les cases cochées correspondent uniquement à un travail effectivement présent
 - [ ] Recetter manuellement TTS, STT, micro, haut-parleurs, alternance voix/clavier et interruption dans Edge et Chrome ; le navigateur intégré n’était pas exposé lors de la validation automatisée.
 - [ ] Recetter la déconnexion/reconnexion OAuth, le changement de compte réel et la création de brouillons Gmail avec confirmation explicite.
 - [ ] Remplacer le cache et les sessions en mémoire par un stockage chiffré multi-instance avant tout déploiement partagé.
+
+## Registre unique d’actions — 20/07/2026
+
+- [x] Remplacer le modèle `ProductionAction` (titre, département, priorité, statuts à quatre valeurs, commentaires, historique) par le modèle minimal demandé : `dateEncodage`, `introduitPar`, `origine`, `contextLink` (lien contexte cliquable), `description`, `responsable`, `échéance`, statut à trois valeurs fixes (À faire / Fait / Reporté), `dateCloture` et `remarque`.
+- [x] Migrer automatiquement les données de démonstration existantes du modèle v1 vers le modèle v2 lors du prochain chargement, sans perte des actions déjà présentes en `localStorage`.
+- [x] Rendre les origines et les colonnes du registre configurables dans Réglages → Actions (ajout, renommage, suppression et réordonnancement des origines ; affichage et ordre des colonnes) ; les trois statuts restent volontairement non configurables.
+- [x] Créer un service central unique (`src/features/actions/services/action-service.ts`) et une fenêtre de saisie unique (`ActionFormDialog`) qui remplace les quatre formulaires ad hoc existants et est réutilisée par QRQC, Réunion de production, Centre de demandes, Parc machines, fiches OF et Qualité ERP, avec origine et lien contexte pré-remplis.
+- [x] Ajouter les boutons de création d’action manquants sur les fiches Machine et OF, qui n’en possédaient aucun.
+- [x] Ajouter les trois regroupements (par personne avec retards en premier, par origine, par échéance) et les filtres (statut, origine, responsable, recherche texte) sur la page Actions.
+- [x] Ajouter l’étape 1 obligatoire des réunions QRQC et Production : revue des actions « À faire » de cette origine avec actions rapides Fait / Reporté / Réassigner, avant les nouveaux sujets ; le compte rendu de clôture affiche désormais le résultat de cette revue.
+- [x] Relier la carte « Actions ouvertes » de Mon Espace au registre réel (ouvertes, en retard) au lieu de l’ancien comptage par priorité supprimé.
+- [x] Remplacer la copie locale non persistée `session.actionsCreated` de l’assistant Mail par des brouillons d’action appliqués au registre réel côté client, avec origine « Mail » et lien vers le message d’origine.
+- [x] Ajouter la revue des actions en langage naturel dans l’assistant de Mon Espace (revue, actions d’une personne, retards, création, fait / reporte / réassigne / remarque) avec reformulation et confirmation explicite avant toute mutation ; entièrement local et déterministe, sans appel IA payant.
+- [x] Ajouter l’origine « Tournée atelier » à la liste configurable, en préparation du futur module correspondant.
+- [ ] Construire le module Tournée atelier lui-même ; il n’existe aujourd’hui que dans `legacy-reference/` et n’a pas été repris dans ce chantier, à la demande explicite de l’utilisateur.
+- [ ] Ajouter des tests automatisés ciblés pour le regroupement des actions (`action-grouping.ts`) et l’interprète de commandes de la revue IA (`action-assistant-interpreter.ts`), non couverts par la suite existante.
+- [ ] Recetter manuellement dans le navigateur : revue IA conversationnelle, revue de réunion, création d’action depuis chaque module et rendu mobile du tableau du registre.
+## Priorité — durabilité des décisions utilisateur
+
+- [x] Séparer les décisions Planning des imports ERP et migrer automatiquement les ajustements locaux existants.
+- [x] Ajouter identité stable, journal historique, réconciliation, états ambigu/orphelin, undo/redo événementiel et sauvegarde automatique locale.
+- [ ] Exposer dans l’interface l’historique, les rapports d’import et les commandes Undo/Redo après recette utilisateur.
+- [ ] Livrer l’export/import global de ProdPilot et une restauration testée couvrant Réglages, vues, décisions et tous les domaines.
+- [ ] Remplacer le stockage local par un dépôt serveur transactionnel, chiffré, authentifié et sauvegardé avant tout déploiement industriel partagé.
+
+## Orchestrateur central ProdPilot IA — 20/07/2026
+
+- [x] Créer les contrats transversaux de capacités, outils, contexte, plan, résultat et trace d’exécution.
+- [x] Ajouter un registre d’outils et un orchestrateur central sans logique métier Mail.
+- [x] Faire passer les commandes de la session Mail existante par l’orchestrateur sans dupliquer les services et règles d’approbation.
+- [ ] Remplacer les identités locales temporaires par le contexte d’authentification entreprise/utilisateur.
+- [ ] Extraire progressivement les contrats centraux de mémoire conversationnelle, préférences et apprentissage avec migration des stores Mail existants.
+- [ ] Raccorder les outils Planning, ERP, OF, Machines et Documents au fur et à mesure des besoins validés.
+- [ ] Ajouter un transport de streaming générique lorsque le premier parcours utilisateur le nécessite.
+
+## Correctif critique Assistant Mail voix — 20/07/2026
+
+- [x] Corriger l’arrêt de `SpeechRecognition` provoqué par les rendus React pendant la transcription.
+- [x] Stabiliser la lecture TTS et l’écoute automatique, sans réutiliser un même jeton de démarrage.
+- [x] Migrer le raccourci initial `Ctrl+Espace` vers `F8` et privilégier le clic persistant afin d’éviter le conflit Plaud.
+- [x] Ajouter le diagnostic intégré et conserver les anciens tours sous forme condensée pour les conversations longues.
+- [ ] Recetter matériellement les scénarios de `docs/30 - Mail Assistant User Testing.md` dans Edge et Chrome.
+- [ ] Ajouter le streaming réel des réponses ; le diagnostic l’annonce actuellement comme non activé.
+
+## Mail Copilot — rédaction assistée et envoi manuel — 20/07/2026
+
+- [x] Ajouter l’intention `compose_new_mail` (rédaction d’un mail neuf, pas seulement une réponse) au moteur de commandes Mail existant, raccordée à l’orchestrateur central (capacité `writing`, risque `prepare`) sans dupliquer de logique.
+- [x] Résoudre le contexte de production (OF, client, échéance, statut) depuis le texte libre côté client, puis le transmettre au serveur — aucun accès direct du serveur au dépôt de démonstration client.
+- [x] Ajouter `AiProvider.composeMail` (OpenAI structuré + démonstration déterministe) qui ne peut jamais inventer une adresse destinataire : une information manquante est signalée dans `missingInformation`, jamais devinée.
+- [x] Ajouter les modèles de mails configurables dans Réglages → Mails (ajout, édition, suppression, réordonnancement), seedés avec trois exemples modifiables (relance client, relance fournisseur, notification qualité) au lieu d’une valeur en dur.
+- [x] Implémenter l’envoi Gmail réel (`sendDraft`, `gmail.users.drafts.send`) strictement derrière un réglage de compte explicite (`sendingEnabled`, désactivé par défaut) et un bouton « Envoyer » dédié, hors du champ de conversation : l’IA ne peut jamais l’atteindre, seul un clic humain déclenche un envoi.
+- [x] Ajouter la carte de relecture du brouillon (destinataire, objet, corps complets) avant tout clic d’envoi, avec gestion d’erreur claire (réglage désactivé, quota, authentification, hors ligne).
+- [x] Relier la revue Mon Espace/Accueil : une demande de rédaction détectée y redirige vers le Mail Copilot avec l’instruction transmise, sans dupliquer le moteur de conversation dans le panneau local des Actions.
+- [x] Réutiliser le pont Mail → Actions existant pour créer une action de suivi depuis un mail composé, uniquement sur demande explicite dans la conversation.
+- [ ] Construire un sélecteur de modèle dans l’interface du Mail Copilot ; le modèle est aujourd’hui reconnu seulement s’il est cité par son nom dans la commande.
+- [ ] Recetter manuellement un envoi réel après activation du réglage sur un compte Google Workspace connecté ; seul le chemin brouillon a été vérifié automatiquement.
+- [ ] Ajouter des tests d’exécution réels (pas seulement statiques) pour `composeActiveMail` une fois qu’un harnais de test serveur Next.js sera disponible dans le dépôt.
+
+## Calendrier Google réel dans Mon Espace — 21/07/2026
+
+- [x] Créer un connecteur Google Calendar complet (`src/features/calendar/`) : types, contrat `CalendarProvider`, implémentation Google (`events.list`/`events.insert`) et démonstration, dépôt de compte, service de connexions — sur le modèle exact de Mail, sans dupliquer sa logique métier.
+- [x] Connecter le Calendrier séparément de Mail (OAuth, jeton et scope propres, `calendar.events` uniquement) au lieu d’élargir silencieusement les droits accordés en connectant la messagerie — conforme à la règle du moindre privilège. Nécessite une nouvelle variable serveur `GOOGLE_CALENDAR_REDIRECT_URI` et une URI de rappel à déclarer dans Google Cloud (voir `.env.example`).
+- [x] Ajouter Réglages → Connexions → Calendrier (connecter/activer/tester/déconnecter), sur le modèle simplifié de Connexions → Messagerie.
+- [x] Afficher l’agenda du jour dans Mon Espace (nouvelle carte pleine largeur `TodayAgendaCard`), alimenté par le compte Calendrier actif ; état vide explicite si aucun événement ou compte non connecté.
+- [x] Étendre l’assistant local de Mon Espace (déjà utilisé pour les Actions et la redirection Mail) : résumé de l’agenda du jour et proposition de planification d’un événement, toujours reformulée et soumise à confirmation explicite avant tout appel réseau — aucune heure ni adresse participant n’est inventée, seulement extraite du texte de la demande.
+- [x] Ne toucher à aucun fichier du module Mail existant : le connecteur Calendrier duplique délibérément le petit mécanisme OAuth générique (client, état signé, échange de code, rafraîchissement) plutôt que de refactoriser le code Google Mail actif et réellement utilisé par l’utilisateur — préserve strictement le comportement Mail existant.
+- [ ] Construire un sélecteur/vue de participants et un formulaire de création d’événement dans l’interface (aujourd’hui uniquement via la commande en langage naturel de l’assistant).
+- [ ] Étendre l’agenda au-delà d’aujourd’hui (vue semaine) si le besoin est confirmé — hors périmètre de cette itération.
+- [ ] Recetter manuellement une connexion Google Calendar réelle (nécessite de déclarer `GOOGLE_CALENDAR_REDIRECT_URI` dans Google Cloud puis `.env.local`) : agenda du jour, résumé par l’assistant, création d’un événement de test avec confirmation.
+
+## Optimisation de performance — 22/07/2026
+
+- [x] Corriger `ErpImportRepository.findDuplicate()` qui contournait le cache de projection ERP (16,7 Mo / 23 558 opérations) et relisait/reparsait le fichier entier à chaque tentative d’import.
+- [x] Mémoriser le résultat filtré/trié des lignes de Planning ERP par signature de filtres, pour éviter de refiltrer/retrier les 23 558 lignes à chaque page ou tri identique.
+- [x] Mémoriser (`useMemo`) les cartes et métriques dérivées de Mon Espace (`WorkspaceDashboard`), recalculées auparavant à chaque rendu même sur un changement de réglage sans rapport.
+- [x] Éviter de refiltrer la liste des machines actives à chaque ligne du tableau Planning ERP (`ErpPlanningOperations`) ; filtrage effectué une seule fois par rendu.
+- [x] Repasser `npm run dev` de Webpack à Turbopack (comportement par défaut de Next 16) après validation manuelle des routes principales — le build de production utilisait déjà Turbopack, seul le confort de développement change.
+- [ ] Ajouter un cache en mémoire avec invalidation à l’écriture directement dans `SerializedAtomicJsonFile` (aujourd’hui chaque dépôt qui l’utilise doit réimplémenter son propre cache ; la plupart ne le font pas). Sans risque aujourd’hui vu la taille des fichiers concernés, mais à traiter avant qu’un autre domaine ne grossisse comme `erp-planning.json`.
+- [ ] Vérifier manuellement le flux micro/voix de l’Assistant mails sous Turbopack (permissions, enregistrement temporaire, lecture) : les tests automatisés et la navigation par requêtes HTTP ne couvrent pas les API navigateur `getUserMedia`/audio.
+
+## Fondation de synchronisation ERP — 22/07/2026
+
+- [x] Isoler la construction de l'identité métier dans `OperationIdentityService`.
+- [x] Centraliser la fusion quotidienne dans `SynchronizationService` sans écriture dans les données ERP source.
+- [x] Conserver les opérations absentes avec `erpStatus = Removed` et les exclure du Planning actif.
+- [x] Formaliser `PlanningDecision` avec priorité, ordre manuel, machine, commentaire, visibilité et verrouillage.
+- [x] Générer et conserver les 100 derniers rapports de synchronisation, avec zéro décision perdue par construction.
+- [ ] Valider un cycle réel avec deux exports ERP de jours consécutifs représentatifs ; aucun second jeu réel n'est fourni.
+
+## Modèle métier OperationView — 22/07/2026
+
+- [x] Créer `OperationView` comme contrat commun des modules Planning, IA, Dashboard et ERP Explorer.
+- [x] Centraliser les règles de fusion machine, priorité, visibilité, commentaire et ordre manuel dans `OperationViewService`.
+- [x] Exposer les indicateurs communs et préparer sans calcul les propriétés métier futures.
+- [x] Migrer le Planning et ses regroupements vers `OperationView`, sans accès aux structures `ErpOperation` ou `PlanningDecision` dans les composants.
+- [x] Conserver les opérations retirées dans les vues tout en les excluant du Planning actif.
+
+## Vues de travail et filtres — 22/07/2026
+
+- [x] Créer `FilterEngine`, indépendant de React, avec combinaison des catégories de filtres.
+- [x] Générer toutes les options depuis `OperationView`, sans clients, machines ou statuts codés en dur.
+- [x] Charger une fois le plan de travail complet puis rechercher, filtrer et paginer sans appel réseau.
+- [x] Ajouter le panneau latéral repliable, les sélections multiples, le compteur et l'effacement global.
+- [x] Migrer et persister les vues de travail version 2 dans le dépôt navigateur existant.
+- [ ] Enrichir `OperationView.department` lorsqu'une source ERP ou un référentiel machine serveur faisant autorité sera disponible ; aucune valeur n'est inventée actuellement.
+- [ ] Recetter visuellement le panneau de filtres dans Chrome et Edge ; aucun navigateur intégré n'était disponible pendant cette session.
+
+## Correctif du déclenchement d'import ERP — 22/07/2026
+
+- [x] Rendre « Contrôler et importer » cliquable avant toute sélection et lui faire ouvrir le sélecteur `.xlsx`.
+- [x] Transmettre automatiquement la sélection à `importFiles`, afficher le chargement et conserver les erreurs visibles.
+- [x] Réinitialiser la valeur native du sélecteur afin d'accepter deux sélections identiques successives.
+- [ ] Recetter physiquement le sélecteur natif dans Chrome et Edge ; aucun navigateur intégré n'était disponible pendant la validation automatisée.
+
+## Correctif du profil machine Details — 22/07/2026
+
+- [x] Autoriser explicitement `CODE_MACH_INT` et `DESCRIPTION_MACHINE` comme colonnes optionnelles du fichier Details.
+- [x] Projeter le code et le libellé machine vers l'opération ERP, avec `null` pour les cellules vides.
+- [x] Normaliser sans correspondance floue la casse, les espaces, le BOM et les caractères invisibles des en-têtes.
+- [x] Conserver le refus des colonnes réellement inconnues et valider l'import réel des 23 935 opérations.
+## Réinitialisation locale des imports ERP — 22/07/2026
+
+- [x] Retirer de l’état actif les imports ERP, la projection des OF et opérations, les ajustements, correspondances machines, rapports de synchronisation et décisions Planning associés.
+- [x] Vérifier après redémarrage que les API ERP exposent zéro import, zéro OF et zéro opération.

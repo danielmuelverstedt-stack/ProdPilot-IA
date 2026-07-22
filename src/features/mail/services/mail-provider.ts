@@ -29,6 +29,7 @@ export interface MailProvider {
   getThread(threadId: string): Promise<MailThread | null>;
   searchMessages(criteria: MailSearchCriteria): Promise<MailMessage[]>;
   createDraft(input: CreateMailDraftInput): Promise<MailDraft>;
+  sendDraft(draftId: string): Promise<{ messageId: string; threadId: string }>;
   archiveMessage(messageId: string): Promise<void>;
   getManagementPermission(): Promise<{ canModifyMail: boolean; reconnectRequired: boolean }>;
   listLabels(): Promise<MailProviderLabel[]>;

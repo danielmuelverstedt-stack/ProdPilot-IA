@@ -4,11 +4,13 @@ import { classifyMailForAssistant, createMailAssistantBrief } from "@/features/m
 import { canExecuteMailCommand } from "@/features/mail-assistant/services/mail-approval-engine";
 import { interpretMailAssistantCommand } from "@/features/mail-assistant/services/mail-command-interpreter";
 import { continueMailAssistantConversation } from "@/features/mail-assistant/services/mail-assistant-ai-service";
+import { orchestrateMailAssistantCommand } from "@/features/mail-assistant/services/mail-assistant-orchestration";
 import { mailAssistantSessionRepository } from "@/features/mail-assistant/server/mail-assistant-session-repository";
+import { composeActiveMail } from "@/features/ai/services/mail-ai-service";
 import { getActiveMailContext, listActiveMailMessages } from "@/features/mail/services/mail-account-context";
 import type { CreateMailDraftInput } from "@/features/mail/types/mail";
-import type { MailAiConfiguration } from "@/features/ai/types/mail-ai";
-import type { MailAssistantAuditEvent, MailAssistantReplyProposal, MailAssistantSession, MailAssistantSessionMessage } from "@/features/mail-assistant/types/mail-assistant";
+import type { MailAiComposeTemplate, MailAiConfiguration, MailAiProductionContext } from "@/features/ai/types/mail-ai";
+import type { MailAssistantActionDraft, MailAssistantAuditEvent, MailAssistantCommand, MailAssistantComposeDraft, MailAssistantReplyProposal, MailAssistantSession, MailAssistantSessionMessage } from "@/features/mail-assistant/types/mail-assistant";
 
 export async function startMailAssistantSession(): Promise<MailAssistantSession> {
   const { account, messages } = await listActiveMailMessages({ limit: 25 });
@@ -20,33 +22,36 @@ export async function startMailAssistantSession(): Promise<MailAssistantSession>
   const session: MailAssistantSession = {
     id: randomUUID(), account: { id: account.id, displayName: account.displayName, emailAddress: account.emailAddress, provider: account.provider, mode: account.mode }, status: "ready", startedAt: now, endedAt: null,
     messages: sessionMessages, replies, conversation: [{ id: randomUUID(), role: "assistant", text: intro, createdAt: now }],
-    audits: sessionMessages.map((message) => audit(account.id, "classification_proposed", [message.id], now)), draftsCreated: [], actionsCreated: [], pendingApproval: null, lastExecutedCommand: null, errors: [],
+    audits: sessionMessages.map((message) => audit(account.id, "classification_proposed", [message.id], now)), draftsCreated: [], composeDrafts: [], pendingActionDrafts: [], pendingApproval: null, lastExecutedCommand: null, errors: [],
   };
   await mailAssistantSessionRepository.save(session);
   return session;
 }
 
-export async function executeMailAssistantText(sessionId: string, text: string, configuration: MailAiConfiguration | null = null, signal?: AbortSignal): Promise<MailAssistantSession> {
+export async function executeMailAssistantText(sessionId: string, text: string, configuration: MailAiConfiguration | null = null, signal?: AbortSignal, productionContext: MailAiProductionContext | null = null, template: MailAiComposeTemplate | null = null): Promise<MailAssistantSession> {
   const session = await requireCurrentSession(sessionId);
   const command = interpretMailAssistantCommand(text, session.messages, session.pendingApproval?.intent);
   session.conversation.push({ id: randomUUID(), role: "user", text, createdAt: new Date().toISOString() });
   session.lastExecutedCommand = command;
   const authorization = canExecuteMailCommand(command);
   if (!authorization.allowed) return respondAndSave(session, authorization.reason ?? "Cette instruction ne peut pas être exécutée.");
-  if (command.intent === "finish_session") { session.status = "finished"; session.endedAt = new Date().toISOString(); return respondAndSave(session, createFinishSummary(session)); }
-  if (command.intent === "undo" || command.intent === "redo") return moveReplyVersion(session, command.messageIds, command.intent);
-  if (command.intent === "modify_reply") return modifyReply(session, command.messageIds, command.instruction ?? text);
-  if (command.intent === "ignore_message") return ignoreMessages(session, command.messageIds);
-  if (command.intent === "mark_processed") return approveReplies(session, command.messageIds);
-  if (command.intent === "create_action") return createActions(session, command.messageIds, text);
-  if (command.intent === "create_draft" || command.intent === "send_email") return createDrafts(session, command.messageIds, command.intent === "send_email");
-  if (/réponses? (?:sont )?(?:bonnes?|prêtes?|validées?)/i.test(text)) { session.pendingApproval = { intent: "create_draft", messageIds: session.replies.filter((reply) => reply.status === "pending").map((reply) => reply.messageId), level: 2 }; return respondAndSave(session, "Je peux créer les brouillons correspondants. Dites « OK » ou « Prépare les brouillons ». Aucun message ne sera envoyé."); }
-  if (/^(ok|oui|d’accord|fais-le)[.!\s]*$/i.test(text) && !session.pendingApproval) return respondAndSave(session, "D’accord. Indiquez l’action à effectuer : préparer les brouillons, créer une action ou modifier une réponse.");
-  if (command.isConversationalFallback) {
-    if (!configuration) return respondAndSave(session, "La configuration de conversation IA est absente. Rechargez la page puis réessayez.");
-    return respondAndSave(session, await continueMailAssistantConversation({ session, text, messageIds: command.messageIds, configuration, signal }));
-  }
-  return respondAndSave(session, "Je peux modifier une proposition, préparer les brouillons, créer une action locale, ignorer un message ou terminer la session.");
+  return orchestrateMailAssistantCommand({ session, command, execute: async () => {
+    if (command.intent === "finish_session") { session.status = "finished"; session.endedAt = new Date().toISOString(); return respondAndSave(session, createFinishSummary(session)); }
+    if (command.intent === "undo" || command.intent === "redo") return moveReplyVersion(session, command.messageIds, command.intent);
+    if (command.intent === "modify_reply") return modifyReply(session, command.messageIds, command.instruction ?? text);
+    if (command.intent === "ignore_message") return ignoreMessages(session, command.messageIds);
+    if (command.intent === "mark_processed") return approveReplies(session, command.messageIds);
+    if (command.intent === "create_action") return createActions(session, command.messageIds, text);
+    if (command.intent === "compose_new_mail") return composeNewMail(session, command, configuration, productionContext, template);
+    if (command.intent === "create_draft" || command.intent === "send_email") return createDrafts(session, command.messageIds, command.intent === "send_email");
+    if (/réponses? (?:sont )?(?:bonnes?|prêtes?|validées?)/i.test(text)) { session.pendingApproval = { intent: "create_draft", messageIds: session.replies.filter((reply) => reply.status === "pending").map((reply) => reply.messageId), level: 2 }; return respondAndSave(session, "Je peux créer les brouillons correspondants. Dites « OK » ou « Prépare les brouillons ». Aucun message ne sera envoyé."); }
+    if (/^(ok|oui|d’accord|fais-le)[.!\s]*$/i.test(text) && !session.pendingApproval) return respondAndSave(session, "D’accord. Indiquez l’action à effectuer : préparer les brouillons, créer une action ou modifier une réponse.");
+    if (command.isConversationalFallback) {
+      if (!configuration) return respondAndSave(session, "La configuration de conversation IA est absente. Rechargez la page puis réessayez.");
+      return respondAndSave(session, await continueMailAssistantConversation({ session, text, messageIds: command.messageIds, configuration, signal }));
+    }
+    return respondAndSave(session, "Je peux modifier une proposition, préparer les brouillons, créer une action locale, ignorer un message ou terminer la session.");
+  } });
 }
 
 async function requireCurrentSession(sessionId: string) {
@@ -54,6 +59,9 @@ async function requireCurrentSession(sessionId: string) {
   if (!session) throw new Error("La session mails est introuvable ou a expiré.");
   const { account } = await getActiveMailContext();
   if (account.id !== session.account.id) throw new Error("Le compte actif a changé. Démarrez une nouvelle session pour éviter tout mélange de comptes.");
+  // Complète les sessions déjà en mémoire créées avant l'ajout de ces champs (déploiement à chaud en développement).
+  session.composeDrafts ??= [];
+  session.pendingActionDrafts ??= [];
   return session;
 }
 
@@ -73,10 +81,10 @@ async function createDrafts(session: MailAssistantSession, ids: string[], sendRe
     const current = reply.versions[reply.currentVersion];
     try {
       const input: CreateMailDraftInput = { to: reply.recipients, subject: reply.subject, bodyText: current.bodyText, replyToMessageId: message.id, replyToThreadId: message.threadId };
-      await provider.createDraft(input);
+      const created = await provider.createDraft(input);
       const verified = await getActiveMailContext();
       if (verified.account.id !== account.id) throw new Error("Le compte actif a changé.");
-      session.draftsCreated.push(messageId); reply.status = "draft_created"; succeeded.push(messageId); session.audits.push(audit(account.id, "draft_created", [messageId]));
+      session.draftsCreated.push(messageId); reply.status = "draft_created"; reply.draftId = created.id; succeeded.push(messageId); session.audits.push(audit(account.id, "draft_created", [messageId]));
     } catch { failed.push(messageId); session.audits.push(audit(account.id, "execution_failure", [messageId])); }
   }
   const demo = account.mode === "demo" ? " Les brouillons sont simulés en mode démonstration et n’ont pas affecté Gmail." : "";
@@ -109,9 +117,71 @@ function moveReplyVersion(session: MailAssistantSession, ids: string[], intent: 
 
 function ignoreMessages(session: MailAssistantSession, ids: string[]) { if (!ids.length) return respondAndSave(session, "Quel message souhaitez-vous ignorer ?"); for (const id of ids) { const message = session.messages.find((item) => item.id === id); if (message) { message.ignored = true; session.audits.push(audit(session.account.id, "message_ignored", [id])); } } return respondAndSave(session, `${ids.length} message${ids.length > 1 ? "s ont" : " a"} été ignoré${ids.length > 1 ? "s" : ""} dans cette session uniquement.`); }
 function approveReplies(session: MailAssistantSession, ids: string[]) { if (!ids.length) return respondAndSave(session, "Quelle proposition souhaitez-vous valider ?"); let approved = 0; for (const id of ids) { const reply = session.replies.find((item) => item.messageId === id); if (reply && reply.status === "pending") { reply.status = "approved"; approved += 1; } } return respondAndSave(session, `${approved} proposition${approved > 1 ? "s ont" : " a"} été validée${approved > 1 ? "s" : ""}. Je peux maintenant préparer ${approved > 1 ? "les brouillons" : "le brouillon"}.`); }
-function createActions(session: MailAssistantSession, ids: string[], text: string) { if (!ids.length) return respondAndSave(session, "À quel message cette action doit-elle être reliée ?"); for (const id of ids) { const key = `${id}:${text.toLocaleLowerCase("fr")}`; if (!session.actionsCreated.includes(key)) session.actionsCreated.push(key); } session.audits.push(audit(session.account.id, "action_created", ids)); return respondAndSave(session, `${ids.length} action${ids.length > 1 ? "s locales ont" : " locale a"} été préparée${ids.length > 1 ? "s" : ""} dans cette session. Elle n’est pas encore enregistrée durablement dans le module Actions et aucune donnée externe n’a été modifiée.`); }
+function createActions(session: MailAssistantSession, ids: string[], text: string) {
+  if (!ids.length) {
+    const lastComposeDraft = [...session.composeDrafts].reverse().find((item) => item.status === "draft_created");
+    if (!lastComposeDraft) return respondAndSave(session, "À quel message cette action doit-elle être reliée ?");
+    const description = extractActionDescription(text) || `Suivi du mail à ${lastComposeDraft.recipientEmail} : ${lastComposeDraft.subject}`;
+    const echeance = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const draft: MailAssistantActionDraft = { id: randomUUID(), messageId: lastComposeDraft.draftId ?? lastComposeDraft.id, description, responsable: "À assigner", echeance };
+    session.pendingActionDrafts.push(draft);
+    session.audits.push(audit(session.account.id, "action_created", []));
+    return respondAndSave(session, "1 action a été préparée et sera ajoutée au registre Actions (origine « Mail »).");
+  }
+  const description = extractActionDescription(text);
+  const echeance = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  for (const id of ids) {
+    const message = session.messages.find((item) => item.id === id);
+    const responsable = message?.from.name || message?.from.email || "À assigner";
+    const draft: MailAssistantActionDraft = { id: randomUUID(), messageId: id, description, responsable, echeance };
+    session.pendingActionDrafts.push(draft);
+  }
+  session.audits.push(audit(session.account.id, "action_created", ids));
+  return respondAndSave(session, `${ids.length} action${ids.length > 1 ? "s ont" : " a"} été préparée${ids.length > 1 ? "s" : ""} et sera${ids.length > 1 ? "" : "n"}t ajoutée${ids.length > 1 ? "s" : ""} au registre Actions (origine « Mail »).`);
+}
+
+async function composeNewMail(session: MailAssistantSession, command: MailAssistantCommand, configuration: MailAiConfiguration | null, productionContext: MailAiProductionContext | null, template: MailAiComposeTemplate | null) {
+  const isBareConfirmation = /^(ok|oui|d’accord|fais-le)[.!\s]*$/i.test(command.rawText.trim());
+  const pendingDraft = session.composeDrafts.find((item) => item.status === "pending");
+  if (isBareConfirmation && pendingDraft) return finalizeComposeDraft(session, pendingDraft);
+  if (!command.recipientEmail) return respondAndSave(session, "Quelle est l’adresse e-mail du destinataire ? Reformulez avec l’adresse, par exemple : « écris un mail à jean.dupont@client.com pour… ».");
+  if (!configuration) return respondAndSave(session, "La configuration de conversation IA est absente. Rechargez la page puis réessayez.");
+  const composed = await composeActiveMail({
+    configuration, instruction: command.instruction ?? command.rawText, recipientEmail: command.recipientEmail,
+    productionContext, template, tone: configuration.defaultTone, length: configuration.defaultLength,
+  });
+  const draft: MailAssistantComposeDraft = {
+    id: randomUUID(), recipientEmail: command.recipientEmail, subject: composed.result.subject, bodyText: composed.result.bodyText,
+    status: "pending", draftId: null, createdAt: new Date().toISOString(),
+  };
+  session.composeDrafts.push(draft);
+  session.pendingApproval = { intent: "compose_new_mail", messageIds: [], level: 2 };
+  const missing = composed.result.missingInformation.length ? ` Informations signalées comme manquantes : ${composed.result.missingInformation.join(" · ")}.` : "";
+  return respondAndSave(session, `Voici le mail proposé pour ${draft.recipientEmail} :\n\nObjet : ${draft.subject}\n\n${draft.bodyText}\n\nDites « OK » pour créer le brouillon Gmail. Aucun envoi n’aura lieu : vous pourrez ensuite relire le brouillon et l’envoyer vous-même.${missing}`);
+}
+
+async function finalizeComposeDraft(session: MailAssistantSession, draft: MailAssistantComposeDraft) {
+  session.pendingApproval = null;
+  const { account, provider } = await getActiveMailContext();
+  try {
+    const created = await provider.createDraft({ to: [{ email: draft.recipientEmail }], subject: draft.subject, bodyText: draft.bodyText });
+    draft.status = "draft_created";
+    draft.draftId = created.id;
+    session.audits.push(audit(account.id, "draft_created", []));
+    const demo = account.mode === "demo" ? " Le brouillon est simulé en mode démonstration et n’a pas affecté Gmail." : "";
+    return respondAndSave(session, `Le brouillon a été créé pour ${draft.recipientEmail}.${demo} Aucun message n’a été envoyé : ouvrez le brouillon pour le relire et l’envoyer vous-même.`);
+  } catch (error) {
+    session.audits.push(audit(account.id, "execution_failure", []));
+    return respondAndSave(session, error instanceof Error ? error.message : "La création du brouillon a échoué.");
+  }
+}
+
+function extractActionDescription(text: string): string {
+  const withoutPrefix = text.replace(/^(crée|ajoute)\s+(une\s+)?(action|relance)\s*:?\s*/i, "").trim();
+  return withoutPrefix || text.trim();
+}
 async function respondAndSave(session: MailAssistantSession, text: string) { session.conversation.push({ id: randomUUID(), role: "assistant", text, createdAt: new Date().toISOString() }); await mailAssistantSessionRepository.save(session); return session; }
-function createReplyProposal(message: MailAssistantSessionMessage, now: string): MailAssistantReplyProposal { const greeting = message.from.name ? `Bonjour ${message.from.name.split(" ")[0]},` : "Bonjour,"; return { messageId: message.id, recipients: [message.from], subject: message.subject.startsWith("Re:") ? message.subject : `Re: ${message.subject}`, reason: message.classification.reason, confidence: message.classification.confidence, detectedDeadline: /avant midi/i.test(message.bodyText) ? "Avant midi" : null, versions: [{ id: randomUUID(), bodyText: `${greeting}\n\nMerci pour votre message. Nous vérifions les éléments disponibles et revenons vers vous avec une confirmation.\n\nCordialement,`, createdAt: now, source: "assistant" }], currentVersion: 0, isManuallyEdited: false, status: "pending" }; }
+function createReplyProposal(message: MailAssistantSessionMessage, now: string): MailAssistantReplyProposal { const greeting = message.from.name ? `Bonjour ${message.from.name.split(" ")[0]},` : "Bonjour,"; return { messageId: message.id, recipients: [message.from], subject: message.subject.startsWith("Re:") ? message.subject : `Re: ${message.subject}`, reason: message.classification.reason, confidence: message.classification.confidence, detectedDeadline: /avant midi/i.test(message.bodyText) ? "Avant midi" : null, versions: [{ id: randomUUID(), bodyText: `${greeting}\n\nMerci pour votre message. Nous vérifions les éléments disponibles et revenons vers vous avec une confirmation.\n\nCordialement,`, createdAt: now, source: "assistant" }], currentVersion: 0, isManuallyEdited: false, status: "pending", draftId: null }; }
 function deterministicRewrite(value: string, instruction: string) { const text = instruction.toLocaleLowerCase("fr"); if (/plus court/.test(text)) return value.split("\n").filter(Boolean).slice(0, 3).join("\n\n"); if (/diplomatique/.test(text)) return value.replace("Nous vérifions", "Nous prenons le soin de vérifier"); if (/plus direct/.test(text)) return value.replace("Merci pour votre message. ", ""); const addition = instruction.match(/(?:ajoute (?:que )?|dis plutôt (?:que )?)(.+?)(?:, puis|\.|$)/i)?.[1]; return addition ? value.replace("\n\nCordialement,", `\n\n${addition.charAt(0).toUpperCase()}${addition.slice(1)}.\n\nCordialement,`) : value; }
-function createFinishSummary(session: MailAssistantSession) { const elapsed = Math.max(1, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 60000)); return `Session mails terminée. ${session.messages.length} messages analysés, ${session.replies.length} réponses proposées, ${session.draftsCreated.length} brouillons créés, ${session.actionsCreated.length} actions locales et ${session.errors.length} erreur. Temps passé : ${elapsed} min.`; }
+function createFinishSummary(session: MailAssistantSession) { const elapsed = Math.max(1, Math.round((Date.now() - new Date(session.startedAt).getTime()) / 60000)); return `Session mails terminée. ${session.messages.length} messages analysés, ${session.replies.length} réponses proposées, ${session.draftsCreated.length} brouillons créés, ${session.pendingActionDrafts.length} actions préparées et ${session.errors.length} erreur. Temps passé : ${elapsed} min.`; }
 function audit(accountId: string, type: MailAssistantAuditEvent["type"], messageIds: string[], createdAt = new Date().toISOString()): MailAssistantAuditEvent { return { id: randomUUID(), type, accountId, messageIds, createdAt }; }

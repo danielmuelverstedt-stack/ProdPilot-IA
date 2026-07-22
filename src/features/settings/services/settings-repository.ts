@@ -2,10 +2,13 @@ import { defaultSettings } from "@/features/settings/config/default-settings";
 import { parseAiBudgetPolicy, parseAiPricingRegistry } from "@/features/ai/validation/ai-budget-input";
 import {
   SETTINGS_VERSION,
+  type ActionColumnSettings,
+  type ActionsSettings,
   type AppSettings,
   type CapacitySettings,
   type DepartmentSettings,
   type MachineSettings,
+  type MailTemplateSettings,
   type OrderedStandardSettings,
   type ProductionSettings,
 } from "@/features/settings/types/settings";
@@ -55,6 +58,10 @@ function isSettings(value: unknown): value is AppSettings {
     Array.isArray(production.capacities) && production.capacities.every((item) => isRecord(item) && hasStrings(item, ["id", "label", "scope", "targetId"]) && ["department", "machine"].includes(String(item.scope)) && typeof item.active === "boolean" && typeof item.order === "number" && Number.isFinite(item.order) && typeof item.hoursPerDay === "number" && Number.isFinite(item.hoursPerDay) && Array.isArray(item.workingDays) && item.workingDays.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6) && Array.isArray(item.exceptions) && item.exceptions.every((exception) => isRecord(exception) && typeof exception.date === "string" && typeof exception.hours === "number" && Number.isFinite(exception.hours))) &&
     isRecord(production.planning) && hasStrings(production.planning, ["allDepartmentsLabel"]) && ["defaultCapacityHours", "weekStartsOn", "visibleWeeks", "loadWarningPercent", "loadCriticalPercent"].every((key) => isRecord(production.planning) && typeof production.planning[key] === "number" && Number.isFinite(production.planning[key])) && Array.isArray(production.planning.workingDays) && production.planning.workingDays.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6) &&
     Array.isArray(production.workOrderTypes) && production.workOrderTypes.every((item) => typeof item === "string");
+  const actionsValid = isRecord(value.actions)
+    && Array.isArray(value.actions.origins) && value.actions.origins.every(isStandard)
+    && Array.isArray(value.actions.columns) && value.actions.columns.every((column) => isOrderedItem(column, ["id", "label"], ["visible"]));
+  const mailTemplatesValid = Array.isArray(value.mailTemplates) && value.mailTemplates.every((item) => isRecord(item) && hasStrings(item, ["id", "name", "subject", "body"]) && typeof item.active === "boolean" && typeof item.order === "number" && Number.isFinite(item.order));
   const rolesValid = Array.isArray(value.roles) && value.roles.every((role) => isRecord(role) && hasStrings(role, ["id", "name"]) && isRecord(role.permissions) && Object.values(role.permissions).every((permission) => isRecord(permission) && hasBooleans(permission, ["visible", "view", "create", "edit", "delete", "print", "export", "administer"])));
   const usersValid = Array.isArray(value.users) && value.users.every((user) => isRecord(user) && hasStrings(user, ["id", "firstName", "lastName", "email", "roleId"]) && typeof user.active === "boolean");
   const printValid = isRecord(value.print) && ["A4", "A3"].includes(String(value.print.paperSize)) && ["portrait", "landscape"].includes(String(value.print.orientation)) && Array.isArray(value.print.columns) && value.print.columns.every((column) => isOrderedItem(column, ["id", "label", "placement"], ["visible"]) && isRecord(column) && ["header", "table"].includes(String(column.placement)));
@@ -84,7 +91,7 @@ function isSettings(value: unknown): value is AppSettings {
     && hasStrings(value.mailAssistant, ["briefDetail", "preferredLanguage", "preferredVoiceName", "listeningBehavior", "inputMode", "pushToTalkShortcut", "customShortcut", "recognitionLanguage", "assistantVoicePreset", "longAnswerSpeech", "ttsProvider", "selectedMicrophoneDeviceId", "preferredVoiceId", "preferredVoiceLocale", "voiceFallbackStrategy"]) && Array.isArray(value.mailAssistant.workflowStatuses);
   const templatesValid = isRecord(value.templates) && Object.values(value.templates).every((template) => typeof template === "string");
   const journalValid = Array.isArray(value.journal) && value.journal.every((entry) => isRecord(entry) && hasStrings(entry, ["id", "date", "description"]));
-  return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && rolesValid && usersValid && printValid && aiValid && memoryValid && assistantValid && templatesValid && journalValid;
+  return typeof value.version === "number" && typeof value.activeRoleId === "string" && navigationValid && cardsValid && companyValid && themeValid && productionValid && actionsValid && mailTemplatesValid && rolesValid && usersValid && printValid && aiValid && memoryValid && assistantValid && templatesValid && journalValid;
 }
 
 export function parseSettingsBackup(value: unknown): AppSettings | null {
@@ -120,8 +127,10 @@ function migrateSettings(value: unknown): AppSettings {
       categories: migrateStandards(isRecord(saved.ai) ? saved.ai.categories : undefined, defaults.ai.categories),
     },
     mailMemory: { ...defaults.mailMemory, ...(isRecord(saved.mailMemory) ? saved.mailMemory : {}) },
-    mailAssistant: { ...defaults.mailAssistant, ...(isRecord(saved.mailAssistant) ? saved.mailAssistant : {}), workflowStatuses: isRecord(saved.mailAssistant) && Array.isArray(saved.mailAssistant.workflowStatuses) ? saved.mailAssistant.workflowStatuses as AppSettings["mailAssistant"]["workflowStatuses"] : defaults.mailAssistant.workflowStatuses },
+    mailAssistant: migrateMailAssistantSettings(saved.version, saved.mailAssistant, defaults.mailAssistant),
     production: migrateProductionSettings(saved.version, saved.production, defaults.production),
+    actions: migrateActionsSettings(saved.actions, defaults.actions),
+    mailTemplates: migrateMailTemplates(saved.mailTemplates, defaults.mailTemplates),
     print: {
       ...defaults.print,
       ...(isRecord(saved.print) ? saved.print : {}),
@@ -143,6 +152,17 @@ function migrateSettings(value: unknown): AppSettings {
     users: Array.isArray(saved.users) ? saved.users : defaults.users,
     journal: Array.isArray(saved.journal) ? saved.journal : defaults.journal,
   };
+}
+
+function migrateMailAssistantSettings(savedVersion: number | undefined, value: unknown, defaults: AppSettings["mailAssistant"]): AppSettings["mailAssistant"] {
+  const saved = isRecord(value) ? value : {};
+  const migrated = { ...defaults, ...saved, workflowStatuses: Array.isArray(saved.workflowStatuses) ? saved.workflowStatuses as AppSettings["mailAssistant"]["workflowStatuses"] : defaults.workflowStatuses };
+  if ((savedVersion ?? 0) < 14) {
+    if (saved.inputMode === "push_to_talk" && saved.listeningBehavior === "push_to_talk") { migrated.inputMode = "click_to_talk"; migrated.listeningBehavior = "manual"; }
+    if (saved.pushToTalkShortcut === "ctrl_space") migrated.pushToTalkShortcut = "f8";
+    if (saved.assistantVoicePreset === "british_assistant" && saved.speechPitch === 0.9) { migrated.assistantVoicePreset = "system"; migrated.speechPitch = 1; }
+  }
+  return migrated;
 }
 
 function migrateProductionSettings(savedVersion: number | undefined, value: unknown, defaults: ProductionSettings): ProductionSettings {
@@ -233,6 +253,30 @@ function migrateCapacities(value: unknown, defaults: CapacitySettings[], departm
       workingDays: Array.isArray(entry.workingDays) ? entry.workingDays.filter((day): day is number => typeof day === "number") : fallback?.workingDays ?? [],
       exceptions: Array.isArray(entry.exceptions) ? entry.exceptions.filter((exception): exception is { date: string; hours: number } => isRecord(exception) && typeof exception.date === "string" && typeof exception.hours === "number") : fallback?.exceptions ?? [],
     } as CapacitySettings;
+  });
+}
+
+function migrateMailTemplates(value: unknown, defaults: MailTemplateSettings[]): MailTemplateSettings[] {
+  if (!Array.isArray(value)) return defaults;
+  return value.filter(isRecord).map((template, index) => {
+    const fallback = defaults.find((item) => item.id === template.id) ?? defaults[index % defaults.length];
+    return { ...fallback, ...template, order: typeof template.order === "number" ? template.order : index } as MailTemplateSettings;
+  });
+}
+
+function migrateActionsSettings(value: unknown, defaults: ActionsSettings): ActionsSettings {
+  const saved = isRecord(value) ? value : {};
+  return {
+    origins: migrateStandards(saved.origins, defaults.origins),
+    columns: migrateActionColumns(saved.columns, defaults.columns),
+  };
+}
+
+function migrateActionColumns(value: unknown, defaults: ActionColumnSettings[]): ActionColumnSettings[] {
+  if (!Array.isArray(value) || !value.length) return defaults;
+  return value.filter(isRecord).map((column, index) => {
+    const fallback = defaults.find((item) => item.id === column.id) ?? defaults[index % defaults.length];
+    return { ...fallback, ...column, order: typeof column.order === "number" ? column.order : index } as ActionColumnSettings;
   });
 }
 

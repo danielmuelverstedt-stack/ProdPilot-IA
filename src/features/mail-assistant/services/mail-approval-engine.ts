@@ -1,6 +1,6 @@
 import type { MailAssistantActionLevel, MailAssistantCommand, MailAssistantIntent } from "@/features/mail-assistant/types/mail-assistant";
 
-const LEVEL_TWO = new Set<MailAssistantIntent>(["create_draft", "create_action", "add_to_qrqc", "add_to_meeting", "mark_processed", "ignore_message", "modify_reply"]);
+const LEVEL_TWO = new Set<MailAssistantIntent>(["create_draft", "compose_new_mail", "create_action", "add_to_qrqc", "add_to_meeting", "mark_processed", "ignore_message", "modify_reply"]);
 export function getMailActionLevel(intent: MailAssistantIntent): MailAssistantActionLevel { return intent === "send_email" ? 3 : LEVEL_TWO.has(intent) ? 2 : 1; }
 export function canExecuteMailCommand(command: MailAssistantCommand) {
   const level = getMailActionLevel(command.intent);

@@ -109,6 +109,11 @@ export class MockMailProvider implements MailProvider {
     };
   }
 
+  async sendDraft(draftId: string): Promise<{ messageId: string; threadId: string }> {
+    if (!this.account.settings.sendingEnabled) throw new Error("L’envoi n’est pas autorisé pour ce compte. Activez-le dans Réglages → Connexions → Messagerie avant d’envoyer.");
+    return { messageId: `mock-sent-${randomUUID()}`, threadId: draftId };
+  }
+
   async archiveMessage(): Promise<void> {}
 
   async getManagementPermission(): Promise<{ canModifyMail: boolean; reconnectRequired: boolean }> {

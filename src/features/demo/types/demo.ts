@@ -1,5 +1,5 @@
 export type Priority = "Basse" | "Normale" | "Haute" | "Urgente" | "Bloquante";
-export type ActionStatus = "Ouverte" | "En cours" | "Reportée" | "Terminée";
+export type ActionStatus = "À faire" | "Fait" | "Reporté";
 
 export interface HistoryEntry {
   id: string;
@@ -8,23 +8,25 @@ export interface HistoryEntry {
   description: string;
 }
 
+export interface ActionContextLink {
+  module: "meeting" | "workOrder" | "machine" | "request" | "erpQuality" | "mail";
+  id: string;
+  label: string;
+  href: string;
+}
+
 export interface ProductionAction {
   id: string;
-  title: string;
+  dateEncodage: string;
+  introduitPar: string;
+  origine: string;
+  contextLink: ActionContextLink | null;
   description: string;
-  responsible: string;
-  department: string;
-  priority: Priority;
-  status: ActionStatus;
-  dueDate: string;
-  createdAt: string;
-  sourceType: "email" | "QRQC" | "production_meeting" | "work_order" | "erp_quality" | "machine" | "request" | "manual";
-  sourceId: string | null;
-  workOrderId: string | null;
-  machineId: string | null;
-  project: string | null;
-  comments: string[];
-  history: HistoryEntry[];
+  responsable: string;
+  echeance: string;
+  statut: ActionStatus;
+  dateCloture: string | null;
+  remarque: string | null;
 }
 
 export interface WorkOperation {
@@ -153,7 +155,7 @@ export interface DemoNotification {
 }
 
 export interface DemoData {
-  version: 1;
+  version: 2;
   actions: ProductionAction[];
   workOrders: WorkOrder[];
   planning: PlannedOperation[];

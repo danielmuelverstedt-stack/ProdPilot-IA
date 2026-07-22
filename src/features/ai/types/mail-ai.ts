@@ -124,6 +124,44 @@ export interface MailAiRewriteInput extends MailAiReplyInput {
   command: MailAiRewriteCommand;
 }
 
+export interface MailAiProductionContext {
+  workOrderId: string | null;
+  customer: string | null;
+  article: string | null;
+  dueDate: string | null;
+  status: string | null;
+  project: string | null;
+}
+
+export interface MailAiComposeTemplate {
+  name: string;
+  subject: string;
+  body: string;
+}
+
+export interface MailAiCompose {
+  subject: string;
+  bodyText: string;
+  tone: MailAiReplyTone;
+  language: string;
+  missingInformation: string[];
+  generatedAt: string;
+  provider: AiProviderType;
+  model: string;
+  promptVersion: string;
+  usage: AiUsageMetadata | null;
+}
+
+export interface MailAiComposeInput {
+  context: AiRequestContext;
+  instruction: string;
+  productionContext: MailAiProductionContext | null;
+  template: MailAiComposeTemplate | null;
+  tone: MailAiReplyTone;
+  length: MailAiReplyLength;
+  configuration: MailAiConfiguration;
+}
+
 export interface MailAiConversationInput {
   history: Array<{ role: "user" | "assistant"; content: string }>;
   mailContext: string;

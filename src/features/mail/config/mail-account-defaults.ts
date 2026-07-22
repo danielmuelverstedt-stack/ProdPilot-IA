@@ -60,16 +60,16 @@ export function isMailAccountSettings(value: unknown): value is MailAccountSetti
     && typeof value.draftAutosaveEnabled === "boolean"
     && isIntegerBetween(value.draftAutosaveDelaySeconds, 5, 300)
     && typeof value.keepDraftHistory === "boolean"
-    && value.sendingEnabled === false;
+    && typeof value.sendingEnabled === "boolean";
 }
 
-/** Complète les anciens réglages persistés sans perdre le compte associé. */
+/** Complète les anciens réglages persistés sans perdre le compte associé. L'envoi reste désactivé par défaut : seule une action explicite de l'utilisateur dans Réglages peut l'activer. */
 export function migrateMailAccountSettings(value: unknown): MailAccountSettings | null {
   if (!isRecord(value)) return null;
   const migrated = Object.fromEntries(
     Object.entries(DEFAULT_MAIL_ACCOUNT_SETTINGS).map(([key, fallback]) => [
       key,
-      key === "sendingEnabled" ? false : value[key] ?? fallback,
+      key === "sendingEnabled" ? value[key] === true : value[key] ?? fallback,
     ]),
   );
   return isMailAccountSettings(migrated) ? { ...migrated, favoriteFolders: [...migrated.favoriteFolders] } : null;

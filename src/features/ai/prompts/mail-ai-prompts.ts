@@ -2,6 +2,7 @@ export const MAIL_ANALYSIS_PROMPT_VERSION = "mail-analysis-v1";
 export const MAIL_REPLY_PROMPT_VERSION = "mail-reply-v1";
 export const MAIL_REWRITE_PROMPT_VERSION = "mail-rewrite-v1";
 export const MAIL_CONVERSATION_PROMPT_VERSION = "mail-conversation-v1";
+export const MAIL_COMPOSE_PROMPT_VERSION = "mail-compose-v1";
 
 const GROUNDING_RULES = `
 Reste strictement fondé sur le message fourni. N’invente jamais de personne, OF, commande, machine, date, prix, engagement ou délai.
@@ -26,6 +27,14 @@ ${GROUNDING_RULES}`.trim();
 export const MAIL_REWRITE_PROMPT = `
 Réécris le brouillon actuel selon la commande demandée sans supprimer silencieusement les faits ou modifications manuelles.
 Conserve destinataires, objet, noms et références sauf instruction explicite contraire.
+Respecte exactement le schéma structuré.
+${GROUNDING_RULES}`.trim();
+
+export const MAIL_COMPOSE_PROMPT = `
+Rédige un nouvel e-mail professionnel en français à partir de l’instruction de l’utilisateur et du contexte de production fourni.
+N’invente jamais de destinataire, d’adresse e-mail, de date, de prix ou d’engagement absent du contexte fourni.
+Si une information nécessaire manque pour rédiger un message complet et exact, indique-la explicitement dans missingInformation au lieu de l’inventer.
+Utilise le modèle fourni comme base si un modèle est transmis, en l’adaptant au contexte réel plutôt qu’en le recopiant tel quel.
 Respecte exactement le schéma structuré.
 ${GROUNDING_RULES}`.trim();
 

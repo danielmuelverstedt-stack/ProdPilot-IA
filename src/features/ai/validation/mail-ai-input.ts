@@ -1,6 +1,6 @@
 import { getMailAiTokenBudget } from "@/features/ai/config/ai-token-budget";
 import { parseAiBudgetPolicy, parseAiPricingRegistry } from "@/features/ai/validation/ai-budget-input";
-import type { MailAiConfiguration, MailAiReply, MailAiReplyLength, MailAiReplyTone, MailAiRewriteCommand } from "@/features/ai/types/mail-ai";
+import type { MailAiComposeTemplate, MailAiConfiguration, MailAiProductionContext, MailAiReply, MailAiReplyLength, MailAiReplyTone, MailAiRewriteCommand } from "@/features/ai/types/mail-ai";
 
 const TONES: MailAiReplyTone[] = ["professional", "concise", "diplomatic", "direct", "technical", "internal", "customer", "supplier"];
 const LENGTHS: MailAiReplyLength[] = ["short", "medium", "long"];
@@ -27,6 +27,49 @@ export function parseMailAiRewriteRequest(value: unknown) {
   const currentReply = parseCurrentReply(value.currentReply);
   if (!currentReply || !isString(value.instructions, maximum) || !COMMANDS.includes(value.command as MailAiRewriteCommand) || !TONES.includes(value.tone as MailAiReplyTone) || !LENGTHS.includes(value.length as MailAiReplyLength)) return null;
   return { ...base, currentReply, instructions: value.instructions, command: value.command as MailAiRewriteCommand, tone: value.tone as MailAiReplyTone, length: value.length as MailAiReplyLength };
+}
+
+export function parseMailAiComposeRequest(value: unknown) {
+  if (!isRecord(value)) return null;
+  const configuration = parseMailAiConfiguration(value.configuration);
+  if (!configuration) return null;
+  const maximum = getMailAiTokenBudget("mail_compose").maximumCustomInstructionLength;
+  if (!isString(value.instruction, maximum, true)) return null;
+  if (!isString(value.recipientEmail, 320, true) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.recipientEmail) || /[\r\n]/.test(value.recipientEmail)) return null;
+  if (value.tone !== undefined && !TONES.includes(value.tone as MailAiReplyTone)) return null;
+  if (value.length !== undefined && !LENGTHS.includes(value.length as MailAiReplyLength)) return null;
+  const productionContext = parseProductionContext(value.productionContext);
+  if (productionContext === undefined) return null;
+  const template = parseComposeTemplate(value.template);
+  if (template === undefined) return null;
+  return {
+    configuration,
+    instruction: value.instruction,
+    recipientEmail: value.recipientEmail.toLowerCase(),
+    productionContext,
+    template,
+    tone: (value.tone as MailAiReplyTone) ?? configuration.defaultTone,
+    length: (value.length as MailAiReplyLength) ?? configuration.defaultLength,
+  };
+}
+
+export function parseProductionContext(value: unknown): MailAiProductionContext | null | undefined {
+  if (value === null || value === undefined) return null;
+  if (!isRecord(value)) return undefined;
+  const fields = ["workOrderId", "customer", "article", "dueDate", "status", "project"] as const;
+  const result = {} as Record<(typeof fields)[number], string | null>;
+  for (const field of fields) {
+    const raw = value[field];
+    if (raw !== null && typeof raw !== "string") return undefined;
+    result[field] = typeof raw === "string" ? raw.slice(0, 200) : null;
+  }
+  return result;
+}
+
+export function parseComposeTemplate(value: unknown): MailAiComposeTemplate | null | undefined {
+  if (value === null || value === undefined) return null;
+  if (!isRecord(value) || !isString(value.name, 160, true) || !isString(value.subject, 998, true) || !isString(value.body, 5_000, true)) return undefined;
+  return { name: value.name, subject: value.subject, body: value.body };
 }
 
 export function parseMailAiConfiguration(value: unknown): MailAiConfiguration | null {

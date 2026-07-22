@@ -2,7 +2,7 @@ import type { AiBudgetPolicy, AiPricingEntry } from "@/features/ai/types/ai";
 import type { MailMemorySettings } from "@/features/mail-memory/types/mail-memory";
 import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
 
-export const SETTINGS_VERSION = 12;
+export const SETTINGS_VERSION = 15;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -185,6 +185,28 @@ export interface SettingsJournalEntry {
 }
 
 export type AiCategorySettings = OrderedStandardSettings;
+export type ActionOriginSettings = OrderedStandardSettings;
+
+export interface ActionColumnSettings {
+  id: string;
+  label: string;
+  visible: boolean;
+  order: number;
+}
+
+export interface ActionsSettings {
+  origins: ActionOriginSettings[];
+  columns: ActionColumnSettings[];
+}
+
+export interface MailTemplateSettings {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  active: boolean;
+  order: number;
+}
 
 export interface AiSettings {
   enabled: boolean;
@@ -229,6 +251,8 @@ export interface AppSettings {
   company: CompanyIdentity;
   theme: ThemeSettings;
   production: ProductionSettings;
+  actions: ActionsSettings;
+  mailTemplates: MailTemplateSettings[];
   roles: RoleSettings[];
   users: UserSettings[];
   activeRoleId: string;

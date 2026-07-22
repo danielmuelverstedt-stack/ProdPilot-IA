@@ -12,7 +12,7 @@ export function MailAccountSettingsDialog({ account, pending, onClose, onSave }:
   onSave: (account: MailAccount, displayName: string, settings: MailAccountSettings) => Promise<boolean>;
 }) {
   const [displayName, setDisplayName] = useState(account.displayName);
-  const [settings, setSettings] = useState<MailAccountSettings>({ ...account.settings, sendingEnabled: false });
+  const [settings, setSettings] = useState<MailAccountSettings>({ ...account.settings });
   async function handleSubmit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); if (await onSave(account, displayName, settings)) onClose(); }
   return <MailDialog open title="Paramètres du compte" description="Les préférences sont centralisées dans le dépôt du compte actif. Les options futures n’activent aucune intégration externe." onClose={onClose}>
     <form onSubmit={handleSubmit} className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-medium text-[#33473e] sm:col-span-2">Nom affiché<input autoFocus required maxLength={80} value={displayName} onChange={(event) => setDisplayName(event.target.value)} className={inputClass} /></label><MailAccountPreferencesFields settings={settings} onChange={setSettings} />{account.organizationId ? <p className="text-sm text-[#64736c] sm:col-span-2">Organisation associée : <strong>{account.organizationId}</strong></p> : null}<div className="flex flex-wrap justify-end gap-2 border-t border-[#e7ece9] pt-4 sm:col-span-2"><button type="button" onClick={onClose} className={secondaryButton}>Annuler</button><button disabled={pending} className={primaryButton}>{pending ? "Enregistrement…" : "Enregistrer"}</button></div></form>

@@ -39,6 +39,15 @@ const CONSERVATIVE_LOCAL_BUDGETS: Record<MailAiOperationType, MailAiTokenBudget>
     maximumAttachmentMetadataEntries: 0,
     maximumCustomInstructionLength: 2_000,
   },
+  mail_compose: {
+    maximumInputTokens: 2_500,
+    maximumOutputTokens: 700,
+    maximumThreadMessages: 0,
+    maximumCharactersPerMessage: 0,
+    maximumQuotedHistoryCharacters: 0,
+    maximumAttachmentMetadataEntries: 0,
+    maximumCustomInstructionLength: 1_000,
+  },
 };
 
 export function getMailAiTokenBudget(operation: MailAiOperationType, requested?: { maximumInputTokens?: number; maximumOutputTokens?: number }): MailAiTokenBudget {

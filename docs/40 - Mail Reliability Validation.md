@@ -7,6 +7,31 @@ Environnement : Windows, Next.js 16.2.10 en développement local, un seul serveu
 
 Le chargement complet de la boîte de réception et la conversation IA multi-tour sont validés par les routes locales et les tests automatisés. Le module ne masque plus une erreur Gmail par une liste vide. Les tests matériels voix, microphone, haut-parleurs et les captures dans Edge/Chrome restent à réaliser manuellement, car aucun navigateur intégré n’était exposé pendant cette session.
 
+## Audit critique voix et conversation — 20/07/2026
+
+### Causes racines
+
+1. `MailAssistantVoiceInput` dépendait directement des callbacks `onTranscript` et `onSubmit`. Chaque transcription partielle modifiait le parent, recréait `onVoiceSubmit`, nettoyait l’effet et appelait `SpeechRecognition.abort()`.
+2. Le jeton d’écoute automatique pouvait être retraité après un changement d’état et provoquer des démarrages concurrents.
+3. `Ctrl+Espace` était le raccourci initial. ProdPilot n’appelle jamais Plaud, mais ce raccourci peut être capturé globalement par Plaud sous Windows.
+4. `MailAssistantSpeechOutput` dépendait du callback `onFinished`. Un rendu du parent pouvait donc appeler `speechSynthesis.cancel()` pendant la lecture.
+5. La session conservait tout l’historique, mais seuls les dix derniers tours étaient transmis au fournisseur IA sans condensation des tours antérieurs.
+
+### Corrections
+
+- callbacks vocaux stabilisés par références React et cycle de vie de `SpeechRecognition` limité aux vrais changements de configuration ;
+- intention d’écoute, reprise navigateur, arrêt manuel et jeton automatique consommé une seule fois ;
+- traitement depuis `resultIndex` pour éviter la duplication des résultats finaux ;
+- mode initial « Cliquer pour parler » et migration `Ctrl+Espace` vers `F8` ;
+- callback TTS stabilisé, hauteur neutre, vitesse plus lente et prévisualisation par URI exacte ;
+- anciens tours de conversation condensés puis joints aux dix tours complets les plus récents ;
+- diagnostic intégré couvrant micro, permission, STT, TTS, IA, streaming, Plaud, navigateur et erreurs ;
+- saisie texte indépendante des erreurs audio.
+
+### Limites de recette
+
+Le navigateur intégré n’était pas disponible pendant cet audit. La recette matérielle Edge et Chrome reste obligatoire selon `docs/30 - Mail Assistant User Testing.md`. Le streaming des jetons n’est pas encore implémenté et apparaît comme « Non activé » dans le diagnostic.
+
 ## Anomalies trouvées et corrections
 
 ### Gmail incomplet

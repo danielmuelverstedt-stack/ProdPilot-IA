@@ -1,5 +1,5 @@
 import type { AiProvider } from "@/features/ai/services/ai-provider";
-import type { MailAiAnalysisInput, MailAiConversationInput, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
+import type { MailAiAnalysisInput, MailAiComposeInput, MailAiConversationInput, MailAiReplyInput, MailAiRewriteInput } from "@/features/ai/types/mail-ai";
 
 export class MockAiProvider implements AiProvider {
   readonly type = "mock" as const;
@@ -40,6 +40,29 @@ export class MockAiProvider implements AiProvider {
     else if (input.command === "more_diplomatic") body = body.replace("Nous vérifions", "Nous allons examiner avec attention");
     else if (input.command === "more_direct") body = body.replace("Nous allons examiner avec attention", "Nous vérifions");
     return this.reply(input, body, "deterministic-rewrite-v1");
+  }
+
+  async composeMail(input: MailAiComposeInput) {
+    const missingInformation: string[] = [];
+    if (!input.productionContext) missingInformation.push("Aucun élément de production identifié dans la demande.");
+    const context = input.productionContext;
+    const subjectHint = context?.workOrderId ? `${context.workOrderId}${context.customer ? ` — ${context.customer}` : ""}` : input.instruction.slice(0, 60);
+    const bodyLines = [
+      "Bonjour,",
+      "",
+      input.template?.body || input.instruction,
+      context?.workOrderId ? `Référence : ${context.workOrderId}${context.dueDate ? ` · échéance ${context.dueDate}` : ""}` : null,
+      "",
+      input.configuration.includeSignature && input.configuration.signature ? input.configuration.signature : "Cordialement,",
+    ].filter((line): line is string => line !== null);
+    return {
+      subject: input.template?.subject || `À propos de ${subjectHint}`,
+      bodyText: bodyLines.join("\n"),
+      tone: input.tone, language: input.configuration.preferredLanguage,
+      missingInformation,
+      generatedAt: new Date().toISOString(), provider: this.type, model: this.model,
+      promptVersion: "deterministic-compose-v1", usage: null,
+    };
   }
 
   async continueMailConversation(input: MailAiConversationInput) {

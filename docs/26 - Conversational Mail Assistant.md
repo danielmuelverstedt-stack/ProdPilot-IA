@@ -1,5 +1,7 @@
 # Assistant mails conversationnel
 
+Le Mail Copilot est désormais le premier client de l’orchestrateur central ProdPilot IA. L’interpréteur Mail conserve les règles du domaine, puis transmet un plan de capacité et d’outil à la couche générique avant exécution. Aucun fournisseur ni stockage Mail n’a été déplacé dans le cœur transversal.
+
 ## Parcours du matin
 
 L’utilisateur ouvre `/mails/assistant` puis choisit **Démarrer ma session mails**. Aucun appel IA n’est effectué au rendu. Le serveur résout le compte actif, lit les messages autorisés et applique d’abord un classement déterministe. La liste traditionnelle reste disponible sur `/mails`.

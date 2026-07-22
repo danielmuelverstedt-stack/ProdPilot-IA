@@ -22,8 +22,13 @@ import { createMailSourceLink, resolveSourceLink } from "@/features/mail-memory/
 import { executeLocalMemoryCommand } from "@/features/mail-memory/services/mail-memory-command-service";
 import { randomLocalId } from "@/features/mail-memory/services/random-local-id";
 import { browserTtsProvider } from "@/features/mail-assistant/services/browser-tts-provider";
+import { useDemoData } from "@/features/demo/services/demo-repository";
+import { createAction } from "@/features/actions/services/action-service";
+import { resolveProductionContext } from "@/features/mail-assistant/services/production-context-resolver";
+import { MailDraftReviewCard, type ReviewableDraft } from "@/features/mail-assistant/components/MailDraftReviewCard";
 import type { SourceLink } from "@/features/mail-memory/types/mail-memory";
 import type { MailAssistantSession, MailOpeningBrief } from "@/features/mail-assistant/types/mail-assistant";
+import type { MailTemplateSettings } from "@/features/settings/types/settings";
 
 const LOADING_PHASES = ["Synchronisation de la boîte mail…", "Analyse des nouveaux messages…", "Identification des réponses nécessaires…", "Préparation des propositions…", "Session prête."];
 
@@ -45,9 +50,42 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Mai
   const [memoryNotice, setMemoryNotice] = useState<string | null>(null);
   const [memorySources, setMemorySources] = useState<SourceLink[]>([]);
   const activeRequest = useRef<AbortController | null>(null);
+  const appliedActionDraftIds = useRef<Set<string>>(new Set());
+  const handoffRef = useRef<string | null>(null);
+  const handoffCheckedRef = useRef(false);
+  const demoData = useDemoData();
   const firstName = user?.firstName ?? "Daniel";
   const memoryContext = useMemo<MailMemoryContext>(() => ({ accountId: initialAccount.id, provider: initialAccount.provider, userId: user?.id ?? "local-user", companyId: initialAccount.organizationId ?? "local-company", mode: initialAccount.mode }), [initialAccount.id, initialAccount.mode, initialAccount.organizationId, initialAccount.provider, user?.id]);
   useEffect(() => { const timer = window.setTimeout(() => { const repository = getBrowserMailMemoryRepository(); void Promise.all([createMailSessionBrief({ repository, context: memoryContext, session: null, firstName, isDemo: initialAccount.mode === "demo", lastSyncAt: initialAccount.lastSuccessfulSyncAt, synchronizationAvailable: true, settings: settings.mailAssistant }), createLocalMailReasoningReport({ repository, context: memoryContext })]).then(([nextBrief, nextReasoning]) => { setBrief(nextBrief); setReasoning(nextReasoning); }).catch(() => undefined); }, 0); return () => window.clearTimeout(timer); }, [firstName, initialAccount.lastSuccessfulSyncAt, initialAccount.mode, memoryContext, settings.mailAssistant]);
+
+  useEffect(() => {
+    if (!handoffCheckedRef.current) {
+      handoffCheckedRef.current = true;
+      const stored = window.sessionStorage.getItem("prodpilot.mail-assistant.handoff");
+      if (stored) { handoffRef.current = stored; window.sessionStorage.removeItem("prodpilot.mail-assistant.handoff"); }
+    }
+    if (handoffRef.current && screen === "standby") void startSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- startSession is redefined every render; the ref guards above make re-invocation harmless.
+  }, [screen]);
+
+  useEffect(() => {
+    if (!handoffRef.current || !session || screen !== "session" || isBusy) return;
+    const text = handoffRef.current;
+    handoffRef.current = null;
+    void executeCommand(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- executeCommand is redefined every render; the ref guard above prevents double-sending.
+  }, [session, screen, isBusy]);
+
+  useEffect(() => {
+    if (!session) return;
+    for (const draft of session.pendingActionDrafts ?? []) {
+      if (appliedActionDraftIds.current.has(draft.id)) continue;
+      appliedActionDraftIds.current.add(draft.id);
+      const alreadyExists = demoData.actions.some((action) => action.contextLink?.module === "mail" && action.contextLink.id === draft.messageId && action.description === draft.description);
+      if (alreadyExists) continue;
+      createAction({ description: draft.description, responsable: draft.responsable, echeance: draft.echeance, origine: "Mail", introduitPar: `${firstName} ${user?.lastName ?? ""}`.trim(), contextLink: { module: "mail", id: draft.messageId, label: draft.messageId, href: "/mails" } });
+    }
+  }, [session, demoData.actions, firstName, user?.lastName]);
 
   async function remember(nextSession: MailAssistantSession) {
     try { const repository = getBrowserMailMemoryRepository(); await persistMailAssistantSession(nextSession, memoryContext, settings.mailMemory, initialAccount.emailAddress); setReasoning(await createLocalMailReasoningReport({ repository, context: memoryContext })); setMemoryNotice(null); }
@@ -74,7 +112,9 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Mai
         setSession(next); setMemorySources(local.sourceLinks ?? []); await remember(next); setInput(""); return;
       }
       const controller = new AbortController(); activeRequest.current = controller;
-      const response = await fetch("/api/mail/assistant/command", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.id, text: text.trim(), configuration: createMailAiConfiguration(settings, initialAccount) }), signal: controller.signal }); const payload = await readResponse(response); setSession(payload.session); setMemorySources([]); await remember(payload.session); setInput("");
+      const productionContext = resolveProductionContext(text, demoData.workOrders);
+      const template = matchMailTemplate(text, settings.mailTemplates);
+      const response = await fetch("/api/mail/assistant/command", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: session.id, text: text.trim(), configuration: createMailAiConfiguration(settings, initialAccount), productionContext, template }), signal: controller.signal }); const payload = await readResponse(response); setSession(payload.session); setMemorySources([]); await remember(payload.session); setInput("");
     }
     catch (caught) { if (!(caught instanceof DOMException && caught.name === "AbortError")) setError(caught instanceof Error ? caught.message : "La commande n’a pas pu être exécutée."); }
     finally { activeRequest.current = null; setIsBusy(false); }
@@ -86,14 +126,19 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Mai
   if (session.status === "finished") return <MailSessionCompletion session={session} onResume={() => setSession({ ...session, status: "ready", endedAt: null })} onReturn={() => { setSession(null); setScreen("standby"); }}/>;
 
   const decisions = session.messages.filter((message) => (message.classification.requiresReply || message.classification.suggestsAction || message.classification.group === "review") && !message.ignored);
+  const readyDrafts: ReviewableDraft[] = [
+    ...(session.composeDrafts ?? []).filter((item) => item.status === "draft_created").map((item) => ({ key: `compose:${item.id}`, draftId: item.draftId, recipient: item.recipientEmail, subject: item.subject, bodyText: item.bodyText })),
+    ...session.replies.filter((item) => item.status === "draft_created").map((item) => ({ key: `reply:${item.messageId}`, draftId: item.draftId ?? null, recipient: item.recipients.map((address) => address.name ? `${address.name} <${address.email}>` : address.email).join(", "), subject: item.subject, bodyText: item.versions[item.currentVersion].bodyText })),
+  ];
   const originalMessage = session.messages.find((message) => message.id === originalId) ?? null;
   const originalSource = originalMessage ? resolveSourceLink(createMailSourceLink(memoryContext, { externalId: originalMessage.id, parentExternalId: originalMessage.threadId, displayName: originalMessage.subject, sourceType: "mail", accountEmail: initialAccount.emailAddress })) : null;
   return <>
-    <div className="mx-auto max-w-6xl"><div className="flex flex-wrap items-end justify-between gap-6"><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--app-primary)]">Travail actif</p><h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] text-[var(--app-text)] sm:text-6xl">Je m’occupe de vos mails.</h1><p className="mt-3 text-sm text-slate-500">{decisions.length} validations · {session.draftsCreated.length} brouillons · {session.actionsCreated.length} actions</p></div>{brief ? <MailAssistantSpeechOutput text={brief.text} settings={settings.mailAssistant} autoPlay onFinished={() => { if (settings.mailAssistant.continuousConversation) setAutoListenToken(Date.now()); }}/>: null}</div>
+    <div className="mx-auto max-w-6xl"><div className="flex flex-wrap items-end justify-between gap-6"><div><p className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--app-primary)]">Travail actif</p><h1 className="mt-3 text-4xl font-semibold tracking-[-0.045em] text-[var(--app-text)] sm:text-6xl">Je m’occupe de vos mails.</h1><p className="mt-3 text-sm text-slate-500">{decisions.length} validations · {session.draftsCreated.length} brouillons · {(session.pendingActionDrafts ?? []).length} actions</p></div>{brief ? <MailAssistantSpeechOutput text={brief.text} settings={settings.mailAssistant} autoPlay onFinished={() => { if (settings.mailAssistant.continuousConversation) setAutoListenToken(Date.now()); }}/>: null}</div>
       <div className="mt-10 flex w-fit rounded-xl bg-slate-100 p-1 text-sm"><button type="button" aria-pressed={view === "summary"} onClick={() => setView("summary")} className={`min-h-10 rounded-lg px-4 font-semibold transition ${view === "summary" ? "bg-white text-[var(--app-text)] shadow-[var(--app-shadow-sm)]" : "text-slate-500"}`}>Vue synthèse</button><button type="button" aria-pressed={view === "focused"} onClick={() => setView("focused")} className={`min-h-10 rounded-lg px-4 font-semibold transition ${view === "focused" ? "bg-white text-[var(--app-text)] shadow-[var(--app-shadow-sm)]" : "text-slate-500"}`}>Un par un</button></div><div className="mt-8 grid gap-14 lg:grid-cols-[minmax(0,1fr)_18rem]"><div>
       <MailDecisionList session={session} view={view} activeIndex={activeIndex} onActiveIndex={setActiveIndex} onCommand={(text) => void executeCommand(text)} onOpenOriginal={setOriginalId}/>
       <MailNoActionGroup session={session} onCommand={(text) => void executeCommand(text)}/>
       </div><aside className="lg:sticky lg:top-24 lg:self-start"><MailExecutionTimeline session={session} isBusy={isBusy}/></aside></div>
+      {readyDrafts.map((draft) => <MailDraftReviewCard key={draft.key} draft={draft} sendingEnabled={initialAccount.settings.sendingEnabled} onSent={() => undefined} />)}
       {memoryNotice ? <p role="status" className="mt-5 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">{memoryNotice}</p> : null}
       {settings.mailAssistant.writtenResponseEnabled && session.conversation.at(-1)?.role === "assistant" ? <div aria-live="polite" className="mt-6 max-w-3xl whitespace-pre-wrap rounded-2xl border border-[var(--app-border)] bg-white p-4 text-sm leading-6 text-slate-800 shadow-[var(--app-shadow-sm)]">{session.conversation.at(-1)?.text}</div> : null}
       <details className="mt-10 rounded-2xl border border-[var(--app-border)] bg-slate-50 p-4"><summary className="cursor-pointer text-sm font-semibold text-slate-500">Conversation · secondaire</summary><div className="mt-4 space-y-2" aria-live="polite">{session.conversation.slice(1).map((entry) => <div key={entry.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-xs leading-5 ${entry.role === "user" ? "ml-auto bg-[var(--app-primary)] text-white" : "border border-[var(--app-border)] bg-white text-slate-600"}`}>{entry.text}</div>)}</div></details>
@@ -107,3 +152,9 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Mai
 }
 
 async function readResponse(response: Response): Promise<{ session: MailAssistantSession }> { const payload = await response.json() as { session?: MailAssistantSession; message?: string }; if (!response.ok || !payload.session) throw new Error(payload.message ?? "Une erreur inattendue est survenue."); return { session: payload.session }; }
+
+function matchMailTemplate(text: string, templates: MailTemplateSettings[]) {
+  const normalized = text.toLocaleLowerCase("fr");
+  const match = templates.find((item) => item.active && normalized.includes(item.name.toLocaleLowerCase("fr")));
+  return match ? { name: match.name, subject: match.subject, body: match.body } : null;
+}

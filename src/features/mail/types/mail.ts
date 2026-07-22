@@ -83,7 +83,7 @@ export interface MailAccountSettings {
   draftAutosaveEnabled: boolean;
   draftAutosaveDelaySeconds: number;
   keepDraftHistory: boolean;
-  sendingEnabled: false;
+  sendingEnabled: boolean;
 }
 
 export interface MailAttachment {
@@ -144,7 +144,7 @@ export interface MailDraft {
   bodyText: string;
   createdAt: string;
   updatedAt: string;
-  status: "draft" | "saving" | "saved" | "error";
+  status: "draft" | "saving" | "saved" | "error" | "sent";
   threadId?: string;
   source?: "user" | "deterministic" | "future_ai";
   hasUnsavedChanges?: boolean;

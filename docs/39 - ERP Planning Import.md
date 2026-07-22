@@ -27,6 +27,39 @@ Ajustements utilisateur ───────────────→ registr
 Correspondances machine ERP → machine ─→ registre séparé réutilisé entre imports
 ```
 
+Les ajustements ne sont plus seulement un état final : ils sont migrés dans le journal durable décrit dans `docs/41 - Durable User Decisions.md`. Chaque nouvel import produit une réconciliation explicite sans suppression des décisions absentes ou ambiguës.
+
+## Modèle métier commun OperationView
+
+Les modules fonctionnels ne fusionnent plus eux-mêmes les données ERP et les décisions du planificateur. `OperationViewService` constitue l'unique frontière de lecture :
+
+```text
+ERP Operation + PlanningDecision → OperationView → Planning / IA / Dashboard / ERP Explorer
+```
+
+Il applique les replis de machine, priorité et visibilité, expose le commentaire et l'ordre manuel, et prépare les indicateurs communs. Les opérations `Removed` restent présentes avec `isRemoved = true`, mais sont exclues de la liste active par le service Planning. Les champs futurs de retard, démarrage, fin, blocage, dates estimées et groupe de capacité existent avec la valeur `null` tant que leurs règles métier ne sont pas validées.
+
+## Moteur de vues de travail
+
+Le navigateur charge une seule fois les `OperationView` du plan de travail puis applique localement le service pur `FilterEngine`. La recherche, les combinaisons de filtres, le changement de vue et la pagination n'entraînent donc aucun nouvel appel réseau. Les composants React transmettent uniquement `OperationView[]` et `PlanningFilters` au moteur.
+
+Les options client, machine, département, groupe de ressources, priorités et statuts sont extraites des données présentes. Aucune valeur métier n'est codée en dur. Une dimension sans source, notamment le département lorsque l'export et les correspondances ne le fournissent pas, reste vide et est signalée comme indisponible dans le panneau.
+
+Les vues de travail sont versionnées et enregistrées automatiquement dans le dépôt navigateur existant, isolé par entreprise, site et utilisateur. La version 2 migre les anciennes vues sans perdre leurs colonnes ni leur recherche.
+
+### Mesure du FilterEngine — 22/07/2026
+
+Mesure Node après 20 échauffements et sur 100 applications combinant recherche, priorités ERP et statuts bruts, à partir de la projection locale réelle :
+
+- 23 558 `OperationView` ;
+- moyenne : 2,97 ms ;
+- médiane : 2,90 ms ;
+- 95e percentile : 3,61 ms ;
+- génération initiale des options dynamiques : 16,57 ms ;
+- 65 clients et 15 codes machines détectés.
+
+Le coût linéaire est adapté au volume actuel. Avant plusieurs centaines de milliers d'opérations, prévoir un index de recherche normalisé, des ensembles précompilés par facette, une exécution dans un Web Worker et une virtualisation des lignes. Le chargement initial de toute la projection dans le navigateur devra alors être remplacé par un dépôt indexé ou un protocole incrémental, sans déplacer les règles hors de `FilterEngine`.
+
 Les copies sources, la projection active, les ajustements et les correspondances utilisent des fichiers distincts. Les écritures JSON sont sérialisées et remplacées atomiquement. Les classeurs archivés sont créés avec l’option exclusive `wx` afin de ne jamais remplacer une source existante.
 
 ## Résultat observé sur les fichiers fournis

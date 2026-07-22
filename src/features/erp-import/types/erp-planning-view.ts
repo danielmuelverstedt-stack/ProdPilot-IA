@@ -1,4 +1,4 @@
-export const ERP_PLANNING_VIEW_VERSION = 1;
+export const ERP_PLANNING_VIEW_VERSION = 2;
 
 export const ERP_PLANNING_COLUMN_IDS = [
   "score",
@@ -28,13 +28,23 @@ export interface ErpPlanningColumnPreference {
   width: number;
 }
 
-export interface ErpPlanningViewFilters {
+export type PlanningTechnicalState = "without-machine" | "with-machine" | "removed" | "visible" | "hidden";
+
+export interface PlanningFilters {
   search: string;
-  machine: string;
-  status: string;
-  late: string;
+  clients: string[];
+  departments: string[];
+  resourceGroups: string[];
+  machines: string[];
+  erpPriorities: number[];
+  userPriorities: number[];
+  erpStatusIds: number[];
+  erpStatuses: string[];
+  technicalStates: PlanningTechnicalState[];
   articleMultiplicity: ErpPlanningArticleFilter;
 }
+
+export type ErpPlanningViewFilters = PlanningFilters;
 
 export interface ErpPlanningSavedView {
   id: string;

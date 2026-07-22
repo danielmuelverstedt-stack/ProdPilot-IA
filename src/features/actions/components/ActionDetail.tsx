@@ -1,20 +1,94 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EmptyState, fieldClass, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { updateDemoData, useDemoData } from "@/features/demo/services/demo-repository";
-import type { ActionStatus, Priority } from "@/features/demo/types/demo";
+import { useSettings } from "@/features/settings/components/SettingsProvider";
+import { completeAction, deleteAction, postponeAction, reassignAction } from "@/features/actions/services/action-service";
+
+function statusTone(statut: "À faire" | "Fait" | "Reporté") {
+  if (statut === "Fait") return "success" as const;
+  if (statut === "Reporté") return "warning" as const;
+  return "neutral" as const;
+}
 
 export function ActionDetail({ id }: { id: string }) {
   const data = useDemoData();
+  const { settings } = useSettings();
   const action = data.actions.find((item) => item.id === id);
   const [editing, setEditing] = useState(false);
+  const [postponing, setPostponing] = useState(false);
+  const [postponeDate, setPostponeDate] = useState(action?.echeance ?? "");
+  const router = useRouter();
   if (!action) return <EmptyState title="Action introuvable" description="Cette action n’existe plus dans les données de démonstration." />;
-  function save(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const form = new FormData(event.currentTarget); updateDemoData((draft) => { const target = draft.actions.find((item) => item.id === id); if (!target) return; target.title = String(form.get("title")); target.description = String(form.get("description")); target.responsible = String(form.get("responsible")); target.priority = String(form.get("priority")) as Priority; target.status = String(form.get("status")) as ActionStatus; target.dueDate = String(form.get("dueDate")); target.history.unshift({ id: crypto.randomUUID(), date: new Date().toISOString(), author: "Daniel Mülverstedt", description: "Action modifiée" }); }); setEditing(false); }
-  return <div className="mx-auto max-w-5xl"><ModuleHeader eyebrow={action.id} title={action.title} description={action.description} actions={<><Link href="/actions" className={secondaryButton}>Retour</Link><button className={primaryButton} onClick={() => setEditing((value) => !value)}>{editing ? "Fermer" : "Modifier"}</button></>} />
-    {editing ? <form onSubmit={save} className="mt-6 grid gap-3 rounded-2xl border border-[var(--app-border)] bg-white p-5 sm:grid-cols-2"><input name="title" defaultValue={action.title} required className={fieldClass} /><input name="responsible" defaultValue={action.responsible} required className={fieldClass} /><textarea name="description" defaultValue={action.description} required className={`${fieldClass} min-h-28 py-3 sm:col-span-2`} /><select name="priority" defaultValue={action.priority} className={fieldClass}>{["Basse", "Normale", "Haute", "Urgente", "Bloquante"].map((item) => <option key={item}>{item}</option>)}</select><select name="status" defaultValue={action.status} className={fieldClass}>{["Ouverte", "En cours", "Reportée", "Terminée"].map((item) => <option key={item}>{item}</option>)}</select><input name="dueDate" type="date" defaultValue={action.dueDate} className={fieldClass} /><button className={primaryButton}>Enregistrer</button></form> : null}
-    <div className="mt-6 grid gap-5 lg:grid-cols-3"><section className="rounded-2xl border border-[var(--app-border)] bg-white p-5 lg:col-span-2"><h2 className="font-semibold">Informations</h2><dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><Info label="Responsable" value={action.responsible} /><Info label="Département" value={action.department} /><Info label="Priorité" value={<StatusPill tone={action.priority === "Bloquante" || action.priority === "Urgente" ? "danger" : "warning"}>{action.priority}</StatusPill>} /><Info label="Statut" value={action.status} /><Info label="Échéance" value={formatEuropeanDate(action.dueDate)} /><Info label="Création" value={formatEuropeanDate(action.createdAt)} /><Info label="Origine" value={`${action.sourceType}${action.sourceId ? ` · ${action.sourceId}` : ""}`} />{action.workOrderId ? <Info label="OF lié" value={<Link className="text-[var(--app-primary)] underline" href={`/of/${action.workOrderId}`}>{action.workOrderId}</Link>} /> : null}</dl><h3 className="mt-6 text-sm font-semibold">Commentaires</h3><ul className="mt-2 space-y-2 text-sm text-slate-600">{action.comments.length ? action.comments.map((item) => <li key={item} className="rounded-lg bg-slate-50 p-3">{item}</li>) : <li>Aucun commentaire.</li>}</ul></section><section className="rounded-2xl border border-[var(--app-border)] bg-white p-5"><h2 className="font-semibold">Historique</h2><ol className="mt-4 space-y-4 border-l border-slate-200 pl-4">{action.history.map((item) => <li key={item.id}><p className="text-sm font-medium">{item.description}</p><p className="mt-1 text-xs text-slate-500">{formatEuropeanDate(item.date, true)} · {item.author}</p></li>)}</ol></section></div>
+  const current = action;
+
+  function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    updateDemoData((draft) => {
+      const target = draft.actions.find((item) => item.id === id);
+      if (!target) return;
+      target.description = String(form.get("description"));
+      target.responsable = String(form.get("responsable"));
+      target.echeance = String(form.get("echeance"));
+      target.origine = String(form.get("origine"));
+      target.remarque = String(form.get("remarque")) || null;
+    });
+    setEditing(false);
+  }
+
+  function remove() {
+    if (!window.confirm(`Supprimer l’action « ${current.description} » ? Cette opération est définitive dans la démonstration.`)) return;
+    deleteAction(current.id);
+    router.push("/actions");
+  }
+
+  return <div className="mx-auto max-w-5xl">
+    <ModuleHeader eyebrow={action.id} title={action.description} description={`Introduite par ${action.introduitPar} le ${formatEuropeanDate(action.dateEncodage)}`} actions={<><Link href="/actions" className={secondaryButton}>Retour</Link><button className={primaryButton} onClick={() => setEditing((value) => !value)}>{editing ? "Fermer" : "Modifier"}</button></>} />
+
+    {editing ? <form onSubmit={save} className="mt-6 grid gap-3 rounded-2xl border border-[var(--app-border)] bg-white p-5 sm:grid-cols-2">
+      <textarea name="description" defaultValue={action.description} required className={`${fieldClass} min-h-24 py-3 sm:col-span-2`} />
+      <input name="responsable" defaultValue={action.responsable} required className={fieldClass} />
+      <input name="echeance" type="date" defaultValue={action.echeance} required className={fieldClass} />
+      <select name="origine" defaultValue={action.origine} className={fieldClass}>{settings.actions.origins.map((item) => <option key={item.id} value={item.value}>{item.label}</option>)}</select>
+      <textarea name="remarque" defaultValue={action.remarque ?? ""} placeholder="Remarque (facultatif)" className={`${fieldClass} min-h-16 py-3 sm:col-span-2`} />
+      <button className={primaryButton}>Enregistrer</button>
+    </form> : null}
+
+    <div className="mt-6 grid gap-5 lg:grid-cols-3">
+      <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5 lg:col-span-2">
+        <h2 className="font-semibold">Informations</h2>
+        <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+          <Info label="Responsable" value={action.responsable} />
+          <Info label="Statut" value={<StatusPill tone={statusTone(action.statut)}>{action.statut}</StatusPill>} />
+          <Info label="Échéance" value={formatEuropeanDate(action.echeance)} />
+          <Info label="Origine" value={action.origine} />
+          <Info label="Introduit par" value={action.introduitPar} />
+          <Info label="Date d’encodage" value={formatEuropeanDate(action.dateEncodage)} />
+          {action.dateCloture ? <Info label="Date de clôture" value={formatEuropeanDate(action.dateCloture, true)} /> : null}
+          {action.contextLink ? <Info label="Lien contexte" value={<Link className="text-[var(--app-primary)] underline" href={action.contextLink.href}>{action.contextLink.label}</Link>} /> : null}
+        </dl>
+        {action.remarque ? <><h3 className="mt-6 text-sm font-semibold">Remarque</h3><p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{action.remarque}</p></> : null}
+      </section>
+      <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5">
+        <h2 className="font-semibold">Suivi</h2>
+        <div className="mt-4 flex flex-col gap-2">
+          {action.statut !== "Fait" ? <button className={secondaryButton} onClick={() => completeAction(action.id)}>Marquer fait</button> : null}
+          {postponing ? <div className="flex items-center gap-1"><input type="date" value={postponeDate} onChange={(event) => setPostponeDate(event.target.value)} className={`${fieldClass} min-h-9`} /><button className={secondaryButton} onClick={() => { if (postponeDate) { postponeAction(action.id, postponeDate); setPostponing(false); } }}>Confirmer</button></div>
+            : <button className={secondaryButton} onClick={() => setPostponing(true)}>Reporter</button>}
+          <label className="text-sm font-medium">Réassigner
+            <select className={`${fieldClass} mt-1 w-full`} value={action.responsable} onChange={(event) => reassignAction(action.id, event.target.value)}>
+              <option value={action.responsable}>{action.responsable}</option>
+              {settings.users.filter((user) => user.active).map((user) => `${user.firstName} ${user.lastName}`).filter((name) => name !== action.responsable).map((name) => <option key={name} value={name}>{name}</option>)}
+            </select>
+          </label>
+          <button className={`${secondaryButton} text-red-700`} onClick={remove}>Supprimer</button>
+        </div>
+      </section>
+    </div>
   </div>;
 }
 

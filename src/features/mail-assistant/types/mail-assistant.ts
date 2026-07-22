@@ -3,7 +3,7 @@ import type { MailAddress, MailMessage, MailProviderType } from "@/features/mail
 export const MAIL_ASSISTANT_INTENTS = [
   "start_mail_session", "summarize_new_mail", "list_important_mail", "open_message",
   "explain_classification", "modify_reply", "generate_reply", "create_draft",
-  "create_action", "add_to_qrqc", "add_to_meeting", "mark_processed",
+  "compose_new_mail", "create_action", "add_to_qrqc", "add_to_meeting", "mark_processed",
   "ignore_message", "send_email", "undo", "redo", "next_message",
   "previous_message", "finish_session",
 ] as const;
@@ -59,6 +59,7 @@ export interface MailAssistantReplyProposal {
   currentVersion: number;
   isManuallyEdited: boolean;
   status: "pending" | "approved" | "draft_created" | "ignored";
+  draftId: string | null;
 }
 
 export interface MailAssistantSessionMessage extends MailMessage {
@@ -73,6 +74,14 @@ export interface MailAssistantConversationEntry {
   role: "assistant" | "user";
   text: string;
   createdAt: string;
+}
+
+export interface MailAssistantActionDraft {
+  id: string;
+  messageId: string;
+  description: string;
+  responsable: string;
+  echeance: string;
 }
 
 export interface MailAssistantAuditEvent {
@@ -90,10 +99,21 @@ export interface MailAssistantCommand {
   rawText: string;
   messageIds: string[];
   instruction?: string;
+  recipientEmail?: string;
   isExplicitSend: boolean;
   isAmbiguous: boolean;
   clarification?: string;
   isConversationalFallback: boolean;
+}
+
+export interface MailAssistantComposeDraft {
+  id: string;
+  recipientEmail: string;
+  subject: string;
+  bodyText: string;
+  status: "pending" | "draft_created";
+  draftId: string | null;
+  createdAt: string;
 }
 
 export interface MailAssistantSession {
@@ -107,7 +127,8 @@ export interface MailAssistantSession {
   conversation: MailAssistantConversationEntry[];
   audits: MailAssistantAuditEvent[];
   draftsCreated: string[];
-  actionsCreated: string[];
+  composeDrafts: MailAssistantComposeDraft[];
+  pendingActionDrafts: MailAssistantActionDraft[];
   pendingApproval: { intent: MailAssistantIntent; messageIds: string[]; level: MailAssistantActionLevel } | null;
   lastExecutedCommand: MailAssistantCommand | null;
   errors: string[];

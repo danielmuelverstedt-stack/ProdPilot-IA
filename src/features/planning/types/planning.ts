@@ -1,4 +1,6 @@
 import type { MaintenanceEvent, PlannedOperation, WorkOperation, WorkOrder } from "@/features/demo/types/demo";
+import type { ErpOperationStatus, OperationView } from "@/features/erp-import/types/erp-import";
+import type { ErpOperationStatusTone } from "@/features/erp-import/services/erp-operation-status-presentation";
 import type { DepartmentSettings, OrderedStandardSettings, PrioritySettings, StatusSettings, TaskTypeSettings } from "@/features/settings/types/settings";
 
 export type PlanningStatus = string;
@@ -23,15 +25,17 @@ export interface PlanningMachine {
   capacityByDate: Record<string, number>;
   status: string;
   hasDetails: boolean;
+  /** Catégorie de tâche assignée à la machine/poste (voir task-category-dictionary.ts) ; `null` = non catégorisée. */
+  taskCategoryCode: string | null;
 }
 
 interface PlanningBlockBase {
   id: string;
   machineId: string;
   date: string;
-  durationHours: number;
+  /** null = donnée indisponible (jamais une valeur inventée), pas 0 heure. */
+  durationHours: number | null;
   status: PlanningStatus;
-  display: OrderedStandardSettings;
   isBlocked: boolean;
   comments: string;
   responsible: string;
@@ -39,6 +43,8 @@ interface PlanningBlockBase {
 
 export interface WorkOrderPlanningBlock extends PlanningBlockBase {
   source: "work-order";
+  durationHours: number;
+  display: OrderedStandardSettings;
   plan: PlannedOperation;
   order: WorkOrder;
   operation: WorkOperation;
@@ -48,6 +54,8 @@ export interface WorkOrderPlanningBlock extends PlanningBlockBase {
 
 export interface TaskPlanningBlock extends PlanningBlockBase {
   source: "task";
+  durationHours: number;
+  display: OrderedStandardSettings;
   maintenance: MaintenanceEvent;
   label: string;
   priority: null;
@@ -55,7 +63,20 @@ export interface TaskPlanningBlock extends PlanningBlockBase {
   maintenanceType: OrderedStandardSettings | null;
 }
 
-export type PlanningBlock = WorkOrderPlanningBlock | TaskPlanningBlock;
+/**
+ * Opération ERP réelle placée sur la grille (jour = plannedDate, machine = operationView.machineId).
+ * Aucun temps de fabrication : OperationView n'en porte pas, donc durationHours reste null ici.
+ */
+export interface ErpOperationPlanningBlock extends PlanningBlockBase {
+  source: "erp-operation";
+  durationHours: null;
+  status: ErpOperationStatus;
+  display: { tone: ErpOperationStatusTone; label: string };
+  operationView: OperationView;
+  priority: null;
+}
+
+export type PlanningBlock = WorkOrderPlanningBlock | TaskPlanningBlock | ErpOperationPlanningBlock;
 
 export interface PlanningViewModel {
   days: PlanningDay[];
@@ -85,7 +106,7 @@ export interface PlanningFiltersState {
 }
 
 export interface PlanningMoveTarget {
-  block: WorkOrderPlanningBlock;
+  block: WorkOrderPlanningBlock | ErpOperationPlanningBlock;
   machineId: string;
   date: string;
 }

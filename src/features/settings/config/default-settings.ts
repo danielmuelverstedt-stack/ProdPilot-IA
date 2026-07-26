@@ -17,6 +17,20 @@ import { DEFAULT_AI_BUDGET_POLICY } from "@/features/ai/config/ai-budget-policy"
 import { MAIL_MEMORY_DEFAULTS } from "@/features/mail-memory/config/mail-memory-defaults";
 import { MAIL_ASSISTANT_START_DEFAULTS } from "@/features/mail-assistant/config/mail-assistant-defaults";
 
+/**
+ * Catégorie de tâche par défaut des machines livrées avec le référentiel de démonstration,
+ * dérivée de leur département/type déjà curatés — les machines créées ensuite (manuellement ou
+ * par import CSV) restent volontairement non catégorisées (`null`) tant que l'utilisateur ne
+ * l'assigne pas lui-même depuis la fiche machine.
+ */
+function defaultTaskCategoryCode(departmentId: string, machineType: string): string | null {
+  if (machineType === "Tournage / Fraisage") return "26"; // Tournage/Fraisage
+  if (departmentId === "turning") return "5"; // Tournage
+  if (departmentId === "milling") return "27"; // Fraisage
+  if (departmentId === "wire-cutting") return "39"; // Découpe fil
+  return null;
+}
+
 function productionMachine(
   id: string,
   name: string,
@@ -27,13 +41,13 @@ function productionMachine(
   return {
     id,
     active: true,
+    visible: true,
     name,
     displayName: name,
     department,
     departmentId,
     machineType,
     color: "",
-    photoDataUrl: "",
     technicalInformation: "",
   };
 }
@@ -183,13 +197,15 @@ export const defaultSettings: AppSettings = {
       productionMachine("FRA-17", "MAZAK VTC 800", "milling", "Fraisage", "Fraisage 5 axes"),
       productionMachine("FIL-01", "MITSUBISHI FA30S", "wire-cutting", "Découpe fil", "Découpe fil"),
       productionMachine("FIL-02", "MV 2400R connect", "wire-cutting", "Découpe fil", "Découpe fil"),
-    ].map((machine, order) => ({ ...machine, order })),
+    ].map((machine, order) => ({ ...machine, order, taskCategoryCode: defaultTaskCategoryCode(machine.departmentId, machine.machineType) })),
     departments: [
-      { ...standard("turning", "Tournage", "Tournage", "#2563eb", "#ffffff", 0) },
-      { ...standard("milling", "Fraisage", "Fraisage", "#7c3aed", "#ffffff", 1) },
-      { ...standard("wire-cutting", "Découpe fil", "Découpe fil", "#0d9488", "#ffffff", 2) },
-      { ...standard("quality", "Qualité", "Qualité", "#0891b2", "#ffffff", 3) },
-      { ...standard("maintenance", "Maintenance", "Maintenance", "#d97706", "#ffffff", 4) },
+      // Départements de production : basés sur le département physique de la machine (fiche machine → Département), pas sur un lien par catégorie — une machine tourno-fraiseuse qui porte ponctuellement une opération d'une autre catégorie ne doit jamais apparaître ailleurs que dans son propre département.
+      { ...standard("turning", "Tournage", "Tournage", "#2563eb", "#ffffff", 0), membershipMode: "physical", linkedCategoryCodes: ["5"], linkedMachineIds: [] },
+      { ...standard("milling", "Fraisage", "Fraisage", "#7c3aed", "#ffffff", 1), membershipMode: "physical", linkedCategoryCodes: ["27"], linkedMachineIds: [] },
+      { ...standard("wire-cutting", "Découpe fil", "Découpe fil", "#0d9488", "#ffffff", 2), membershipMode: "physical", linkedCategoryCodes: ["39"], linkedMachineIds: [] },
+      // Qualité/Maintenance : aucune machine n'y est physiquement rattachée, le contenu vient donc des catégories/machines liées (comportement par défaut, membershipMode absent).
+      { ...standard("quality", "Qualité", "Qualité", "#0891b2", "#ffffff", 3), linkedCategoryCodes: ["20"], linkedMachineIds: [] },
+      { ...standard("maintenance", "Maintenance", "Maintenance", "#d97706", "#ffffff", 4), linkedCategoryCodes: ["23"], linkedMachineIds: [] },
     ],
     capacities: [
       capacity("capacity-turning", "Capacité Tournage", "turning", 8, 0),
@@ -232,6 +248,7 @@ export const defaultSettings: AppSettings = {
     ],
     planning: { allDepartmentsLabel: "Tous", defaultCapacityHours: 8, workingDays: [1, 2, 3, 4, 5], weekStartsOn: 1, visibleWeeks: 4, loadWarningPercent: 80, loadCriticalPercent: 95 },
     workOrderTypes: ["Production", "Retouche", "Prototype", "Urgence client", "Sous-traitance"],
+    visibleTaskCategoryCodes: [],
   },
   actions: {
     origins: [

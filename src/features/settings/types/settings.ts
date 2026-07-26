@@ -2,7 +2,7 @@ import type { AiBudgetPolicy, AiPricingEntry } from "@/features/ai/types/ai";
 import type { MailMemorySettings } from "@/features/mail-memory/types/mail-memory";
 import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
 
-export const SETTINGS_VERSION = 15;
+export const SETTINGS_VERSION = 17;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -53,9 +53,12 @@ export interface ThemeSettings {
   text: string;
 }
 
+// La photo n'est plus stockée ici : voir useMachinePhotos() (IndexedDB, src/features/machines/services/machine-photo-store.ts),
+// pour ne pas soumettre les Réglages au quota localStorage.
 export interface MachineSettings {
   id: string;
   active: boolean;
+  visible: boolean;
   name: string;
   displayName: string;
   department: string;
@@ -63,13 +66,17 @@ export interface MachineSettings {
   machineType: string;
   color: string;
   order: number;
-  photoDataUrl: string;
   technicalInformation: string;
-  erpCode?: string;
   deleted?: boolean;
   favorite?: boolean;
   futureCapacityHours?: number | null;
   comments?: string;
+  /** Code de catégorie de tâche ERP (voir task-category-dictionary.ts), assigné manuellement à la machine ; `null`/absent = non catégorisée. */
+  taskCategoryCode?: string | null;
+  /** `"poste"` = poste de travail sans machine physique (ex. Ébavurage), planifiable comme une machine mais sans fiche technique pertinente ; absent/`"machine"` = machine physique. */
+  kind?: "machine" | "poste";
+  // TODO : futurs champs métier centralisés : maintenanceStatus, maintenanceDueDate,
+  // capacityProfile, calendarId, robotId, kpiConfiguration, toolMagazine, skillsRequired.
 }
 
 export interface OrderedStandardSettings {
@@ -84,6 +91,21 @@ export interface OrderedStandardSettings {
 
 export interface DepartmentSettings extends OrderedStandardSettings {
   value: string;
+  /**
+   * `"physical"` : le contenu de l'onglet Atelier vient uniquement des machines dont la fiche
+   * indique ce département (`MachineSettings.departmentId`), sans lien par catégorie — le cas des
+   * départements de production (Tournage, Fraisage, Découpe fil), où une machine ne doit jamais
+   * apparaître ailleurs que dans son propre département sous prétexte qu'elle porte ponctuellement
+   * une opération d'une autre catégorie (ex. une machine tourno-fraiseuse). `"linked"` (ou absent,
+   * comportement par défaut) : le contenu vient de `linkedCategoryCodes`/`linkedMachineIds`,
+   * indépendamment du département physique — nécessaire pour Qualité/Maintenance, qui n'ont
+   * structurellement aucune machine physiquement rattachée.
+   */
+  membershipMode?: "physical" | "linked";
+  /** Codes de catégorie de tâche (task-category-dictionary.ts) rattachés à ce département dans l'Atelier ; absent/vide = aucune. Ignoré si `membershipMode` vaut `"physical"`. */
+  linkedCategoryCodes?: string[];
+  /** Machines rattachées individuellement à ce département dans l'Atelier, en plus de celles couvertes par `linkedCategoryCodes`. Ignoré si `membershipMode` vaut `"physical"`. */
+  linkedMachineIds?: string[];
 }
 
 export interface PrioritySettings extends OrderedStandardSettings {
@@ -136,6 +158,15 @@ export interface ProductionSettings {
   maintenanceTypes: OrderedStandardSettings[];
   planning: PlanningSettings;
   workOrderTypes: string[];
+  /**
+   * @deprecated Plus lu/écrit par l'UI (Cockpit ERP/Planning capacité/Atelier lisent désormais
+   * `useVisibleTaskCategoryCodes()`, `src/lib/visible-task-categories-store.ts` — un store dédié,
+   * séparé des Réglages pour ne pas cloner/réécrire tout l'arbre `AppSettings` à chaque changement
+   * de catégorie, un réglage qui change très fréquemment). Champ conservé ici uniquement pour la
+   * compatibilité de lecture des anciennes sauvegardes/exports (`settings-repository.ts` migre sa
+   * valeur vers le nouveau store à la première hydratation) ; ne plus l'utiliser dans du nouveau code.
+   */
+  visibleTaskCategoryCodes: string[];
 }
 
 export interface ModulePermission {

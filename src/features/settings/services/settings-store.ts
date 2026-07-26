@@ -25,8 +25,14 @@ export function subscribeToSettings(listener: Listener) {
 }
 
 function publish(settings: AppSettings) {
+  const previous = settingsCache;
   settingsCache = settings;
-  settingsRepository.save(settings);
+  try {
+    settingsRepository.save(settings);
+  } catch (error) {
+    settingsCache = previous;
+    throw error;
+  }
   listeners.forEach((listener) => listener());
 }
 

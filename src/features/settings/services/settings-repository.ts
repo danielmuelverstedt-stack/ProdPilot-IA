@@ -13,6 +13,8 @@ import {
   type ProductionSettings,
 } from "@/features/settings/types/settings";
 
+export class SettingsPersistenceError extends Error {}
+
 const STORAGE_KEY = "prodpilot.settings";
 const PREVIOUS_DEFAULT_MACHINE_IDS = ["TOU-01", "FRA-01", "FRA-10", "FIL-01"];
 
@@ -49,7 +51,7 @@ function isSettings(value: unknown): value is AppSettings {
   const themeValid = isRecord(value.theme) && hasStrings(value.theme, ["primary", "secondary", "success", "warning", "danger", "information", "background", "card", "border", "text"]);
   const production = isRecord(value.production) ? value.production : null;
   const productionValid = production !== null &&
-    Array.isArray(production.machines) && production.machines.every((machine) => isRecord(machine) && hasStrings(machine, ["id", "name", "displayName", "department", "departmentId", "machineType", "color", "photoDataUrl", "technicalInformation"]) && typeof machine.active === "boolean" && typeof machine.order === "number" && (machine.erpCode === undefined || typeof machine.erpCode === "string") && (machine.deleted === undefined || typeof machine.deleted === "boolean") && (machine.favorite === undefined || typeof machine.favorite === "boolean") && (machine.futureCapacityHours === undefined || machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number") && (machine.comments === undefined || typeof machine.comments === "string")) &&
+    Array.isArray(production.machines) && production.machines.every((machine) => isRecord(machine) && hasStrings(machine, ["id", "name", "displayName", "department", "departmentId", "machineType", "color", "technicalInformation"]) && typeof machine.active === "boolean" && typeof machine.visible === "boolean" && typeof machine.order === "number" && (machine.deleted === undefined || typeof machine.deleted === "boolean") && (machine.favorite === undefined || typeof machine.favorite === "boolean") && (machine.futureCapacityHours === undefined || machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number") && (machine.comments === undefined || typeof machine.comments === "string") && (machine.taskCategoryCode === undefined || machine.taskCategoryCode === null || typeof machine.taskCategoryCode === "string")) &&
     Array.isArray(production.departments) && production.departments.every(isStandard) &&
     Array.isArray(production.priorities) && production.priorities.every((item) => isStandard(item) && isRecord(item) && typeof item.highlight === "boolean") &&
     [production.statuses, production.maintenanceStatuses].every((items) => Array.isArray(items) && items.every((item) => isStandard(item) && isRecord(item) && ["planned", "in-progress", "blocked", "completed", "neutral"].includes(String(item.behavior)))) &&
@@ -57,7 +59,8 @@ function isSettings(value: unknown): value is AppSettings {
     Array.isArray(production.maintenanceTypes) && production.maintenanceTypes.every(isStandard) &&
     Array.isArray(production.capacities) && production.capacities.every((item) => isRecord(item) && hasStrings(item, ["id", "label", "scope", "targetId"]) && ["department", "machine"].includes(String(item.scope)) && typeof item.active === "boolean" && typeof item.order === "number" && Number.isFinite(item.order) && typeof item.hoursPerDay === "number" && Number.isFinite(item.hoursPerDay) && Array.isArray(item.workingDays) && item.workingDays.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6) && Array.isArray(item.exceptions) && item.exceptions.every((exception) => isRecord(exception) && typeof exception.date === "string" && typeof exception.hours === "number" && Number.isFinite(exception.hours))) &&
     isRecord(production.planning) && hasStrings(production.planning, ["allDepartmentsLabel"]) && ["defaultCapacityHours", "weekStartsOn", "visibleWeeks", "loadWarningPercent", "loadCriticalPercent"].every((key) => isRecord(production.planning) && typeof production.planning[key] === "number" && Number.isFinite(production.planning[key])) && Array.isArray(production.planning.workingDays) && production.planning.workingDays.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6) &&
-    Array.isArray(production.workOrderTypes) && production.workOrderTypes.every((item) => typeof item === "string");
+    Array.isArray(production.workOrderTypes) && production.workOrderTypes.every((item) => typeof item === "string") &&
+    Array.isArray(production.visibleTaskCategoryCodes) && production.visibleTaskCategoryCodes.every((item) => typeof item === "string");
   const actionsValid = isRecord(value.actions)
     && Array.isArray(value.actions.origins) && value.actions.origins.every(isStandard)
     && Array.isArray(value.actions.columns) && value.actions.columns.every((column) => isOrderedItem(column, ["id", "label"], ["visible"]));
@@ -180,6 +183,7 @@ function migrateProductionSettings(savedVersion: number | undefined, value: unkn
     maintenanceTypes: migrateStandards(saved.maintenanceTypes, defaults.maintenanceTypes),
     planning: isRecord(saved.planning) ? { ...defaults.planning, ...saved.planning } : defaults.planning,
     workOrderTypes: Array.isArray(saved.workOrderTypes) && saved.workOrderTypes.every((item) => typeof item === "string") ? saved.workOrderTypes : defaults.workOrderTypes,
+    visibleTaskCategoryCodes: Array.isArray(saved.visibleTaskCategoryCodes) && saved.visibleTaskCategoryCodes.every((item) => typeof item === "string") ? saved.visibleTaskCategoryCodes : defaults.visibleTaskCategoryCodes,
   };
 }
 
@@ -201,7 +205,8 @@ function migrateProductionMachines(savedVersion: number | undefined, value: unkn
     return {
       ...fallback,
       id,
-      active: typeof machine.active === "boolean" ? machine.active : fallback?.active ?? true,
+      active: (savedVersion ?? 0) < 16 ? true : typeof machine.active === "boolean" ? machine.active : fallback?.active ?? true,
+      visible: (savedVersion ?? 0) < 16 ? true : typeof machine.visible === "boolean" ? machine.visible : fallback?.visible ?? true,
       name: typeof machine.name === "string" ? machine.name : fallback?.name ?? id,
       displayName: typeof machine.displayName === "string" ? machine.displayName : fallback?.displayName ?? id,
       department,
@@ -209,13 +214,12 @@ function migrateProductionMachines(savedVersion: number | undefined, value: unkn
       machineType: typeof machine.machineType === "string" ? machine.machineType : fallback?.machineType ?? "",
       color: typeof machine.color === "string" ? machine.color : fallback?.color ?? "",
       order: typeof machine.order === "number" ? machine.order : index,
-      photoDataUrl: typeof machine.photoDataUrl === "string" ? machine.photoDataUrl : fallback?.photoDataUrl ?? "",
       technicalInformation: typeof machine.technicalInformation === "string" ? machine.technicalInformation : fallback?.technicalInformation ?? "",
-      erpCode: typeof machine.erpCode === "string" ? machine.erpCode : fallback?.erpCode ?? "",
       deleted: typeof machine.deleted === "boolean" ? machine.deleted : fallback?.deleted ?? false,
       favorite: typeof machine.favorite === "boolean" ? machine.favorite : fallback?.favorite ?? false,
       futureCapacityHours: machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number" ? machine.futureCapacityHours : fallback?.futureCapacityHours ?? null,
       comments: typeof machine.comments === "string" ? machine.comments : fallback?.comments ?? "",
+      taskCategoryCode: machine.taskCategoryCode === null || typeof machine.taskCategoryCode === "string" ? machine.taskCategoryCode : fallback?.taskCategoryCode ?? null,
     };
   });
 }
@@ -304,7 +308,37 @@ export const settingsRepository = {
     }
   },
   save(settings: AppSettings): void {
-    if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, version: SETTINGS_VERSION }));
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, version: SETTINGS_VERSION }));
+    } catch (error) {
+      const isQuotaError = error instanceof DOMException && (error.name === "QuotaExceededError" || error.code === 22);
+      throw new SettingsPersistenceError(
+        isQuotaError
+          ? "Le stockage local du navigateur est plein : ce changement n’a pas pu être enregistré. Libérez de la place (Réglages → Sauvegardes)."
+          : "Ce changement n’a pas pu être enregistré localement.",
+      );
+    }
+  },
+  /**
+   * Lit le JSON brut (non typé) des Réglages sauvegardés pour en extraire d'anciennes photos
+   * machine (`production.machines[].photoDataUrl`), désormais stockées ailleurs et absentes du
+   * type `MachineSettings`. Usage exclusivement transitoire, pour une migration ponctuelle.
+   */
+  extractLegacyMachinePhotos(): { machineId: string; dataUrl: string }[] {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return [];
+      const parsed: unknown = JSON.parse(raw);
+      if (!isRecord(parsed) || !isRecord(parsed.production) || !Array.isArray(parsed.production.machines)) return [];
+      return parsed.production.machines
+        .filter(isRecord)
+        .filter((machine) => typeof machine.id === "string" && typeof machine.photoDataUrl === "string" && machine.photoDataUrl)
+        .map((machine) => ({ machineId: machine.id as string, dataUrl: machine.photoDataUrl as string }));
+    } catch {
+      return [];
+    }
   },
   reset(): AppSettings {
     const settings = cloneDefaults();

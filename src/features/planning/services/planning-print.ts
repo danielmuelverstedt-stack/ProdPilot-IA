@@ -27,7 +27,7 @@ export function getPlanningPrintConfiguration(print: PrintSettings): {
 export function getPlanningPrintValue(columnId: string, block: PlanningBlock, machine: PlanningMachine): string {
   const commonValues: Record<string, string> = {
     machine: machine.displayName,
-    "planned-time": `${block.durationHours.toLocaleString("fr-BE")} h`,
+    "planned-time": block.durationHours === null ? "Non disponible" : `${block.durationHours.toLocaleString("fr-BE")} h`,
     "planned-date": formatEuropeanDate(`${block.date}T12:00:00.000Z`),
     comments: block.comments,
     completed: "□",
@@ -35,6 +35,18 @@ export function getPlanningPrintValue(columnId: string, block: PlanningBlock, ma
   };
   if (block.source === "task") {
     return { ...commonValues, operation: `${block.display.label} · ${block.label}` }[columnId] ?? "—";
+  }
+  if (block.source === "erp-operation") {
+    return {
+      ...commonValues,
+      "work-order": block.operationView.workOrderId,
+      customer: block.operationView.workOrder?.customerName ?? "Client inconnu",
+      article: block.operationView.articleCode,
+      description: block.operationView.description ?? "",
+      operation: `Op. ${block.operationView.operationNumber} · ${block.operationView.description ?? "Sans description"}`,
+      priority: `${block.operationView.effectivePriority}`,
+      "delivery-date": block.operationView.dueDate ? formatEuropeanDate(`${block.operationView.dueDate}T12:00:00.000Z`) : "—",
+    }[columnId] ?? "—";
   }
   return {
     ...commonValues,

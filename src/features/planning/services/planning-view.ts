@@ -1,17 +1,24 @@
 import type { DemoData } from "@/features/demo/types/demo";
-import type { PlanningBlock, PlanningDay, PlanningMachine, PlanningViewModel } from "@/features/planning/types/planning";
+import { ERP_OPERATION_STATUS_LABELS, erpOperationStatusTone } from "../../erp-import/services/erp-operation-status-presentation.ts";
+import type { OperationView } from "@/features/erp-import/types/erp-import";
+import type { ErpOperationPlanningBlock, PlanningBlock, PlanningDay, PlanningMachine, PlanningViewModel } from "@/features/planning/types/planning";
 import type { AppSettings, CapacitySettings, OrderedStandardSettings, StatusSettings } from "@/features/settings/types/settings";
 
 const DAY_FORMATTER = new Intl.DateTimeFormat("fr-BE", { weekday: "short", timeZone: "UTC" });
 
-export function buildPlanningView(data: DemoData, settings: AppSettings): PlanningViewModel {
+/**
+ * Le mode démonstration (OF locaux) et le mode ERP réel (OperationView) ne se mélangent jamais
+ * dans la même grille : `hasActiveImport` bascule entre les deux jeux d'OF. La maintenance
+ * (aucun équivalent ERP) reste affichée dans les deux cas.
+ */
+export function buildPlanningView(data: DemoData, settings: AppSettings, operations: OperationView[], hasActiveImport: boolean): PlanningViewModel {
   const production = settings.production;
   const days = buildMonthDays(data, production.planning.workingDays, production.planning.weekStartsOn, production.planning.visibleWeeks);
   const departments = production.departments.filter((item) => item.active).sort((a, b) => a.order - b.order);
   const departmentById = new Map(departments.map((department) => [department.id, department]));
   const machineData = new Map(data.machines.map((machine) => [machine.id, machine]));
   const machines: PlanningMachine[] = production.machines
-    .filter((machine) => machine.active && departmentById.has(machine.departmentId))
+    .filter((machine) => machine.active && machine.visible && !machine.deleted && departmentById.has(machine.departmentId))
     .sort((a, b) => a.order - b.order)
     .map((machine) => {
       const department = departmentById.get(machine.departmentId)!;
@@ -27,6 +34,7 @@ export function buildPlanningView(data: DemoData, settings: AppSettings): Planni
         capacityByDate: Object.fromEntries(days.map((day) => [day.date, resolveCapacity(machine.id, department.id, day.date, production.capacities, production.planning.defaultCapacityHours)])),
         status: machineData.get(machine.id)?.status ?? "",
         hasDetails: machineData.has(machine.id),
+        taskCategoryCode: machine.taskCategoryCode ?? null,
       };
     });
 
@@ -90,11 +98,12 @@ export function buildPlanningView(data: DemoData, settings: AppSettings): Planni
       maintenanceType,
     }];
   });
+  const erpOperationBlocks = buildErpOperationBlocks(operations, machineIds);
 
   return {
     days,
     machines,
-    blocks: [...planningBlocks, ...taskBlocks],
+    blocks: [...taskBlocks, ...(hasActiveImport ? erpOperationBlocks : planningBlocks)],
     weeks: [...new Set(days.map((day) => day.week))],
     departments,
     statuses,
@@ -109,6 +118,34 @@ export function buildPlanningView(data: DemoData, settings: AppSettings): Planni
     loadCriticalPercent: production.planning.loadCriticalPercent,
     loadColors: { normal: settings.theme.success, warning: settings.theme.warning, critical: settings.theme.danger },
   };
+}
+
+function buildErpOperationBlocks(operations: OperationView[], machineIds: Set<string>): ErpOperationPlanningBlock[] {
+  return operations
+    .filter((operation): operation is OperationView & { machineId: string; plannedDate: string } => operation.machineId !== null && machineIds.has(operation.machineId) && operation.plannedDate !== null)
+    .map((operation) => ({
+      id: `erp-${operation.id}`,
+      source: "erp-operation" as const,
+      operationView: operation,
+      machineId: operation.machineId,
+      date: operation.plannedDate,
+      durationHours: null,
+      status: operation.effectiveStatus,
+      display: { tone: erpOperationStatusTone(operation.effectiveStatus), label: ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus] },
+      isBlocked: operation.effectiveStatus === "blocked",
+      comments: operation.comment ?? "",
+      responsible: "",
+      priority: null,
+    }));
+}
+
+/** Ignore les blocs sans durée connue plutôt que de les compter comme 0 h silencieusement mêlé au reste : à toujours afficher à côté de countUnknownDurationBlocks. */
+export function sumDurationHours(blocks: PlanningBlock[]): number {
+  return blocks.reduce((sum, block) => sum + (block.durationHours ?? 0), 0);
+}
+
+export function countUnknownDurationBlocks(blocks: PlanningBlock[]): number {
+  return blocks.filter((block) => block.durationHours === null).length;
 }
 
 function buildMonthDays(data: DemoData, workingDays: number[], weekStartsOn: number, visibleWeeks: number): PlanningDay[] {
@@ -131,7 +168,7 @@ function buildMonthDays(data: DemoData, workingDays: number[], weekStartsOn: num
   return days;
 }
 
-function resolveCapacity(machineId: string, departmentId: string, date: string, capacities: CapacitySettings[], fallbackHours: number): number {
+export function resolveCapacity(machineId: string, departmentId: string, date: string, capacities: CapacitySettings[], fallbackHours: number): number {
   const active = capacities.filter((item) => item.active).sort((a, b) => a.order - b.order);
   const capacity = active.find((item) => item.scope === "machine" && item.targetId === machineId) ?? active.find((item) => item.scope === "department" && item.targetId === departmentId);
   if (!capacity) return fallbackHours;

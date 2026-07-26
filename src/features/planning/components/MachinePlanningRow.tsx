@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { PlanningCard } from "@/features/planning/components/PlanningCard";
 import styles from "@/features/planning/components/Planning.module.css";
-import type { PlanningBlock, PlanningDay, PlanningMachine, WorkOrderPlanningBlock } from "@/features/planning/types/planning";
+import { countUnknownDurationBlocks, sumDurationHours } from "@/features/planning/services/planning-view";
+import type { ErpOperationPlanningBlock, PlanningBlock, PlanningDay, PlanningMachine, WorkOrderPlanningBlock } from "@/features/planning/types/planning";
 
 export function MachinePlanningRow({ machine, days, blocks, canCreate, canEdit, canPrint, draggedId, dragOver, loadWarningPercent, loadCriticalPercent, loadColors, onDragStart, onDragEnd, onDragOver, onDrop, onAdd, onMove, onReorder, onPrint }: {
   machine: PlanningMachine;
@@ -20,11 +21,12 @@ export function MachinePlanningRow({ machine, days, blocks, canCreate, canEdit, 
   onDragOver: (key: string) => void;
   onDrop: (machineId: string, date: string) => void;
   onAdd: (machineId: string, date: string) => void;
-  onMove: (block: WorkOrderPlanningBlock) => void;
+  onMove: (block: WorkOrderPlanningBlock | ErpOperationPlanningBlock) => void;
   onReorder: (id: string, direction: -1 | 1) => void;
   onPrint: (machineId: string) => void;
 }) {
-  const periodHours = blocks.reduce((sum, block) => sum + block.durationHours, 0);
+  const periodHours = sumDurationHours(blocks);
+  const periodUnknown = countUnknownDurationBlocks(blocks);
   const capacity = days.reduce((sum, day) => sum + (machine.capacityByDate[day.date] ?? 0), 0);
   const load = capacity ? Math.round(periodHours / capacity * 100) : 0;
   const loadColor = load >= loadCriticalPercent ? loadColors.critical : load >= loadWarningPercent ? loadColors.warning : loadColors.normal;
@@ -38,7 +40,8 @@ export function MachinePlanningRow({ machine, days, blocks, canCreate, canEdit, 
     {days.map((day) => {
       const cellBlocks = blocks.filter((block) => block.date === day.date);
       const workOrderBlocks = cellBlocks.filter((block) => block.source === "work-order");
-      const hours = cellBlocks.reduce((sum, block) => sum + block.durationHours, 0);
+      const hours = sumDurationHours(cellBlocks);
+      const unknownCount = countUnknownDurationBlocks(cellBlocks);
       const dayCapacity = machine.capacityByDate[day.date] ?? 0;
       const overloaded = hours > dayCapacity;
       const key = `${machine.id}:${day.date}`;
@@ -55,7 +58,7 @@ export function MachinePlanningRow({ machine, days, blocks, canCreate, canEdit, 
             canEdit={canEdit}
             canMoveUp={workIndex > 0}
             canMoveDown={workIndex >= 0 && workIndex < workOrderBlocks.length - 1}
-            onMove={() => block.source === "work-order" && onMove(block)}
+            onMove={() => (block.source === "work-order" || block.source === "erp-operation") && onMove(block)}
             onMoveUp={() => onReorder(block.id, -1)}
             onMoveDown={() => onReorder(block.id, 1)}
             onDragStart={() => onDragStart(block.id)}
@@ -63,11 +66,12 @@ export function MachinePlanningRow({ machine, days, blocks, canCreate, canEdit, 
           />; })}
           <div className={styles.cellFooter}>
             <span className={`text-[9px] ${overloaded ? "font-bold" : "text-slate-500"}`} style={overloaded ? { color: loadColors.critical } : undefined}>{cellBlocks.length ? `Σ ${hours.toLocaleString("fr-BE")}/${dayCapacity.toLocaleString("fr-BE")} h${overloaded ? " ⚠" : ""}` : ""}</span>
+            {unknownCount > 0 ? <span className="block text-[9px] italic text-slate-400" title="Temps de fabrication non disponible pour ces opérations ERP">{unknownCount} op. ERP · temps n.d.</span> : null}
             {canCreate ? <button type="button" className={styles.cellAdd} aria-label={`Ajouter sur ${machine.id} le ${day.dateLabel}`} onClick={() => onAdd(machine.id, day.date)}>+</button> : null}
           </div>
         </div>
       </td>;
     })}
-    <td className={styles.chargeColumn}><strong style={{ color: loadColor }}>{load} %</strong><span className="block text-[10px] text-slate-500">{periodHours.toLocaleString("fr-BE")}/{capacity.toLocaleString("fr-BE")} h</span></td>
+    <td className={styles.chargeColumn}><strong style={{ color: loadColor }}>{load} %</strong><span className="block text-[10px] text-slate-500">{periodHours.toLocaleString("fr-BE")}/{capacity.toLocaleString("fr-BE")} h</span>{periodUnknown > 0 ? <span className="block text-[9px] italic text-slate-400">{periodUnknown} op. ERP n.d.</span> : null}</td>
   </tr>;
 }

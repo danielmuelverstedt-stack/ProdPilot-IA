@@ -1,5 +1,6 @@
 export type Priority = "Basse" | "Normale" | "Haute" | "Urgente" | "Bloquante";
-export type ActionStatus = "À faire" | "Fait" | "Reporté";
+/** "À planifier" : idée/action d'amélioration mise de côté pour ne pas l'oublier, sans responsable ni échéance réels tant qu'elle n'a pas été validée (`planAction`) — elle rejoint alors "À faire" comme une action normale. */
+export type ActionStatus = "À faire" | "Fait" | "Reporté" | "À planifier";
 
 export interface HistoryEntry {
   id: string;
@@ -72,6 +73,8 @@ export interface PlannedOperation {
 
 export type MachineStatus = "Disponible" | "En production" | "Maintenance prévue" | "En panne" | "Inactive";
 
+export type MachiningType = "3 axes" | "4 axes" | "5 axes" | "Tournage-fraisage" | "";
+
 export interface Machine {
   id: string;
   name: string;
@@ -85,7 +88,57 @@ export interface Machine {
   serialNumber: string;
   robot: string | null;
   comments: string;
-  photoUrl: string;
+  // Identification (fiche technique)
+  workshopLocation?: string;
+  commissioningDate?: string | null;
+  warrantyEndDate?: string | null;
+  // Caractéristiques techniques (fiche technique)
+  machiningType?: MachiningType;
+  cncControl?: string;
+  spindleSpeedRpm?: number | null;
+  spindlePowerKw?: number | null;
+  toolSpindleOrCone?: string;
+  travelXMm?: number | null;
+  travelYMm?: number | null;
+  travelZMm?: number | null;
+  toolMagazineCapacity?: number | null;
+  barCapacityDiameterMm?: number | null;
+  throughSpindleCoolant?: boolean;
+  // Raccordements (fiche technique)
+  electricalVoltage?: string;
+  electricalKva?: number | null;
+  electricalCableSection?: string;
+  compressedAirBar?: number | null;
+  compressedAirFlowNlMin?: number | null;
+  /** Clés des champs ci-dessus pré-remplis automatiquement et pas encore confirmés/modifiés par un utilisateur. */
+  unverifiedFields?: string[];
+}
+
+export interface MachineSavContact {
+  id: string;
+  machineId: string;
+  company: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  contractReference: string;
+  contractExpiry: string | null;
+  notes: string;
+}
+
+export type ConsumableCategory = "Filtre" | "Huile" | "Graisse" | "Liquide de coupe" | "Autre";
+
+export interface MachineConsumable {
+  id: string;
+  machineId: string;
+  category: ConsumableCategory;
+  designation: string;
+  manufacturerReference: string;
+  supplier: string;
+  replacementFrequency: string;
+  storageLocation: string;
+  notes: string;
+  isExample?: boolean;
 }
 
 export interface MaintenanceEvent {
@@ -165,4 +218,6 @@ export interface DemoData {
   requests: InternalRequest[];
   erpQuality: ErpQualityIssue[];
   notifications: DemoNotification[];
+  savContacts: MachineSavContact[];
+  consumables: MachineConsumable[];
 }

@@ -7,10 +7,22 @@ const history = (id: string, description: string, date = "2026-07-11T08:00:00.00
 export const initialDemoData: DemoData = {
   version: 2,
   machines: [
-    { id: "TOU-01", name: "MAZAK INTEGREX 300", displayName: "Integrex 300", department: "Tournage", type: "Tournage / Fraisage", status: "En production", manufacturer: "Mazak", model: "Integrex 300", year: 2018, serialNumber: "MZ-I300-1842", robot: null, comments: "Machine polyvalente pour pièces complexes.", photoUrl: "" },
-    { id: "FRA-01", name: "MAZAK VTC-200C-II", displayName: "VTC-200C-II", department: "Fraisage", type: "Fraisage 3 axes", status: "Disponible", manufacturer: "Mazak", model: "VTC-200C-II", year: 2015, serialNumber: "MZ-VTC-992", robot: null, comments: "Centre vertical grande course.", photoUrl: "" },
-    { id: "FRA-10", name: "HEDELIUS ACURA 65 EL", displayName: "Acura 65", department: "Fraisage", type: "Fraisage 5 axes", status: "Maintenance prévue", manufacturer: "Hedelius", model: "Acura 65 EL", year: 2022, serialNumber: "HD-A65-2217", robot: "BMO Platinum", comments: "Cellule automatisée de nuit.", photoUrl: "" },
-    { id: "FIL-01", name: "MITSUBISHI FA30S", displayName: "FA30S", department: "Découpe fil", type: "Électroérosion à fil", status: "En panne", manufacturer: "Mitsubishi", model: "FA30S", year: 2012, serialNumber: "MI-FA30-771", robot: null, comments: "Diagnostic générateur en cours.", photoUrl: "" },
+    {
+      id: "TOU-01", name: "MAZAK INTEGREX 300", displayName: "Integrex 300", department: "Tournage", type: "Tournage / Fraisage", status: "En production", manufacturer: "Mazak", model: "Integrex 300", year: 2018, serialNumber: "MZ-I300-1842", robot: null, comments: "Machine polyvalente pour pièces complexes.",
+      machiningType: "Tournage-fraisage", cncControl: "Mazatrol",
+      unverifiedFields: ["machiningType", "cncControl"],
+    },
+    {
+      id: "FRA-01", name: "MAZAK VTC-200C-II", displayName: "VTC-200C-II", department: "Fraisage", type: "Fraisage 3 axes", status: "Disponible", manufacturer: "Mazak", model: "VTC-200C-II", year: 2015, serialNumber: "MZ-VTC-992", robot: null, comments: "Centre vertical grande course.",
+      machiningType: "3 axes", toolSpindleOrCone: "BT40",
+      unverifiedFields: ["machiningType", "toolSpindleOrCone"],
+    },
+    {
+      id: "FRA-10", name: "HEDELIUS ACURA 65 EL", displayName: "Acura 65", department: "Fraisage", type: "Fraisage 5 axes", status: "Maintenance prévue", manufacturer: "Hedelius", model: "Acura 65 EL", year: 2022, serialNumber: "HD-A65-2217", robot: "BMO Platinum", comments: "Cellule automatisée de nuit.",
+      machiningType: "5 axes", cncControl: "Heidenhain TNC",
+      unverifiedFields: ["machiningType", "cncControl"],
+    },
+    { id: "FIL-01", name: "MITSUBISHI FA30S", displayName: "FA30S", department: "Découpe fil", type: "Électroérosion à fil", status: "En panne", manufacturer: "Mitsubishi", model: "FA30S", year: 2012, serialNumber: "MI-FA30-771", robot: null, comments: "Diagnostic générateur en cours." },
   ],
   workOrders: [
     createWorkOrder("OF-240184", "Safran Aero Boosters", "AXE-TI-884", "Axe de commande en titane", 24, "Urgente", "2026-07-15", "En production", 55, "Projet LEAP", [
@@ -73,6 +85,14 @@ export const initialDemoData: DemoData = {
     { id: "NOT-01", title: "Panne FIL-01", description: "Deux OF doivent être replanifiés.", href: "/machines/FIL-01", level: "danger", read: false },
     { id: "NOT-02", title: "Échéance OF-240184", description: "Arbitrage requis aujourd’hui.", href: "/of/OF-240184", level: "warning", read: false },
     { id: "NOT-03", title: "QRQC à 07 h 30", description: "La préparation est disponible.", href: "/reunions/qrqc", level: "information", read: true },
+  ],
+  savContacts: [],
+  consumables: [
+    { id: "CONS-01", machineId: "TOU-01", category: "Filtre", designation: "Filtre à huile hydraulique", manufacturerReference: "MZ-HYD-F120", supplier: "Mazak Europe", replacementFrequency: "Tous les 6 mois", storageLocation: "Armoire consommables A", notes: "Exemple de démonstration.", isExample: true },
+    { id: "CONS-02", machineId: "TOU-01", category: "Huile", designation: "Huile hydraulique ISO VG46", manufacturerReference: "SHELL-TELLUS-46", supplier: "Shell", replacementFrequency: "Annuelle", storageLocation: "Local produits atelier", notes: "Exemple de démonstration.", isExample: true },
+    { id: "CONS-03", machineId: "TOU-01", category: "Liquide de coupe", designation: "Émulsion soluble", manufacturerReference: "BLASOCUT-2000", supplier: "Blaser Swisslube", replacementFrequency: "Tous les 3 mois", storageLocation: "Cuve centrale", notes: "Exemple de démonstration.", isExample: true },
+    { id: "CONS-04", machineId: "TOU-01", category: "Filtre", designation: "Filtre à air armoire électrique", manufacturerReference: "RITTAL-3238100", supplier: "Rittal", replacementFrequency: "Tous les 3 mois", storageLocation: "Armoire consommables A", notes: "Exemple de démonstration.", isExample: true },
+    { id: "CONS-05", machineId: "TOU-01", category: "Graisse", designation: "Graisse broche et axes", manufacturerReference: "KLUBER-NBU15", supplier: "Klüber Lubrication", replacementFrequency: "Tous les 6 mois", storageLocation: "Armoire consommables A", notes: "Exemple de démonstration.", isExample: true },
   ],
 };
 

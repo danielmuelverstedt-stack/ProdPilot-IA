@@ -71,13 +71,22 @@ function migrateAction(value: unknown): ProductionAction | null {
   };
 }
 
+/** Complète un DemoData v2 déjà stocké localement avec les tableaux ajoutés depuis (fiche machine : contacts SAV, consommables). */
+function withMachineSheetDefaults(value: Record<string, unknown>): Record<string, unknown> {
+  return {
+    ...value,
+    savContacts: Array.isArray(value.savContacts) ? value.savContacts : [],
+    consumables: Array.isArray(value.consumables) ? value.consumables : [],
+  };
+}
+
 /** Convertit un DemoData v1 (ancien modèle d'action) vers le modèle v2 sans perdre les données locales existantes. */
 export function migrateDemoData(value: unknown): DemoData | null {
   if (!isRecord(value)) return null;
   const requiredArrays = [value.workOrders, value.planning, value.machines, value.maintenance, value.meetings, value.requests, value.erpQuality, value.notifications];
   if (!requiredArrays.every(Array.isArray) || !Array.isArray(value.actions)) return null;
-  if (value.version === 2) return value as unknown as DemoData;
+  if (value.version === 2) return withMachineSheetDefaults(value) as unknown as DemoData;
   if (value.version !== 1) return null;
   const actions = value.actions.map(migrateAction).filter((item): item is ProductionAction => item !== null);
-  return { ...(value as unknown as DemoData), version: 2, actions };
+  return withMachineSheetDefaults({ ...value, version: 2, actions }) as unknown as DemoData;
 }

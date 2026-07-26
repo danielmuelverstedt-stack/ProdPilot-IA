@@ -2,12 +2,15 @@ import type { SVGProps } from "react";
 import {
   ArrowRight,
   Activity,
+  AlertTriangle,
   BarChart3,
   Bell,
   Calendar,
   CheckCircle2,
   ChevronRight,
+  ClipboardList,
   Factory,
+  Gauge,
   Home,
   Inbox,
   LayoutDashboard,
@@ -17,7 +20,9 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  TrendingUp,
   Users,
+  Wrench,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -42,6 +47,11 @@ const icons: Record<string, LucideIcon> = {
   close: X,
   chevron: ChevronRight,
   arrow: ArrowRight,
+  wrench: Wrench,
+  alert: AlertTriangle,
+  trend: TrendingUp,
+  gauge: Gauge,
+  clipboard: ClipboardList,
 };
 
 export const iconOptions = Object.keys(icons);
@@ -50,7 +60,8 @@ export const iconLabels: Record<string, string> = {
   meeting: "Réunion", check: "Validation", quality: "Qualité", factory: "Usine",
   tracking: "Suivi", chart: "Graphique", settings: "Réglages", mail: "Mail",
   inbox: "Boîte de réception", bell: "Cloche", search: "Recherche", menu: "Menu",
-  close: "Fermer", chevron: "Chevron", arrow: "Flèche",
+  close: "Fermer", chevron: "Chevron", arrow: "Flèche", wrench: "Clé", alert: "Alerte",
+  trend: "Tendance", gauge: "Jauge", clipboard: "Presse-papiers",
 };
 
 export function AppIcon({ name, ...props }: { name: string } & SVGProps<SVGSVGElement>) {

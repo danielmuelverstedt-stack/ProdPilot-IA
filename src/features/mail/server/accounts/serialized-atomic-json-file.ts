@@ -21,6 +21,13 @@ interface UpdateResult<T, TResult> {
 export class SerializedAtomicJsonFile<T> {
   private operationQueue: Promise<void> = Promise.resolve();
   private readonly options: SerializedAtomicJsonFileOptions<T>;
+  /**
+   * Cache mémoire de la valeur courante : `runExclusive` sérialise déjà toutes les lectures et
+   * écritures de cette instance, donc un seul lecteur à la fois peut jamais voir un état
+   * incohérent. Invalidé en tout début d'écriture (pas après), pour qu'un échec en cours
+   * d'écriture ne laisse jamais un cache périmé survivre à l'erreur.
+   */
+  private cachedValue: T | undefined;
 
   constructor(options: SerializedAtomicJsonFileOptions<T>) {
     this.options = options;
@@ -48,17 +55,25 @@ export class SerializedAtomicJsonFile<T> {
   }
 
   private async readUnlocked(): Promise<T> {
+    if (this.cachedValue !== undefined) return this.cachedValue;
     try {
       const raw = await readFile(this.options.storageFile, "utf8");
       const parsed = this.options.parse(JSON.parse(raw) as unknown);
-      return parsed ?? this.options.createDefault();
+      const value = parsed ?? this.options.createDefault();
+      this.cachedValue = value;
+      return value;
     } catch (error) {
-      if (isFileMissing(error)) return this.options.createDefault();
+      if (isFileMissing(error)) {
+        const value = this.options.createDefault();
+        this.cachedValue = value;
+        return value;
+      }
       throw new Error(this.options.readErrorMessage);
     }
   }
 
   private async writeUnlocked(value: T): Promise<void> {
+    this.cachedValue = undefined;
     const directory = path.dirname(this.options.storageFile);
     const temporaryFile = path.join(
       directory,
@@ -70,6 +85,7 @@ export class SerializedAtomicJsonFile<T> {
       await writeFile(temporaryFile, serialized, { encoding: "utf8", mode: 0o600, flag: "wx" });
       await this.options.beforeReplace?.(temporaryFile);
       await replaceFileAtomically(temporaryFile, this.options.storageFile);
+      this.cachedValue = value;
     } catch (error) {
       await rm(temporaryFile, { force: true }).catch(() => undefined);
       throw error;

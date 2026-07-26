@@ -88,6 +88,27 @@ test("remplace atomiquement un fichier existant sur la plateforme courante", asy
   assert.equal(JSON.parse(await readFile(current.storageFile, "utf8")).count, 2);
 });
 
+test("read() met en cache la valeur : une lecture suivante ne retape pas le disque", async (t) => {
+  const current = await fixture();
+  t.after(() => rm(current.directory, { recursive: true, force: true }));
+  await writeFile(current.storageFile, JSON.stringify({ version: 1, count: 1, labels: ["premier"] }), "utf8");
+  assert.deepEqual(await current.storage.read(), { version: 1, count: 1, labels: ["premier"] });
+  // Modifie le fichier directement sur disque, en contournant l'instance : si la lecture suivante
+  // relisait vraiment le disque, elle verrait cette nouvelle valeur ; le cache doit l'empêcher.
+  await writeFile(current.storageFile, JSON.stringify({ version: 1, count: 99, labels: ["modifié-hors-instance"] }), "utf8");
+  assert.deepEqual(await current.storage.read(), { version: 1, count: 1, labels: ["premier"] }, "la deuxième lecture sert la valeur mise en cache, pas le contenu modifié sur disque");
+});
+
+test("update() invalide le cache avant d'écrire puis recache la valeur écrite, sans relire le disque", async (t) => {
+  const current = await fixture();
+  t.after(() => rm(current.directory, { recursive: true, force: true }));
+  await current.storage.update((value) => ({ value: { ...value, count: 5 }, result: undefined }));
+  // Modifie le fichier directement sur disque après l'écriture : si le cache post-écriture était
+  // absent (ou périmé), la lecture suivante verrait cette valeur externe plutôt que celle écrite.
+  await writeFile(current.storageFile, JSON.stringify({ version: 1, count: 777, labels: ["externe"] }), "utf8");
+  assert.deepEqual(await current.storage.read(), { version: 1, count: 5, labels: [] }, "la lecture après écriture sert la valeur venant d'être écrite, mise en cache directement");
+});
+
 test("le dépôt répare le statut et la callback conserve le compte existant", async () => {
   const repository = await readFile(new URL("../src/features/mail/server/accounts/local-mail-account-repository.ts", import.meta.url), "utf8");
   const callback = await readFile(new URL("../src/app/api/auth/google/callback/route.ts", import.meta.url), "utf8");

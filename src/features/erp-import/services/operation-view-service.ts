@@ -1,4 +1,5 @@
 import type { ErpMachineMapping, ErpOperation, ErpPlanningWorkOrderSummary, ErpWorkOrder, OperationView, PlanningDecision } from "../types/erp-import.ts";
+import { normalizeErpMachineCode } from "./erp-machine-code.ts";
 
 export interface OperationViewInput {
   operations: ErpOperation[];
@@ -24,8 +25,8 @@ export class OperationViewService {
 
   createView(operation: ErpOperation, decision: PlanningDecision | null, workOrder: ErpWorkOrder | ErpPlanningWorkOrderSummary | null, machineMappings: Record<string, ErpMachineMapping> = {}): OperationView {
     const plannedMachine = normalizeMachine(decision?.plannedMachineId);
-    const erpMachine = normalizeMachine(operation.erpMachineCode ? machineMappings[operation.erpMachineCode]?.machineId : null)
-      ?? normalizeMachine(operation.erpMachineCode);
+    const normalizedErpMachineCode = normalizeErpMachineCode(operation.erpMachineCode);
+    const erpMachine = normalizeMachine(normalizedErpMachineCode ? machineMappings[normalizedErpMachineCode]?.machineId : null);
     const machineId = plannedMachine ?? erpMachine;
     const hasUserPriority = decision?.userPriority !== null && decision?.userPriority !== undefined;
     const comment = decision?.comment ?? null;

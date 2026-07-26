@@ -1,13 +1,25 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { EmptyState, fieldClass, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { ColumnDragLabel, ColumnSortButton, createColumnDragHandlers } from "@/components/ui/SortableColumnHeader";
 import { ErpPlanningViewToolbar } from "@/features/erp-import/components/ErpPlanningViewToolbar";
 import { articleColor, groupErpPlanningRows } from "@/features/erp-import/services/erp-planning-grouping";
 import { ERP_PLANNING_COLUMN_LABELS, moveErpPlanningColumn } from "@/features/erp-import/services/erp-planning-view-preferences";
 import type { ErpOperationStatus, ErpPlanningQueryResult, OperationView } from "@/features/erp-import/types/erp-import";
-import type { ErpPlanningColumnId, ErpPlanningSavedView } from "@/features/erp-import/types/erp-planning-view";
+import type { ErpPlanningColumnId, ErpPlanningSavedView, ErpPlanningSort } from "@/features/erp-import/types/erp-planning-view";
+import type { ColumnSortState } from "@/lib/table-columns";
 import type { MachineSettings } from "@/features/settings/types/settings";
+
+/** Colonnes pour lesquelles un mode de tri déjà existant (activeView.sort) peut être piloté depuis l'en-tête ; les autres colonnes n'ont pas de bouton de tri. */
+const COLUMN_SORT_MODE: Partial<Record<ErpPlanningColumnId, ErpPlanningSort>> = {
+  score: "priority",
+  "work-order": "work-order",
+  client: "client",
+  article: "article",
+  date: "due-date",
+  machine: "machine",
+};
 
 interface ErpPlanningOperationsProps {
   rows: ErpPlanningQueryResult | null;
@@ -32,9 +44,12 @@ interface ErpPlanningOperationsProps {
 export function ErpPlanningOperations(props: ErpPlanningOperationsProps) {
   const { rows, machines, activeView, page, busy, unmappedOnly, onUpdateView, onPage, onUpdateOperation, onOpenWorkOrder } = props;
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
-  const visibleColumns = activeView.columns.filter((column) => column.visible);
+  // Mémorisé (dépendant uniquement de activeView.columns, pas recalculé à chaque rendu) pour que
+  // pinnedOffsets et les props passées à OperationRow restent stables : condition nécessaire
+  // pour que React.memo sur OperationRow ignore effectivement les lignes non affectées.
+  const visibleColumns = useMemo(() => activeView.columns.filter((column) => column.visible), [activeView.columns]);
   const groups = useMemo(() => groupErpPlanningRows(rows?.rows ?? [], activeView.groupBy, machines), [activeView.groupBy, machines, rows?.rows]);
-  const activeMachines = useMemo(() => machines.filter((entry) => entry.active && !entry.deleted), [machines]);
+  const activeMachines = useMemo(() => machines.filter((entry) => entry.active && entry.visible && !entry.deleted), [machines]);
   const pinnedOffsets = useMemo(() => {
     let offset = 0;
     const result = new Map<ErpPlanningColumnId, number>();
@@ -47,13 +62,18 @@ export function ErpPlanningOperations(props: ErpPlanningOperationsProps) {
     onUpdateView((view) => ({ ...view, columns: moveErpPlanningColumn(view.columns, sourceId, targetId) }));
   }
 
+  const sortState: ColumnSortState<ErpPlanningSort> = { column: activeView.sort, direction: activeView.sortDirection };
+  function onHeaderSort(mode: ErpPlanningSort) {
+    onUpdateView((view) => view.sort === mode ? { ...view, sortDirection: view.sortDirection === "asc" ? "desc" : "asc" } : { ...view, sort: mode, sortDirection: "asc" });
+  }
+
   return <section className="space-y-3">
     <ErpPlanningViewToolbar activeView={activeView} views={props.views} persistenceError={props.persistenceError} onSelect={props.onSelectView} onUpdate={onUpdateView} onSaveAs={props.onSaveViewAs} onRename={props.onRenameView} onDelete={props.onDeleteView} onReset={props.onResetView} />
 
     {unmappedOnly ? <MachineDropTargets machines={activeMachines} onUpdate={onUpdateOperation} /> : null}
     {!visibleColumns.length ? <EmptyState title="Aucune colonne visible" description="Ouvrez la personnalisation de l’affichage pour réactiver au moins une colonne." /> : rows?.rows.length ? <div className="max-h-[70vh] overflow-auto rounded-2xl border border-[var(--app-border)] bg-white">
       <table className="table-fixed text-left text-sm" style={{ width: tableWidth, minWidth: "100%", fontSize: `${activeView.zoom}%` }}>
-        <thead className="sticky top-0 z-30 bg-slate-50 text-xs uppercase text-slate-500"><tr>{visibleColumns.map((column) => <th key={column.id} draggable onDragStart={(event) => event.dataTransfer.setData("application/x-prodpilot-column", column.id)} onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const source = event.dataTransfer.getData("application/x-prodpilot-column") as ErpPlanningColumnId; if (source) moveColumn(source, column.id); }} className={cellClass(column.pinned, true)} style={cellStyle(column.width, column.pinned ? pinnedOffsets.get(column.id) : undefined)}><span className="cursor-grab" title="Déplacer la colonne">↔ {ERP_PLANNING_COLUMN_LABELS[column.id]}</span></th>)}</tr></thead>
+        <thead className="sticky top-0 z-30 bg-slate-50 text-xs uppercase text-slate-500"><tr>{visibleColumns.map((column) => { const sortMode = COLUMN_SORT_MODE[column.id]; return <th key={column.id} {...createColumnDragHandlers(column.id, moveColumn)} className={cellClass(column.pinned, true)} style={cellStyle(column.width, column.pinned ? pinnedOffsets.get(column.id) : undefined)}><ColumnDragLabel label={ERP_PLANNING_COLUMN_LABELS[column.id]} />{sortMode ? <ColumnSortButton id={sortMode} sort={sortState} onSort={onHeaderSort} /> : null}</th>; })}</tr></thead>
         <tbody>{groups.map((group) => <PlanningGroup key={group.id} group={group} groupBy={activeView.groupBy} isCollapsed={collapsedGroups.has(group.id)} columns={visibleColumns} pinnedOffsets={pinnedOffsets} machines={activeMachines} busy={busy} onToggle={() => setCollapsedGroups((current) => toggleSetValue(current, group.id))} onUpdate={onUpdateOperation} onOpenWorkOrder={onOpenWorkOrder} />)}</tbody>
       </table>
     </div> : <EmptyState title={busy ? "Chargement…" : "Aucune opération"} description="Aucune opération ne correspond aux filtres actifs." />}
@@ -71,9 +91,9 @@ function PlanningGroup({ group, groupBy, isCollapsed, columns, pinnedOffsets, ma
   </>;
 }
 
-function OperationRow({ row, columns, pinnedOffsets, machines, busy, onUpdate, onOpenWorkOrder }: { row: OperationView; columns: ErpPlanningSavedView["columns"]; pinnedOffsets: Map<ErpPlanningColumnId, number>; machines: MachineSettings[]; busy: boolean; onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>; onOpenWorkOrder: (id: string) => void }) {
+const OperationRow = memo(function OperationRow({ row, columns, pinnedOffsets, machines, busy, onUpdate, onOpenWorkOrder }: { row: OperationView; columns: ErpPlanningSavedView["columns"]; pinnedOffsets: Map<ErpPlanningColumnId, number>; machines: MachineSettings[]; busy: boolean; onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>; onOpenWorkOrder: (id: string) => void }) {
   return <tr draggable={!busy} onDragStart={(event) => event.dataTransfer.setData("application/x-prodpilot-operation", row.id)} className="border-t border-slate-100 align-top hover:bg-slate-50">{columns.map((column) => <td key={column.id} className={cellClass(column.pinned, false)} style={cellStyle(column.width, column.pinned ? pinnedOffsets.get(column.id) : undefined)}>{renderCell(column.id, row, machines, busy, onUpdate, onOpenWorkOrder)}</td>)}</tr>;
-}
+});
 
 function renderCell(column: ErpPlanningColumnId, row: OperationView, machines: MachineSettings[], busy: boolean, onUpdate: (id: string, patch: Record<string, unknown>) => Promise<void>, onOpenWorkOrder: (id: string) => void): ReactNode {
   if (column === "score") return <><strong className="text-lg tabular-nums">{row.priorityScore}</strong>{row.hasManualOverride ? <span title="Ajustement local" className="ml-1 text-blue-600">●</span> : null}</>;

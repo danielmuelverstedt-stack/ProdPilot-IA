@@ -10,6 +10,9 @@ import { filterEngine } from "../src/features/erp-import/services/filter-engine.
 import { emptyPlanningFilters } from "../src/features/erp-import/services/erp-planning-view-preferences.ts";
 import { synchronizationService } from "../src/features/erp-import/services/synchronization-service.ts";
 import { extractDetailsMachineFields } from "../src/features/erp-import/services/details-machine-mapping.ts";
+import { extractLegacyErpMachineStates, normalizeErpMachineCode, normalizeErpMachineMappings, stripLegacyErpMachineState } from "../src/features/erp-import/services/erp-machine-code.ts";
+import { classifyErpMachineMapping, filterErpMachineCodeEntries, reconcileOperationViewMachineCatalog } from "../src/features/erp-import/services/erp-machine-mapping-status.ts";
+import { machineSettingsService } from "../src/features/settings/services/machine-settings-service.ts";
 
 test("les colonnes machine Details sont projetées, optionnelles et acceptent les cellules vides", () => {
   const headers = new Map([
@@ -167,8 +170,15 @@ test("OperationView centralise machine, priorité, visibilité et indicateurs", 
   assert.equal(view.estimatedStart, null);
 
   const [erpFallback] = operationViewService.createViews({ operations: [operation], decisions: [], workOrders: [] });
-  assert.equal(erpFallback.machine, "M-ERP");
-  assert.equal(erpFallback.isWithoutMachine, false);
+  assert.equal(erpFallback.machineId, null);
+  assert.equal(erpFallback.machine, "Non définie");
+  assert.equal(erpFallback.sourceMachineCode, "M-ERP");
+  assert.equal(erpFallback.sourceMachineDescription, "Centre d'usinage");
+  assert.equal(erpFallback.isWithoutMachine, true);
+
+  const [mapped] = operationViewService.createViews({ operations: [{ ...operation, erpMachineCode: "  m-erp  " }], decisions: [], workOrders: [], machineMappings: { "M-ERP": { erpMachineCode: "M-ERP", machineId: "FRA-01", updatedAt: "2026-07-22T10:00:00.000Z" } } });
+  assert.equal(mapped.machineId, "FRA-01");
+  assert.equal(mapped.machine, "FRA-01");
 
   const [fallback] = operationViewService.createViews({ operations: [{ ...operation, id: "removed", stableId: "removed", erpStatus: "Removed", erpMachineCode: null, erpMachineDescription: null }], decisions: [], workOrders: [] });
   assert.equal(fallback.machine, "Non définie");
@@ -176,6 +186,109 @@ test("OperationView centralise machine, priorité, visibilité et indicateurs", 
   assert.equal(fallback.isVisible, true);
   assert.equal(fallback.isRemoved, true);
   assert.equal(fallback.isWithoutMachine, true);
+});
+
+test("les codes machines ERP sont normalisés sans perdre les caractères significatifs", () => {
+  assert.equal(normalizeErpMachineCode(" \uFEFF dmu50\u200B  poste-1 "), "DMU50 POSTE-1");
+  assert.equal(normalizeErpMachineCode("  "), null);
+  assert.equal(normalizeErpMachineCode("0"), null);
+  const normalized = normalizeErpMachineMappings({
+    " dmu50 ": { erpMachineCode: " dmu50 ", machineId: " FRA-01 ", updatedAt: "2026-07-21T10:00:00.000Z" },
+    DMU50: { erpMachineCode: "DMU50", machineId: "FRA-02", updatedAt: "2026-07-22T10:00:00.000Z" },
+  });
+  assert.deepEqual(Object.keys(normalized), ["DMU50"]);
+  assert.equal(normalized.DMU50.machineId, "FRA-02");
+});
+
+test("la résolution machine respecte décision, mapping et absence de code", () => {
+  const operation = {
+    id: "op-1", stableId: "op-1", erpStatus: "Active", workOrderId: "OF-1", operationNumber: 10,
+    operationStatusId: 1, taskCode: "FRAISAGE", actualStartAt: null, actualEndAt: null, subcontracted: false,
+    orderStatus: "OUVERT", erpDueDate: null, articleCode: "A-1", description: "Pièce", macroRangeCode: "USINAGE",
+    erpPriority: 1, erpMachineCode: "DMU50", erpMachineDescription: "Centre 5 axes", normalizedStatus: "unknown", sourceRow: 2, duplicateOf: null,
+  };
+  const mapping = { erpMachineCode: "DMU50", machineId: "FRA-13", updatedAt: "2026-07-22T10:00:00.000Z" };
+  const [mapped] = operationViewService.createViews({ operations: [operation], decisions: [], workOrders: [], machineMappings: { DMU50: mapping } });
+  assert.equal(mapped.machineId, "FRA-13");
+  const decision = { operationIdentity: "op-1", userPriority: null, manualOrder: null, plannedMachineId: "FRA-01", comment: null, visible: true, locked: false, plannedDate: null, planningStatus: null, createdAt: mapping.updatedAt, updatedAt: mapping.updatedAt };
+  const [planned] = operationViewService.createViews({ operations: [operation], decisions: [decision], workOrders: [], machineMappings: { DMU50: mapping } });
+  assert.equal(planned.machineId, "FRA-01");
+  const [empty] = operationViewService.createViews({ operations: [{ ...operation, erpMachineCode: " \uFEFF " }], decisions: [], workOrders: [], machineMappings: { DMU50: mapping } });
+  assert.equal(empty.machineId, null);
+  assert.equal(empty.machine, "Non définie");
+  assert.equal(empty.sourceMachineCode, " \uFEFF ");
+  assert.equal(empty.sourceMachineDescription, "Centre 5 axes");
+});
+
+test("plusieurs codes ERP peuvent cibler la même machine ProdPilot", () => {
+  const mappings = normalizeErpMachineMappings({
+    DMU50: { erpMachineCode: "DMU50", machineId: "FRA-13", updatedAt: "2026-07-22T10:00:00.000Z" },
+    "DMU 50": { erpMachineCode: "DMU 50", machineId: "FRA-13", updatedAt: "2026-07-22T10:00:00.000Z" },
+  });
+  assert.equal(mappings.DMU50.machineId, "FRA-13");
+  assert.equal(mappings["DMU 50"].machineId, "FRA-13");
+});
+
+test("les mappings supprimés, inactifs et inexistants restent explicitement qualifiés", () => {
+  const base = { id: "FRA-01", active: true, deleted: false, name: "Machine", displayName: "Machine", department: "Fraisage", departmentId: "milling", machineType: "Fraisage", color: "", order: 0, photoDataUrl: "", technicalInformation: "" };
+  assert.equal(classifyErpMachineMapping("FRA-01", [base]).status, "mapped");
+  assert.equal(classifyErpMachineMapping("FRA-01", [{ ...base, deleted: true }]).status, "deleted");
+  assert.equal(classifyErpMachineMapping("FRA-01", [{ ...base, active: false }]).status, "inactive");
+  assert.deepEqual(classifyErpMachineMapping("ABSENTE", [base]), { status: "unmapped", machine: null, hasMissingTarget: true });
+  assert.equal(classifyErpMachineMapping(null, [base]).status, "unmapped");
+  const row = { machineId: "ABSENTE", machine: "ABSENTE", isWithoutMachine: false };
+  assert.deepEqual(reconcileOperationViewMachineCatalog([row], [base])[0], { machineId: null, machine: "Non définie", isWithoutMachine: true });
+});
+
+test("les anciens états ERP sont extraits puis retirés du mapping canonique", () => {
+  const normalized = normalizeErpMachineMappings({
+    LEGACY: { erpMachineCode: "LEGACY", machineId: "FRA-01", updatedAt: "2026-07-20T08:00:00.000Z", hidden: true },
+    CURRENT: { erpMachineCode: "CURRENT", machineId: "FRA-02", updatedAt: "2026-07-20T08:00:00.000Z", visible: false, status: "inactive" },
+  });
+  assert.deepEqual(extractLegacyErpMachineStates(normalized), [
+    { machineId: "FRA-01", visible: false },
+    { machineId: "FRA-02", active: false, visible: false },
+  ]);
+  assert.deepEqual(stripLegacyErpMachineState(normalized.CURRENT), { erpMachineCode: "CURRENT", machineId: "FRA-02", updatedAt: "2026-07-20T08:00:00.000Z" });
+});
+
+test("MachineSettingsService gère activité, visibilité et migration sans toucher au mapping", () => {
+  const machine = { id: "FRA-13", active: true, visible: true };
+  const settings = { production: { machines: [machine] } };
+  machineSettingsService.setInactive(settings, machine.id);
+  machineSettingsService.setHidden(settings, machine.id);
+  assert.deepEqual([machine.active, machine.visible], [false, false]);
+  machineSettingsService.setActive(settings, machine.id);
+  machineSettingsService.setVisible(settings, machine.id);
+  assert.deepEqual([machine.active, machine.visible], [true, true]);
+  assert.equal(machineSettingsService.migrateLegacyErpStates(settings, [{ machineId: machine.id, active: false, visible: false }]), 1);
+  assert.deepEqual([machine.active, machine.visible], [false, false]);
+});
+
+test("les filtres ERP lisent statut et visibilité depuis MachineSettings", () => {
+  const entries = [
+    { code: "DMU50", description: "Active", operationCount: 10, machineId: "FRA-13" },
+    { code: "OLD01", description: "Ancienne visible", operationCount: 0, machineId: "FRA-14" },
+    { code: "HIDDEN", description: "Active masquée", operationCount: 2, machineId: "FRA-15" },
+  ];
+  const base = { active: true, visible: true, deleted: false, name: "Machine", displayName: "Machine", department: "Fraisage", departmentId: "milling", machineType: "Fraisage", color: "", order: 0, photoDataUrl: "", technicalInformation: "" };
+  const machines = [{ ...base, id: "FRA-13" }, { ...base, id: "FRA-14", active: false }, { ...base, id: "FRA-15", visible: false }];
+  assert.deepEqual(filterErpMachineCodeEntries(entries, machines).map((entry) => entry.code), ["DMU50", "OLD01"]);
+  assert.deepEqual(filterErpMachineCodeEntries(entries, machines, { showHidden: true }).map((entry) => entry.code), ["DMU50", "OLD01", "HIDDEN"]);
+  assert.deepEqual(filterErpMachineCodeEntries(entries, machines, { showActive: false }).map((entry) => entry.code), ["OLD01"]);
+  assert.deepEqual(filterErpMachineCodeEntries(entries, machines, { showInactive: false }).map((entry) => entry.code), ["DMU50"]);
+});
+
+test("le Planning sélectionne uniquement les machines actives, visibles et non supprimées", async () => {
+  const source = await readFile(new URL("../src/features/planning/services/planning-view.ts", import.meta.url), "utf8");
+  assert.match(source, /machine\.active && machine\.visible && !machine\.deleted/);
+});
+
+test("les paramètres machines sauvegardent visible et migrent les anciennes fiches", async () => {
+  const source = await readFile(new URL("../src/features/settings/services/settings-repository.ts", import.meta.url), "utf8");
+  assert.match(source, /typeof machine\.visible === "boolean"/);
+  assert.match(source, /visible: \(savedVersion \?\? 0\) < 16 \? true : typeof machine\.visible === "boolean"/);
+  assert.match(source, /localStorage\.setItem\(STORAGE_KEY/);
 });
 
 test("les composants Planning consomment OperationView sans fusion ERP/décision", async () => {
@@ -221,6 +334,15 @@ test("le cockpit opérationnel n’utilise aucun temps de fabrication", async ()
   assert.doesNotMatch(`${component}${operations}`, /plannedDuration|durationHours|capacityHours/);
   assert.match(service, /requestedDueDate/);
   assert.match(operations, /application\/x-prodpilot-operation/);
+});
+
+test("les filtres du Cockpit ERP forment une barre horizontale repliable au-dessus du tableau, pas une colonne latérale", async () => {
+  const panel = await readFile(new URL("../src/features/erp-import/components/PlanningFilterPanel.tsx", import.meta.url), "utf8");
+  const workspace = await readFile(new URL("../src/features/erp-import/components/ErpPlanningWorkspace.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(panel, /<aside/, "le panneau ne doit plus être une colonne latérale");
+  assert.match(panel, /aria-expanded={isOpen}/, "le détail des filtres est replié par défaut, comme dans l'Atelier");
+  assert.doesNotMatch(workspace, /grid-cols-\[280px_minmax\(0,1fr\)\]/, "la grille latérale 280px doit avoir disparu");
+  assert.match(workspace, /<div className="space-y-4"><PlanningFilterPanel/, "le panneau de filtres est désormais empilé au-dessus du tableau");
 });
 
 test("le statut ERP non documenté n’est pas inventé", async () => {
@@ -269,4 +391,42 @@ test("une vue Planning conserve un ordre complet et déplaçable de colonnes", (
   assert.equal(parsed.views[0].columns[0].id, "article");
   assert.equal(parsed.views[0].columns[0].width, 480);
   assert.equal(parsed.views[0].columns.length, view.columns.length);
+});
+
+test("une vue Planning par défaut trie en ordre croissant (asc) ; une vue persistée sans sortDirection retombe sur asc plutôt que d'être rejetée", () => {
+  const view = createDefaultErpPlanningView("2026-07-19T12:00:00.000Z");
+  assert.equal(view.sortDirection, "asc");
+  const parsed = parseErpPlanningViewState({ version: 1, activeViewId: view.id, views: [{ ...view, sortDirection: undefined }] });
+  assert.equal(parsed.views[0].sortDirection, "asc");
+  const parsedDesc = parseErpPlanningViewState({ version: 1, activeViewId: view.id, views: [{ ...view, sortDirection: "desc" }] });
+  assert.equal(parsedDesc.views[0].sortDirection, "desc");
+});
+
+test("le Cockpit ERP (ErpPlanningOperations) permet de choisir le tri depuis l'en-tête de colonne, en réutilisant les modes de tri déjà existants (activeView.sort) sans réécrire leurs tie-breaks métier", async () => {
+  const component = await readFile(new URL("../src/features/erp-import/components/ErpPlanningOperations.tsx", import.meta.url), "utf8");
+  assert.match(component, /score: "priority"/);
+  assert.match(component, /"work-order": "work-order"/);
+  assert.match(component, /client: "client"/);
+  assert.match(component, /article: "article"/);
+  assert.match(component, /date: "due-date"/);
+  assert.match(component, /machine: "machine"/);
+  assert.match(component, /function onHeaderSort\(mode: ErpPlanningSort\)/);
+  assert.match(component, /view\.sort === mode \? \{ \.\.\.view, sortDirection: view\.sortDirection === "asc" \? "desc" : "asc" \}/, "un second clic sur la colonne déjà active inverse la direction sans changer de mode");
+  assert.match(component, /from "@\/components\/ui\/SortableColumnHeader"/, "réutilise la base commune (bouton de tri, glisser-déposer) plutôt que de dupliquer le rendu");
+});
+
+test("le second clic sur une colonne déjà triée du Cockpit ERP inverse le résultat déjà trié (reverse) plutôt que de dupliquer les comparateurs métier fins de sortOperationViews", async () => {
+  const workspace = await readFile(new URL("../src/features/erp-import/components/ErpPlanningWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /function sortOperationViews\(operations: OperationView\[\], sort: .*, direction: "asc" \| "desc"\): OperationView\[\]/);
+  assert.match(workspace, /return direction === "desc" \? sorted\.reverse\(\) : sorted;/);
+  assert.match(workspace, /activePlanningView\.sort, activePlanningView\.sortDirection/, "le composant passe bien la direction persistée au tri, pas seulement le mode");
+});
+
+test("moveWorkshopColumn et moveErpPlanningColumn délèguent à la fonction générique partagée moveColumnId plutôt que de dupliquer la logique de glisser-déposer", async () => {
+  const workshopPreferences = await readFile(new URL("../src/features/planning/services/workshop-view-preferences.ts", import.meta.url), "utf8");
+  assert.match(workshopPreferences, /from "\.\.\/\.\.\/\.\.\/lib\/table-columns\.ts"/, "chemin relatif explicite requis : ce fichier est importé directement par des tests node:test");
+  assert.match(workshopPreferences, /moveColumnId\(columns\.map\(\(column\) => column\.id\), sourceId, targetId\)/);
+  const erpPreferences = await readFile(new URL("../src/features/erp-import/services/erp-planning-view-preferences.ts", import.meta.url), "utf8");
+  assert.match(erpPreferences, /from "\.\.\/\.\.\/\.\.\/lib\/table-columns\.ts"/, "chemin relatif explicite requis : ce fichier est importé directement par des tests node:test");
+  assert.match(erpPreferences, /moveColumnId\(columns\.map\(\(column\) => column\.id\), sourceId, targetId\)/);
 });

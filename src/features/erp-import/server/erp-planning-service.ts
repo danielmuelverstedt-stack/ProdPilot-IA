@@ -3,7 +3,9 @@ import "server-only";
 import { erpImportRepository } from "@/features/erp-import/server/erp-import-repository";
 import { analyzeErpArticleClusters, normalizeErpArticleKey } from "@/features/erp-import/services/article-cluster-engine";
 import { operationViewService } from "@/features/erp-import/services/operation-view-service";
-import type { ErpMachineMapping, ErpOperationStatus, ErpPlanningOverview, ErpPlanningProjection, ErpPlanningQueryResult, ErpPlanningWorkOrderSummary, ErpQualityIssue, OperationView, PlanningDecision } from "@/features/erp-import/types/erp-import";
+import { extractLegacyErpMachineStates, normalizeErpMachineCode } from "@/features/erp-import/services/erp-machine-code";
+import { collectIssueCategories, issueIsPerWorkOrder, priorityScore, rowIssueLabels } from "@/features/erp-import/services/operation-quality-scoring";
+import type { ErpMachineMapping, ErpPlanningOverview, ErpPlanningProjection, ErpPlanningQueryResult, ErpPlanningWorkOrderSummary, ErpQualityIssue, OperationView, PlanningDecision } from "@/features/erp-import/types/erp-import";
 
 export interface ErpPlanningFilters {
   search?: string;
@@ -86,8 +88,17 @@ export async function getErpPlanningOverview(): Promise<ErpPlanningOverview> {
   const snapshot = await getPlanningSnapshot();
   const { projection, mappings } = snapshot;
   const rows = snapshot.rows.filter((row) => !row.isRemoved && row.isVisible);
-  const counts = new Map<string, number>();
-  rows.forEach((operation) => counts.set(operation.sourceMachineCode || "0", (counts.get(operation.sourceMachineCode || "0") ?? 0) + 1));
+  const machineCodeGroups = new Map<string, { operationCount: number; description: string | null }>();
+  rows.forEach((operation) => {
+    const code = normalizeErpMachineCode(operation.sourceMachineCode) ?? "";
+    const current = machineCodeGroups.get(code) ?? { operationCount: 0, description: null };
+    current.operationCount += 1;
+    current.description ??= operation.sourceMachineDescription?.trim() || null;
+    machineCodeGroups.set(code, current);
+  });
+  Object.values(mappings).forEach((mapping) => {
+    if (!machineCodeGroups.has(mapping.erpMachineCode)) machineCodeGroups.set(mapping.erpMachineCode, { operationCount: 0, description: null });
+  });
   const issueCounts = new Map<ErpQualityIssue["category"], number>();
   const issueKeys = new Map<ErpQualityIssue["category"], Set<string>>();
   const workOrderById = new Map(projection.workOrders.map((order) => [order.id, order]));
@@ -119,7 +130,15 @@ export async function getErpPlanningOverview(): Promise<ErpPlanningOverview> {
       workOrdersInMultipleArticles: snapshot.workOrdersInMultipleArticles,
       qualityScore: projection.operations.length ? Math.max(0, Math.round(100 - (issueTotal / projection.operations.length) * 20)) : 100,
     },
-    machineCodes: [...counts.entries()].sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true })).map(([code, operationCount]) => ({ code, operationCount, machineId: mappings[code]?.machineId ?? null })),
+    machineCodes: [...machineCodeGroups.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], "fr", { numeric: true }))
+      .map(([code, group]) => ({
+        code,
+        description: group.description,
+        operationCount: group.operationCount,
+        machineId: code ? mappings[code]?.machineId ?? null : null,
+      })),
+    legacyMachineStates: extractLegacyErpMachineStates(mappings),
     issueCounts: [...issueCounts.entries()].map(([category, count]) => ({ category, count })).sort((a, b) => b.count - a.count),
   };
 }
@@ -170,55 +189,6 @@ function toPlanningListRow(row: OperationView): OperationView {
   return { ...row, workOrder };
 }
 
-function rowIssueLabels(operation: Parameters<typeof collectIssueCategories>[0], order: Parameters<typeof collectIssueCategories>[1], machineId: string | null, plannedDate: string | null, priority: number, status: ErpOperationStatus): string[] {
-  const categories = collectIssueCategories(operation, order, machineId);
-  if (!plannedDate && !categories.includes("missing-date")) categories.push("missing-date");
-  if (priority === 0 && !categories.includes("missing-priority")) categories.push("missing-priority");
-  if (status === "unknown" && !categories.includes("unknown-status")) categories.push("unknown-status");
-  return categories.map(issueLabel);
-}
-
-function collectIssueCategories(operation: { id: string; workOrderId: string; sourceMachineCode: string | null; dueDate: string | null; sourcePriority: number; taskCode: string; sourceMacroRangeCode: string; articleCode: string; sourceStatus: ErpOperationStatus; duplicateOf: string | null; actualStartAt: string | null; actualEndAt: string | null }, order: { articleCode: string; customerName: string; customerReference: string | null; requestedDueDate: string | null; confirmedDueDate: string | null; quantity: number } | null, machineId: string | null): ErpQualityIssue["category"][] {
-  const issues: ErpQualityIssue["category"][] = [];
-  if (!machineId) issues.push("missing-machine");
-  if (!operation.dueDate && !order?.confirmedDueDate && !order?.requestedDueDate) issues.push("missing-date");
-  if (operation.sourcePriority === 0) issues.push("missing-priority");
-  if (!operation.taskCode || operation.taskCode === "0") issues.push("missing-task");
-  if (!operation.sourceMacroRangeCode || operation.sourceMacroRangeCode === "0") issues.push("unknown-macro-range");
-  if (!order) issues.push("missing-work-order");
-  if (order && !order.customerName) issues.push("missing-customer");
-  if (!operation.articleCode) issues.push("missing-article");
-  if (order && !order.customerReference) issues.push("missing-reference");
-  if (order && operation.articleCode !== order.articleCode) issues.push("inconsistent-article");
-  if (order?.quantity === 0) issues.push("invalid-quantity");
-  if (order?.quantity === 9999) issues.push("suspect-quantity");
-  if (operation.sourceStatus === "unknown") issues.push("unknown-status");
-  if (operation.duplicateOf) issues.push("duplicate-operation");
-  if ((operation.actualStartAt && operation.actualEndAt && operation.actualEndAt < operation.actualStartAt) || isImplausibleDate(operation.dueDate) || isImplausibleDate(order?.requestedDueDate ?? null) || isImplausibleDate(order?.confirmedDueDate ?? null)) issues.push("invalid-date");
-  return issues;
-}
-
-function issueLabel(category: ErpQualityIssue["category"]): string {
-  return {
-    "missing-machine": "Machine non définie", "missing-date": "Délai manquant", "missing-priority": "Priorité à zéro",
-    "missing-task": "Code tâche manquant", "unknown-macro-range": "Macro gamme inconnue", "missing-customer": "Client inconnu",
-    "missing-article": "Article inconnu", "missing-reference": "Référence manquante", "missing-work-order": "Opération orpheline",
-    "work-order-without-operation": "OF sans opération", "duplicate-operation": "Opération en doublon", "invalid-date": "Date incohérente",
-    "invalid-quantity": "Quantité à zéro", "suspect-quantity": "Quantité 9999", "inconsistent-article": "Article incohérent",
-    "unknown-status": "Statut non reconnu",
-  }[category];
-}
-
-function issueIsPerWorkOrder(category: ErpQualityIssue["category"]): boolean {
-  return ["missing-customer", "missing-reference", "invalid-quantity", "suspect-quantity", "inconsistent-article", "invalid-date"].includes(category);
-}
-
-function priorityScore(delayDays: number | null, priority: number, status: ErpOperationStatus, subcontracted: boolean, issueCount: number): number {
-  const latePoints = delayDays && delayDays > 0 ? Math.min(50, delayDays * 2) : 0;
-  const erpPoints = Math.min(25, Math.max(0, priority));
-  return Math.round(latePoints + erpPoints + (status === "in-progress" ? 10 : 0) + (subcontracted ? 5 : 0) + Math.min(10, issueCount * 2));
-}
-
 function sortRows(rows: OperationView[], sort: NonNullable<ErpPlanningFilters["sort"]>): void {
   rows.sort((a, b) => {
     if (sort === "due-date") return (a.plannedDate ?? "9999").localeCompare(b.plannedDate ?? "9999") || b.priorityScore - a.priorityScore;
@@ -233,4 +203,3 @@ function sortRows(rows: OperationView[], sort: NonNullable<ErpPlanningFilters["s
 function today(): string { return new Date().toISOString().slice(0, 10); }
 function calendarDaysBetween(from: string, to: string): number { return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000); }
 function clamp(value: number, minimum: number, maximum: number): number { return Math.min(maximum, Math.max(minimum, Math.trunc(value))); }
-function isImplausibleDate(value: string | null): boolean { return Boolean(value && Math.abs(calendarDaysBetween(value, today())) > 3_650); }

@@ -5,6 +5,7 @@ import path from "node:path";
 import { SerializedAtomicJsonFile } from "@/features/mail/server/accounts/serialized-atomic-json-file";
 import { erpDecisionRepository } from "@/features/erp-import/server/erp-decision-repository";
 import { synchronizationService } from "@/features/erp-import/services/synchronization-service";
+import { extractLegacyErpMachineStates, normalizeErpMachineCode, normalizeErpMachineMappings, stripLegacyErpMachineState } from "@/features/erp-import/services/erp-machine-code";
 import { ERP_IMPORT_VERSION, type ErpImportSummary, type ErpMachineMapping, type ErpManualOverride, type ErpPlanningProjection, type ErpSynchronizationReport, type PlanningDecision } from "@/features/erp-import/types/erp-import";
 
 interface StoredOverrides { version: 1; values: Record<string, ErpManualOverride> }
@@ -38,7 +39,7 @@ class ErpImportRepository {
     storageFile: path.join(localDataDirectory, "erp-machine-mappings.json"),
     parse: (value) => parseDictionary<ErpMachineMapping>(value, isMachineMapping),
     createDefault: () => ({ version: 1, values: {} }),
-    normalize: (value) => value,
+    normalize: (value) => ({ version: 1, values: normalizeErpMachineMappings(value.values) }),
     readErrorMessage: "Le registre local des correspondances machines est illisible.",
   });
   private readonly synchronizationReports = new SerializedAtomicJsonFile<StoredSynchronizationReports>({
@@ -138,14 +139,47 @@ class ErpImportRepository {
   }
 
   async setMachineMapping(erpMachineCode: string, machineId: string): Promise<ErpMachineMapping> {
+    const normalizedCode = normalizeErpMachineCode(erpMachineCode);
+    const normalizedMachineId = machineId.trim();
+    if (!normalizedCode || !normalizedMachineId) throw new Error("La correspondance machine est invalide.");
     this.mappingsCache = null;
     const result = await this.mappings.update((stored) => {
-      const mapping: ErpMachineMapping = { erpMachineCode, machineId, updatedAt: new Date().toISOString() };
-      stored.values[erpMachineCode] = mapping;
+      const mapping: ErpMachineMapping = {
+        erpMachineCode: normalizedCode,
+        machineId: normalizedMachineId,
+        updatedAt: new Date().toISOString(),
+      };
+      stored.values[normalizedCode] = mapping;
       return { value: stored, result: structuredClone(mapping) };
     });
     this.mappingsCache = null;
     return result;
+  }
+
+  async deleteMachineMapping(erpMachineCode: string): Promise<boolean> {
+    const normalizedCode = normalizeErpMachineCode(erpMachineCode);
+    if (!normalizedCode) throw new Error("La correspondance machine est invalide.");
+    this.mappingsCache = null;
+    const removed = await this.mappings.update((stored) => {
+      const existing = stored.values[normalizedCode];
+      const exists = Boolean(existing?.machineId);
+      delete stored.values[normalizedCode];
+      return { value: stored, result: exists };
+    });
+    this.mappingsCache = null;
+    return removed;
+  }
+
+  async completeLegacyMachineStateMigration(machineIds: string[]): Promise<number> {
+    this.mappingsCache = null;
+    const migrated = await this.mappings.update((stored) => {
+      const migratedIds = new Set(machineIds);
+      const legacyStates = extractLegacyErpMachineStates(stored.values).filter((state) => migratedIds.has(state.machineId));
+      stored.values = Object.fromEntries(Object.entries(stored.values).map(([code, mapping]) => [code, mapping.machineId && migratedIds.has(mapping.machineId) ? stripLegacyErpMachineState(mapping) : mapping]));
+      return { value: stored, result: legacyStates.length };
+    });
+    this.mappingsCache = null;
+    return migrated;
   }
 }
 
@@ -180,7 +214,15 @@ function isManualOverride(value: unknown): boolean {
 }
 
 function isMachineMapping(value: unknown): boolean {
-  return isRecord(value) && typeof value.erpMachineCode === "string" && typeof value.machineId === "string" && typeof value.updatedAt === "string";
+  return isRecord(value)
+    && typeof value.erpMachineCode === "string"
+    && (typeof value.machineId === "string" || value.machineId === null)
+    && typeof value.updatedAt === "string"
+    && (value.visible === undefined || typeof value.visible === "boolean")
+    && (value.status === undefined || value.status === "active" || value.status === "inactive")
+    && (value.hidden === undefined || typeof value.hidden === "boolean")
+    && (value.hiddenAt === undefined || value.hiddenAt === null || typeof value.hiddenAt === "string")
+    && (value.lastSourceDescription === undefined || value.lastSourceDescription === null || typeof value.lastSourceDescription === "string");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

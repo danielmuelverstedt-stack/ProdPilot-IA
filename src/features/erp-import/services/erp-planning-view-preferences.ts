@@ -9,6 +9,7 @@ import {
   type ErpPlanningSort,
   type ErpPlanningViewState,
 } from "../types/erp-planning-view.ts";
+import { moveColumnId } from "../../../lib/table-columns.ts";
 
 const DEFAULT_COLUMN_WIDTHS: Record<ErpPlanningColumnId, number> = {
   score: 90,
@@ -59,6 +60,7 @@ export function createDefaultErpPlanningView(now = new Date().toISOString()): Er
     })),
     groupBy: "none",
     sort: "priority",
+    sortDirection: "asc",
     filters: emptyPlanningFilters(),
     zoom: 100,
     updatedAt: now,
@@ -86,11 +88,10 @@ export function resetErpPlanningView(current: ErpPlanningSavedView): ErpPlanning
 export function moveErpPlanningColumn(columns: ErpPlanningColumnPreference[], sourceId: ErpPlanningColumnId, targetId: ErpPlanningColumnId): ErpPlanningColumnPreference[] {
   const sourceIndex = columns.findIndex((column) => column.id === sourceId);
   const targetIndex = columns.findIndex((column) => column.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return columns;
-  const next = [...columns];
-  const [source] = next.splice(sourceIndex, 1);
-  next.splice(targetIndex, 0, source);
-  return next;
+  if (sourceIndex < 0 || targetIndex < 0) return columns;
+  const order = moveColumnId(columns.map((column) => column.id), sourceId, targetId);
+  const byId = new Map(columns.map((column) => [column.id, column]));
+  return order.map((id) => byId.get(id)!);
 }
 
 function parseView(value: unknown): ErpPlanningSavedView | null {
@@ -115,6 +116,7 @@ function parseView(value: unknown): ErpPlanningSavedView | null {
     columns,
     groupBy: GROUPS.includes(value.groupBy as ErpPlanningGroupBy) ? value.groupBy as ErpPlanningGroupBy : "none",
     sort: SORTS.includes(value.sort as ErpPlanningSort) ? value.sort as ErpPlanningSort : "priority",
+    sortDirection: value.sortDirection === "desc" ? "desc" : "asc",
     filters: {
       search: typeof filters.search === "string" ? filters.search.slice(0, 200) : "",
       clients: stringArray(filters.clients),

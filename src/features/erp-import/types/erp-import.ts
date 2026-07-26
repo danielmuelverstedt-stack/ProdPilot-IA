@@ -231,7 +231,7 @@ export interface ErpImportReconciliationReport {
 
 export interface ErpMachineMapping {
   erpMachineCode: string;
-  machineId: string;
+  machineId: string | null;
   updatedAt: string;
 }
 
@@ -276,7 +276,8 @@ export interface ErpPlanningOverview {
       workOrdersInMultipleArticles: number;
       qualityScore: number;
   };
-  machineCodes: Array<{ code: string; operationCount: number; machineId: string | null }>;
+  machineCodes: Array<{ code: string; description: string | null; operationCount: number; machineId: string | null }>;
+  legacyMachineStates: Array<{ machineId: string; active?: boolean; visible?: boolean }>;
   issueCounts: Array<{ category: ErpQualityIssue["category"]; count: number }>;
 }
 

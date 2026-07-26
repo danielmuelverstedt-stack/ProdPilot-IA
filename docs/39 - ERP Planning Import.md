@@ -108,6 +108,18 @@ Deux affectations sont possibles :
 - ajustement d’une seule opération, conservé dans `erp-planning-overrides.json` ;
 - correspondance confirmée d’un code ERP vers une machine ProdPilot, conservée dans `erp-machine-mappings.json` et réutilisée aux imports futurs.
 
+Les codes ERP sont normalisés avant toute recherche ou écriture : suppression des caractères invisibles et du BOM, espaces externes retirés, espaces multiples regroupés et casse convertie en majuscules. Les tirets et autres caractères significatifs sont conservés. Les anciens mappings restent lisibles grâce à la normalisation du registre au chargement.
+
+Un code ERP non mappé n’est jamais utilisé comme `MachineSettings.id` : l’opération conserve `sourceMachineCode` et `sourceMachineDescription`, mais expose `machineId = null` et « Non définie ». L’interface existante permet de rechercher les codes, filtrer les non-mappés, associer, modifier ou supprimer une correspondance et distingue les machines actives, inactives, supprimées ou absentes.
+
+L’audit des identifiants actuels et la future numérotation métier sont documentés dans `docs/43 - ERP Machine Identifier Migration.md`. Aucun identifiant technique existant n’est modifié automatiquement.
+
+### Source de vérité des états machines
+
+`MachineSettings` est l’unique propriétaire de `active` et `visible`. Ces états sont modifiables depuis la fiche machine et consommés par le Planning, l’ERP et le parc machines. `ErpMachineMapping` est limité à `erpMachineCode`, `machineId` et `updatedAt` : le module ERP affiche le nom, le statut et la visibilité en lecture seule et renvoie vers la fiche machine pour toute modification.
+
+Au premier chargement, les anciens champs ERP `status`, `active`, `visible` ou `hidden` sont appliqués aux fiches machines connues et sauvegardés dans les réglages. Le nettoyage du mapping n’a lieu qu’après cette sauvegarde ; les états visant une machine absente restent en attente. Les imports, opérations et historiques ne sont jamais modifiés par cette migration.
+
 Les codes vides, `0`, non mappés, mappés vers une machine absente ou supprimée apparaissent dans « OF sans machine ». Le glisser-déposer et la liste déroulante aboutissent au même ajustement local.
 
 ## Qualité ERP

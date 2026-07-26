@@ -20,6 +20,7 @@ export type ErpPlanningColumnId = (typeof ERP_PLANNING_COLUMN_IDS)[number];
 export type ErpPlanningGroupBy = "none" | "article" | "work-order" | "machine" | "department" | "client" | "family" | "priority" | "status" | "date";
 export type ErpPlanningArticleFilter = "all" | "multiple" | "unique";
 export type ErpPlanningSort = "priority" | "due-date" | "work-order" | "machine" | "client" | "article";
+export type ErpPlanningSortDirection = "asc" | "desc";
 
 export interface ErpPlanningColumnPreference {
   id: ErpPlanningColumnId;
@@ -52,6 +53,8 @@ export interface ErpPlanningSavedView {
   columns: ErpPlanningColumnPreference[];
   groupBy: ErpPlanningGroupBy;
   sort: ErpPlanningSort;
+  /** Second clic sur la colonne de tri déjà active : inverse le résultat déjà trié (voir sortOperationViews). */
+  sortDirection: ErpPlanningSortDirection;
   filters: ErpPlanningViewFilters;
   zoom: number;
   updatedAt: string;

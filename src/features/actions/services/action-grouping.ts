@@ -1,3 +1,4 @@
+import { isActionOverdue } from "@/features/actions/services/action-status";
 import type { ProductionAction } from "@/features/demo/types/demo";
 
 export type ActionGroupMode = "personne" | "origine" | "echeance";
@@ -12,10 +13,6 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function isOverdue(action: ProductionAction, today: string): boolean {
-  return action.statut !== "Fait" && action.echeance < today;
-}
-
 function endOfWeekIso(today: string): string {
   const date = new Date(`${today}T00:00:00`);
   const day = date.getDay();
@@ -25,12 +22,12 @@ function endOfWeekIso(today: string): string {
 }
 
 function countOverdue(items: ProductionAction[], today: string): number {
-  return items.filter((item) => isOverdue(item, today)).length;
+  return items.filter((item) => isActionOverdue(item, today)).length;
 }
 
 function sortWithOverdueFirst(items: ProductionAction[], today: string): ProductionAction[] {
   return [...items].sort((a, b) => {
-    const overdueDiff = Number(isOverdue(b, today)) - Number(isOverdue(a, today));
+    const overdueDiff = Number(isActionOverdue(b, today)) - Number(isActionOverdue(a, today));
     if (overdueDiff !== 0) return overdueDiff;
     return a.echeance.localeCompare(b.echeance);
   });
@@ -59,7 +56,7 @@ export function groupActions(actions: ProductionAction[], mode: ActionGroupMode,
     { key: "later", label: "Plus tard", items: [] },
   ];
   actions.forEach((action) => {
-    if (isOverdue(action, today)) buckets[0].items.push(action);
+    if (isActionOverdue(action, today)) buckets[0].items.push(action);
     else if (action.echeance === today) buckets[1].items.push(action);
     else if (action.echeance > today && action.echeance <= week) buckets[2].items.push(action);
     else buckets[3].items.push(action);

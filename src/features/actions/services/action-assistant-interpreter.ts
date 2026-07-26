@@ -1,5 +1,6 @@
 import { formatEuropeanDate } from "@/components/ui/ModuleUi";
 import { groupActions } from "@/features/actions/services/action-grouping";
+import { isActionOverdue } from "@/features/actions/services/action-status";
 import type { ProductionAction } from "@/features/demo/types/demo";
 
 export interface ActionAssistantProposal {
@@ -56,17 +57,14 @@ function findExplicitActionId(text: string): string | null {
   return match ? match[0].toUpperCase() : null;
 }
 
-function isOverdue(action: ProductionAction, today: string): boolean {
-  return action.statut !== "Fait" && action.echeance < today;
-}
-
 function formatActionLine(action: ProductionAction, today: string): string {
-  const flag = isOverdue(action, today) ? " (en retard)" : "";
+  const flag = isActionOverdue(action, today) ? " (en retard)" : "";
   return `${action.id} · ${action.description} · échéance ${formatEuropeanDate(action.echeance)}${flag}`;
 }
 
+/** Les idées « À planifier » n'ont pas encore de responsable/échéance réels : hors périmètre de la revue tant qu'elles n'ont pas été planifiées (voir l'onglet dédié d'Actions). */
 export function buildReviewReply(actions: ProductionAction[], today = new Date().toISOString().slice(0, 10)): string {
-  const open = actions.filter((item) => item.statut !== "Fait");
+  const open = actions.filter((item) => item.statut !== "Fait" && item.statut !== "À planifier");
   if (!open.length) return "Aucune action ouverte à revoir. Tout est à jour.";
   const groups = groupActions(open, "personne", today);
   return groups.map((group) => `${group.label} :\n${group.items.map((item) => `- ${formatActionLine(item, today)}`).join("\n")}`).join("\n\n");
@@ -74,13 +72,13 @@ export function buildReviewReply(actions: ProductionAction[], today = new Date()
 
 export function buildPersonReply(actions: ProductionAction[], query: string, today = new Date().toISOString().slice(0, 10)): string {
   const needle = normalize(query);
-  const matches = actions.filter((item) => item.statut !== "Fait" && normalize(item.responsable).includes(needle));
+  const matches = actions.filter((item) => item.statut !== "Fait" && item.statut !== "À planifier" && normalize(item.responsable).includes(needle));
   if (!matches.length) return `Aucune action ouverte pour « ${query.trim()} ».`;
   return matches.map((item) => `- ${formatActionLine(item, today)}`).join("\n");
 }
 
 export function buildOverdueReply(actions: ProductionAction[], today = new Date().toISOString().slice(0, 10)): string {
-  const overdue = actions.filter((item) => isOverdue(item, today));
+  const overdue = actions.filter((item) => isActionOverdue(item, today));
   if (!overdue.length) return "Aucune action n’est en retard.";
   return overdue.map((item) => `- ${formatActionLine(item, today)} · ${item.responsable}`).join("\n");
 }

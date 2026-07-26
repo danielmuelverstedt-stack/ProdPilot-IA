@@ -6,13 +6,8 @@ import { useState } from "react";
 import { EmptyState, fieldClass, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { updateDemoData, useDemoData } from "@/features/demo/services/demo-repository";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
-import { completeAction, deleteAction, postponeAction, reassignAction } from "@/features/actions/services/action-service";
-
-function statusTone(statut: "À faire" | "Fait" | "Reporté") {
-  if (statut === "Fait") return "success" as const;
-  if (statut === "Reporté") return "warning" as const;
-  return "neutral" as const;
-}
+import { completeAction, deleteAction, planAction, postponeAction, reassignAction } from "@/features/actions/services/action-service";
+import { actionStatusTone } from "@/features/actions/services/action-status";
 
 export function ActionDetail({ id }: { id: string }) {
   const data = useDemoData();
@@ -21,6 +16,9 @@ export function ActionDetail({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
   const [postponing, setPostponing] = useState(false);
   const [postponeDate, setPostponeDate] = useState(action?.echeance ?? "");
+  const [planning, setPlanning] = useState(false);
+  const [planResponsable, setPlanResponsable] = useState("");
+  const [planEcheance, setPlanEcheance] = useState("");
   const router = useRouter();
   if (!action) return <EmptyState title="Action introuvable" description="Cette action n’existe plus dans les données de démonstration." />;
   const current = action;
@@ -62,9 +60,9 @@ export function ActionDetail({ id }: { id: string }) {
       <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5 lg:col-span-2">
         <h2 className="font-semibold">Informations</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-          <Info label="Responsable" value={action.responsable} />
-          <Info label="Statut" value={<StatusPill tone={statusTone(action.statut)}>{action.statut}</StatusPill>} />
-          <Info label="Échéance" value={formatEuropeanDate(action.echeance)} />
+          <Info label="Responsable" value={action.responsable || "Non assigné"} />
+          <Info label="Statut" value={<StatusPill tone={actionStatusTone(action.statut)}>{action.statut}</StatusPill>} />
+          <Info label="Échéance" value={action.statut === "À planifier" ? "Non planifiée" : formatEuropeanDate(action.echeance)} />
           <Info label="Origine" value={action.origine} />
           <Info label="Introduit par" value={action.introduitPar} />
           <Info label="Date d’encodage" value={formatEuropeanDate(action.dateEncodage)} />
@@ -76,15 +74,24 @@ export function ActionDetail({ id }: { id: string }) {
       <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5">
         <h2 className="font-semibold">Suivi</h2>
         <div className="mt-4 flex flex-col gap-2">
-          {action.statut !== "Fait" ? <button className={secondaryButton} onClick={() => completeAction(action.id)}>Marquer fait</button> : null}
-          {postponing ? <div className="flex items-center gap-1"><input type="date" value={postponeDate} onChange={(event) => setPostponeDate(event.target.value)} className={`${fieldClass} min-h-9`} /><button className={secondaryButton} onClick={() => { if (postponeDate) { postponeAction(action.id, postponeDate); setPostponing(false); } }}>Confirmer</button></div>
-            : <button className={secondaryButton} onClick={() => setPostponing(true)}>Reporter</button>}
-          <label className="text-sm font-medium">Réassigner
-            <select className={`${fieldClass} mt-1 w-full`} value={action.responsable} onChange={(event) => reassignAction(action.id, event.target.value)}>
-              <option value={action.responsable}>{action.responsable}</option>
-              {settings.users.filter((user) => user.active).map((user) => `${user.firstName} ${user.lastName}`).filter((name) => name !== action.responsable).map((name) => <option key={name} value={name}>{name}</option>)}
-            </select>
-          </label>
+          {action.statut === "À planifier" ? <>
+            <p className="text-xs text-slate-500">Idée mise de côté, sans responsable ni échéance réels. Planifiez-la pour qu’elle rejoigne les actions.</p>
+            {planning ? <div className="flex flex-col gap-2">
+              <input required placeholder="Responsable" value={planResponsable} onChange={(event) => setPlanResponsable(event.target.value)} className={fieldClass} />
+              <input required type="date" value={planEcheance} onChange={(event) => setPlanEcheance(event.target.value)} className={fieldClass} />
+              <div className="flex gap-2"><button className={primaryButton} onClick={() => { if (planResponsable.trim() && planEcheance) { planAction(action.id, planResponsable, planEcheance); setPlanning(false); } }}>Confirmer</button><button className={secondaryButton} onClick={() => setPlanning(false)}>Annuler</button></div>
+            </div> : <button className={primaryButton} onClick={() => setPlanning(true)}>Planifier</button>}
+          </> : <>
+            {action.statut !== "Fait" ? <button className={secondaryButton} onClick={() => completeAction(action.id)}>Marquer fait</button> : null}
+            {postponing ? <div className="flex items-center gap-1"><input type="date" value={postponeDate} onChange={(event) => setPostponeDate(event.target.value)} className={`${fieldClass} min-h-9`} /><button className={secondaryButton} onClick={() => { if (postponeDate) { postponeAction(action.id, postponeDate); setPostponing(false); } }}>Confirmer</button></div>
+              : <button className={secondaryButton} onClick={() => setPostponing(true)}>Reporter</button>}
+            <label className="text-sm font-medium">Réassigner
+              <select className={`${fieldClass} mt-1 w-full`} value={action.responsable} onChange={(event) => reassignAction(action.id, event.target.value)}>
+                <option value={action.responsable}>{action.responsable}</option>
+                {settings.users.filter((user) => user.active).map((user) => `${user.firstName} ${user.lastName}`).filter((name) => name !== action.responsable).map((name) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+          </>}
           <button className={`${secondaryButton} text-red-700`} onClick={remove}>Supprimer</button>
         </div>
       </section>

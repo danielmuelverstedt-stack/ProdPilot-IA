@@ -1,5 +1,5 @@
 import { updateDemoData } from "@/features/demo/services/demo-repository";
-import type { ActionContextLink, ProductionAction } from "@/features/demo/types/demo";
+import type { ActionContextLink, ActionStatus, ProductionAction } from "@/features/demo/types/demo";
 
 export interface NewActionInput {
   description: string;
@@ -9,6 +9,8 @@ export interface NewActionInput {
   introduitPar: string;
   remarque?: string | null;
   contextLink?: ActionContextLink | null;
+  /** "À planifier" pour une idée mise de côté sans responsable/échéance réels ; par défaut "À faire" comme avant. */
+  statut?: ActionStatus;
 }
 
 function nextActionId(existing: ProductionAction[]): string {
@@ -32,7 +34,7 @@ export function createAction(input: NewActionInput): string {
       description: input.description.trim(),
       responsable: input.responsable.trim(),
       echeance: input.echeance,
-      statut: "À faire",
+      statut: input.statut ?? "À faire",
       dateCloture: null,
       remarque: input.remarque?.trim() || null,
     };
@@ -57,6 +59,17 @@ export function postponeAction(id: string, newEcheance: string): void {
     target.statut = "Reporté";
     target.echeance = newEcheance;
     target.dateCloture = null;
+  });
+}
+
+/** Valide une idée « À planifier » en action réelle : lui donne un responsable et une échéance, puis la fait rejoindre "À faire" comme n'importe quelle action. */
+export function planAction(id: string, responsable: string, echeance: string): void {
+  updateDemoData((draft) => {
+    const target = draft.actions.find((item) => item.id === id);
+    if (!target) return;
+    target.statut = "À faire";
+    target.responsable = responsable.trim();
+    target.echeance = echeance;
   });
 }
 

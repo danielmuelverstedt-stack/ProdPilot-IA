@@ -5,7 +5,8 @@
       "Bash(npx --no-install chromium-cli --help)",
       "Bash(npx --yes playwright@1.61.1 screenshot --viewport-size=1440,900 --wait-for-timeout=2500 http://localhost:3000 C:/Users/dm/AppData/Local/Temp/claude/c--Users-dm-prodpilot-ia/d314bb70-23d1-46f6-b2d5-1741fca2ce52/scratchpad/home-v2.png)",
       "Bash(taskkill //F //IM node.exe //FI \"WINDOWTITLE eq *\")",
-      "Bash(taskkill //PID 13392 //F)"
+      "Bash(taskkill //PID 13392 //F)",
+      "Bash(node --test tests/planning-workshop.test.mjs)"
     ]
   }
 }

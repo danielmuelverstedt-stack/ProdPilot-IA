@@ -1,0 +1,11 @@
+.printSection {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  .printSheet {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+}

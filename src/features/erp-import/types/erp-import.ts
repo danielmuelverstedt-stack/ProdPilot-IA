@@ -62,7 +62,7 @@ export interface ErpWorkOrderLine {
   customerOrderDetailId: string;
 }
 
-export type ErpPlanningWorkOrderSummary = Pick<ErpWorkOrder, "id" | "articleCode" | "articleId" | "articleGroupId" | "customerName" | "customerReference">;
+export type ErpPlanningWorkOrderSummary = Pick<ErpWorkOrder, "id" | "articleCode" | "articleId" | "articleGroupId" | "customerName" | "customerReference" | "quantity">;
 
 export interface ErpOperation {
   id: string;

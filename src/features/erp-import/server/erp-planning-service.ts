@@ -185,6 +185,7 @@ function toPlanningListRow(row: OperationView): OperationView {
     articleGroupId: row.workOrder.articleGroupId,
     customerName: row.workOrder.customerName,
     customerReference: row.workOrder.customerReference,
+    quantity: row.workOrder.quantity,
   };
   return { ...row, workOrder };
 }

@@ -8,7 +8,7 @@ import type { OperationView } from "@/features/erp-import/types/erp-import";
 import type { WorkshopColumnId } from "@/features/planning/types/workshop-view";
 import type { AppSettings, MachineSettings } from "@/features/settings/types/settings";
 
-const NUMERIC_COLUMN_IDS = new Set<WorkshopColumnId>(["priority", "delay"]);
+const NUMERIC_COLUMN_IDS = new Set<WorkshopColumnId>(["priority", "delay", "quantity"]);
 
 /** Fiche imprimable d'une seule machine de l'Atelier : mêmes colonnes que celles actuellement affichées à l'écran, limitées au nombre de lignes choisi dans WorkshopMachinePrintDialog. */
 export function WorkshopMachinePrintView({ machine, operations, totalOperationCount, visibleColumnIds, settings, onBack }: {
@@ -89,6 +89,8 @@ function printCellValue(columnId: WorkshopColumnId, operation: OperationView): s
   if (columnId === "work-order") return operation.workOrderId;
   if (columnId === "operation") return `Op. ${operation.operationNumber}${operation.taskCode ? ` · Tâche ${operation.taskCode}` : ""}`;
   if (columnId === "article") return operation.articleCode || "Article inconnu";
+  if (columnId === "client") return operation.workOrder?.customerName || "—";
+  if (columnId === "quantity") return operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—";
   if (columnId === "description") return operation.description || "Sans description";
   if (columnId === "time") return "Non disponible";
   if (columnId === "status") return ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus];

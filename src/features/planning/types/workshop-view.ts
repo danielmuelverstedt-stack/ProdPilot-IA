@@ -9,6 +9,8 @@ export const WORKSHOP_COLUMN_IDS = [
   "work-order",
   "operation",
   "article",
+  "client",
+  "quantity",
   "description",
   "time",
   "status",

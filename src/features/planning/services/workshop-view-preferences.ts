@@ -9,6 +9,8 @@ export const WORKSHOP_COLUMN_LABELS: Record<WorkshopColumnId, string> = {
   "work-order": "OF",
   operation: "Opération",
   article: "Article",
+  client: "Client",
+  quantity: "Quantité",
   description: "Désignation",
   time: "Temps",
   status: "Statut",

@@ -24,6 +24,8 @@ const DEFAULT_COLUMN_WIDTH_PX: Record<WorkshopColumnId, number> = {
   "work-order": 110,
   operation: 150,
   article: 220,
+  client: 180,
+  quantity: 100,
   description: 220,
   time: 110,
   status: 130,

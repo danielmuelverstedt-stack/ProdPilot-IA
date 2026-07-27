@@ -69,6 +69,8 @@ function renderCell(columnId: WorkshopColumnId, operation: OperationView, machin
     const colors = operation.articleWorkOrderCount > 1 ? articleColor(operation.articleCode) : null;
     return <div><span className="font-semibold">{operation.articleCode || "Article inconnu"}</span>{colors ? <span className="ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }} title="Cet article est présent dans plusieurs OF en cours">{operation.articleWorkOrderCount} OF</span> : null}</div>;
   }
+  if (columnId === "client") return <span>{operation.workOrder?.customerName || "—"}</span>;
+  if (columnId === "quantity") return <span>{operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—"}</span>;
   if (columnId === "description") return <span className="line-clamp-2" title={operation.description ?? ""}>{operation.description || "Sans description"}</span>;
   if (columnId === "time") return <span className="text-xs italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disponible</span>;
   if (columnId === "status") return <StatusPill tone={erpOperationStatusTone(operation.effectiveStatus)}>{ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus]}</StatusPill>;
@@ -87,6 +89,7 @@ function OperationDetail({ operation }: { operation: OperationView }) {
     ["OF partageant cet article", `${operation.articleWorkOrderCount}`],
     ["Désignation", operation.description || "—"],
     ["Client", operation.workOrder?.customerName || "—"],
+    ["Quantité", operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—"],
     ["Machine", operation.machine],
     ["Statut", ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus]],
     ["Priorité", `${operation.effectivePriority}`],

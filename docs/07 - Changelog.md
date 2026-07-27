@@ -4,6 +4,32 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Ajout : une catégorie à une seule machine candidate absorbe directement ses OF sans machine assignée — 27/07/2026
+
+- Demandé par l'utilisateur : quand une seule machine/poste existe pour une catégorie (ex. Peinture), les OF de cette catégorie sans machine assignée doivent rejoindre directement cette machine plutôt que rester dans une ligne « Machine non définie » séparée.
+- `buildWorkshopCategories` détecte désormais le cas à un seul candidat par catégorie et fusionne l'affichage en conséquence ; dès qu'une deuxième machine devient candidate, la ligne séparée réapparaît (impossible de deviner laquelle des deux devrait recevoir l'OF). Affichage uniquement : aucune écriture, l'opération reste réellement sans machine assignée dans les données.
+
+### Correctif racine : les catégories d'un onglet en mode lié n'étaient pas resynchronisées au chargement de la page — 27/07/2026
+
+- Signalé par l'utilisateur : un poste créé pour la Peinture dans le département « Traitement de surface » affiche sa section de planning, mais sans aucune opération catégorie 18.
+- Cause racine : le réglage partagé « Catégories visibles » n'était resynchronisé sur les catégories liées du département affiché qu'au clic sur son onglet, à sa création ou à son édition — jamais au premier rendu si l'onglet était déjà sélectionné avant (préférence restaurée, retour depuis un autre module). Le réglage partagé gardait alors sa dernière valeur (par ex. issue du Cockpit ERP), qui pouvait exclure la catégorie affichée ; ses opérations restaient invisibles partout, sans message d'erreur.
+- Nouveau `useEffect` dans `PlanningWorkshopView.tsx` : resynchronise ce réglage sur les catégories liées dès que le département affiché change, y compris au tout premier rendu.
+
+### Ajout : colonnes Client et Quantité commandée dans l'Atelier — 27/07/2026
+
+- Demandé par l'utilisateur : masquer/démasquer les colonnes de l'Atelier (déjà possible, vérifié plutôt que supposé), et ajouter le client (`Nom`, fichier ERP `REQ_MacroGamme_Top.xlsx`) et la quantité commandée (`Qté_Cdée`, même fichier) à chaque opération.
+- Aucun nouveau parseur ERP : les deux colonnes sont déjà importées et alimentent déjà `ErpWorkOrder.customerName`/`.quantity`. Seule la quantité manquait sur le trajet jusqu'à l'Atelier (`ErpPlanningWorkOrderSummary`/`toPlanningListRow` dans `erp-planning-service.ts`, qui réduit le work order transmis à l'écran) — étendue en conséquence.
+- Nouvelles colonnes `client`/`quantity` câblées à l'écran (`WorkshopOperationRow.tsx`, largeur par défaut dans `WorkshopMachinePanel.tsx`) et à l'impression (`WorkshopMachinePrintView.tsx`, quantité alignée à droite comme Priorité/Retard) ; masquables/réordonnables comme les colonnes existantes sans code supplémentaire.
+
+### Uniformisation : bandeau d'erreur partagé, primitives Réglages, icônes, retours honnêtes d'action-service — 27/07/2026
+
+- Demandé par l'utilisateur : « fais une grosse analyse du projet et améliore/uniformise tous les modules », avec autorisation à agir sans redemander confirmation à chaque changement. Analyse préalable du code (UI, services/données, tests) : pas de dette massive, mais une dizaine de divergences concrètes et localisées. Passe bornée (Volet A) exécutée maintenant ; chantiers plus lourds documentés en backlog (Volet B) dans `docs/06 - Todo.md` plutôt qu'empilés sans recul.
+- Nouveau `ErrorBanner` (`src/components/ui/ModuleUi.tsx`), remplace le bandeau d'erreur rouge dupliqué à l'identique dans 5 modules (`WorkOrderDetail.tsx`, `ErpPlanningWorkspace.tsx`, `PlanningWorkshopView.tsx`, `ErpQualityModule.tsx`, `MailDiagnosticsScreen.tsx`).
+- `SettingsUi.tsx` (`inputClass`/`buttonClass`) repose désormais sur les primitives partagées `fieldClass`/`secondaryButton` au lieu de les redéfinir : corrige une dérive réelle (opacité désactivée et curseur non cohérents avec le reste de l'app sur les boutons désactivés de tout le module Réglages).
+- Glyphes unicode `✕` remplacés par l'icône partagée `AppIcon name="close"` dans `PlanningDialogShell.tsx` et `MachinePhotoUploader.tsx`.
+- `action-service.ts` : les mutations (`completeAction`, `postponeAction`, `planAction`, `reassignAction`, `setRemark`, `reopenAction`, `deleteAction`) retournent désormais `boolean` au lieu de `void`, alignées sur la convention déjà utilisée par `machineSettingsService`. Corrige un vrai bug côté assistant IA (`AssistantPanel.tsx`, Mon Espace) : si l'id interprété par l'assistant ne correspondait plus à une action réelle, le message annonçait quand même un succès alors que rien n'avait changé.
+- Cas vérifiés puis volontairement laissés inchangés (réutilisation aurait dégradé l'UX plutôt que l'uniformiser) : lightbox photo et placeholder « Aucune photo » de `MachinePhotoUploader.tsx`, texte inline de `MeetingActionReview.tsx`, glyphes `↑`/`↓` de tri dans `ActionsSettingsPanel.tsx` (les ajouter au registre `AppIcon` les ferait apparaître dans le sélecteur d'icônes de Mon Espace, effet de bord hors sujet).
+
 ### Correctif : catégories visibles retirées du menu Filtres de l'Atelier, uniquement gérées via le crayon (✎) de département — 26/07/2026
 
 - Signalé par l'utilisateur en diagnostiquant une machine « Peinture » nouvellement créée sans aucune opération visible (ni sous la machine, ni en « Machine non définie ») : cause identifiée, le réglage partagé « Catégories visibles » masque tout ce qui n'est pas explicitement coché (`applyTaskCategoryVisibility`, appliqué avant tout regroupement) et pouvait diverger des catégories liées au département — deux endroits permettaient de le régler séparément, le menu « Filtres » de l'Atelier et la fenêtre ✎ de chaque département. L'utilisateur a jugé ces deux réglages redondants (« 2 endroits qui n'ont pas lieu d'être ») et a demandé de n'en garder qu'un.

@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { EmptyState } from "@/components/ui/ModuleUi";
+import { useEffect, useMemo, useState } from "react";
+import { EmptyState, ErrorBanner } from "@/components/ui/ModuleUi";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { useWorkshopOperations } from "@/features/planning/hooks/useWorkshopOperations";
 import { useWorkshopViewPreferences } from "@/features/planning/hooks/useWorkshopViewPreferences";
@@ -68,6 +68,25 @@ export function PlanningWorkshopView() {
   );
 
   const isPhysicalDepartment = selectedDepartment?.membershipMode === "physical";
+
+  /**
+   * Sans cet effet, un onglet en mode lié déjà sélectionné au chargement de la page (préférence
+   * restaurée, sans clic) garde l'ancienne valeur du réglage partagé « Catégories visibles » —
+   * venant par ex. du Cockpit ERP ou d'un autre département visité plus tôt — au lieu des
+   * catégories réellement liées au département affiché. Les opérations de ces catégories restent
+   * alors invisibles partout (`applyTaskCategoryVisibility` masque tout ce qui n'est pas
+   * explicitement listé), sans aucun message d'erreur : la section du département apparaît quand
+   * même (une machine/poste taguée sur cette catégorie suffit à créer la section), mais reste
+   * vide. C'est exactement le symptôme signalé : un poste Peinture nouvellement créé affichait sa
+   * section mais aucune opération catégorie 18. `handleSelectDepartment`/`handleCreateDepartment`/
+   * `handleUpdateDepartment` couvrent déjà le changement d'onglet et l'édition explicites ; cet
+   * effet couvre en plus le cas où l'onglet était déjà sélectionné avant même le premier rendu.
+   */
+  useEffect(() => {
+    if (!selectedDepartment || isPhysicalDepartment) return;
+    setVisibleTaskCategoryCodes(selectedDepartment.linkedCategoryCodes ?? []);
+  }, [selectedDepartment, isPhysicalDepartment]);
+
   // Mode "physical" : les opérations viennent de allRows (toutes catégories confondues), pas de rows
   // (filtrées par le réglage partagé « Catégories visibles ») — le contenu de ces onglets ne dépend
   // plus des catégories pour les machines (une machine y apparaît pour toutes ses opérations, dès
@@ -133,7 +152,7 @@ export function PlanningWorkshopView() {
   if (printTarget) return <WorkshopMachinePrintView machine={printTarget.machine} operations={printTarget.operations} totalOperationCount={printTarget.totalOperationCount} visibleColumnIds={visibleColumnIds} settings={settings} onBack={() => setPrintTarget(null)} />;
 
   return <div className="space-y-4">
-    {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
+    {error ? <ErrorBanner>{error}</ErrorBanner> : null}
     {activeDepartments.length ? <WorkshopDepartmentTabs departments={activeDepartments} selectedDepartmentId={selectedDepartmentId} operationCountByDepartmentId={operationCountByDepartmentId} onSelect={handleSelectDepartment} onCreate={() => setCreatingDepartment(true)} onEdit={setEditingDepartmentId} /> : null}
     <WorkshopFilters filters={preferences.state.filters} resultCount={resultCount} totalCount={(isPhysicalDepartment ? allRows : rows).length} onChange={preferences.updateFilters} />
     <WorkshopColumnSelector columns={preferences.state.columns} rowsPerMachine={preferences.state.rowsPerMachine} persistenceError={preferences.persistenceError} onToggleColumn={preferences.toggleColumn} onChangeRowsPerMachine={preferences.setRowsPerMachine} />

@@ -121,13 +121,20 @@ export function buildWorkshopCategories(rows: OperationView[], machines: Machine
       const machinesFromOperations = group.code
         ? eligibleMachines.filter((machine) => !declaredMachineIds.has(machine.id) && categoryCodesByMachineId.get(machine.id)?.has(group.code!))
         : [];
-      const machineGroups = [...group.machines, ...machinesFromOperations]
-        .sort((a, b) => a.order - b.order)
-        .map((machine) => toMachineGroup(machine, operationsByMachineId.get(machine.id) ?? [], sort))
-        .filter((entry) => filters.showMachinesWithoutOperations || entry.operationCount > 0);
-      // Toujours en premier dans la section de sa catégorie : les OF de cette catégorie qui n'ont pas encore de machine assignée.
+      const categoryMachines = [...group.machines, ...machinesFromOperations].sort((a, b) => a.order - b.order);
+      // Toujours en premier dans la section de sa catégorie : les OF de cette catégorie qui n'ont pas encore de machine assignée — sauf s'il n'existe qu'une seule machine/poste candidat pour
+      // cette catégorie, auquel cas ils la rejoignent directement plutôt que de rester dans une ligne « Machine non définie » séparée, alors qu'aucune autre machine ne pourrait les recevoir de
+      // toute façon. Affichage uniquement : l'opération reste sans machine assignée dans les données (son propre sélecteur Machine le montre toujours), rien n'est écrit silencieusement.
       const categoryUnassignedOperations = group.code ? unassignedOperationsByTaskCode.get(group.code) ?? [] : [];
-      if (categoryUnassignedOperations.length) machineGroups.unshift(toMachineGroup(null, categoryUnassignedOperations, sort));
+      const soleMachine = categoryMachines.length === 1 ? categoryMachines[0] : null;
+      const machineGroups = categoryMachines
+        .map((machine) => {
+          const ownOperations = operationsByMachineId.get(machine.id) ?? [];
+          const operations = machine === soleMachine && categoryUnassignedOperations.length ? [...ownOperations, ...categoryUnassignedOperations] : ownOperations;
+          return toMachineGroup(machine, operations, sort);
+        })
+        .filter((entry) => filters.showMachinesWithoutOperations || entry.operationCount > 0);
+      if (categoryUnassignedOperations.length && !soleMachine) machineGroups.unshift(toMachineGroup(null, categoryUnassignedOperations, sort));
       return { id: group.code ?? "none", label: group.label, machines: machineGroups };
     })
     .filter((section) => section.machines.length));

@@ -145,8 +145,13 @@ test("buildWorkshopCategories : plusieurs catégories visibles sans aucune machi
 });
 
 test("buildWorkshopCategories place les OF sans machine en premier à l'intérieur de leur section de catégorie, avant les machines de cette même catégorie", () => {
+  // Deux machines candidates pour la catégorie 27 (pas une seule) : avec un seul candidat, elles
+  // absorberaient directement les OF sans machine assignée (voir test dédié plus bas) au lieu de
+  // laisser une ligne « Machine non définie » séparée — ce test porte spécifiquement sur l'ordre
+  // quand une telle ligne séparée existe bel et bien.
   const categorized = [
     { ...machineBase, id: "cv5-500", taskCategoryCode: "27" },
+    { ...machineBase, id: "dmu50", taskCategoryCode: "27" },
     { ...machineBase, id: "eba-01", displayName: "Ébavurage poste 1", kind: "poste", taskCategoryCode: null },
   ];
   const opsWithUnassignedCategory27 = [...operations, { ...opBase, id: "op-orphan", workOrderId: "OF-900", articleCode: "Z900", description: "Sans machine", machine: "Non définie", machineId: null, isWithoutMachine: true, taskCode: "27", workOrder: { customerName: "ACME" } }];
@@ -155,6 +160,30 @@ test("buildWorkshopCategories place les OF sans machine en premier à l'intérie
   const categorySection = sections.find((section) => section.id === "27");
   assert.equal(categorySection.machines[0].machine, null, "les OF sans machine de cette catégorie apparaissent en premier dans sa section");
   assert.equal(categorySection.machines[1].machine?.id, "cv5-500");
+  assert.equal(categorySection.machines[2].machine?.id, "dmu50");
+});
+
+test("buildWorkshopCategories : une catégorie n'ayant qu'une seule machine/poste candidate absorbe directement ses OF sans machine assignée, au lieu de les laisser dans une ligne « Machine non définie » séparée", () => {
+  // Demandé par l'utilisateur : « si il y a que une machine toutes les opérations se mettent à la
+  // machine et ne restent pas dans machine à définir ». Affichage uniquement : l'OF reste sans
+  // machine assignée dans les données (son propre sélecteur Machine le montre toujours) ; seule sa
+  // place dans la liste change, puisqu'aucune autre machine ne pourrait de toute façon la recevoir.
+  const soleMachine = { ...machineBase, id: "eba-01", displayName: "Ébavurage poste 1", kind: "poste", taskCategoryCode: "15" };
+  const opsWithUnassignedCategory15 = [{ ...opBase, id: "op-orphan-15", workOrderId: "OF-950", articleCode: "Z950", description: "Ebavurage sans machine", machine: "Non définie", machineId: null, isWithoutMachine: true, taskCode: "15", workOrder: { customerName: "ACME" } }];
+  const sections = buildWorkshopCategories(opsWithUnassignedCategory15, [soleMachine], createDefaultWorkshopFilters(), NO_SORT, ["15"]);
+  assert.equal(sections.length, 1);
+  assert.equal(sections[0].machines.length, 1, "aucune ligne « Machine non définie » séparée : une seule ligne, celle du poste");
+  assert.equal(sections[0].machines[0].machine?.id, "eba-01");
+  assert.deepEqual(sections[0].machines[0].operations.map((operation) => operation.id), ["op-orphan-15"], "l'OF sans machine assignée rejoint directement le seul poste candidat de sa catégorie");
+});
+
+test("buildWorkshopCategories : dès qu'une deuxième machine devient candidate pour la catégorie, les OF sans machine assignée redeviennent une ligne « Machine non définie » séparée (impossible de deviner laquelle des deux devrait les recevoir)", () => {
+  const machineA = { ...machineBase, id: "eba-01", displayName: "Ébavurage poste 1", kind: "poste", taskCategoryCode: "15" };
+  const machineB = { ...machineBase, id: "eba-02", displayName: "Ébavurage poste 2", kind: "poste", taskCategoryCode: "15" };
+  const opsWithUnassignedCategory15 = [{ ...opBase, id: "op-orphan-15b", workOrderId: "OF-951", articleCode: "Z951", machine: "Non définie", machineId: null, isWithoutMachine: true, taskCode: "15", workOrder: { customerName: "ACME" } }];
+  const sections = buildWorkshopCategories(opsWithUnassignedCategory15, [machineA, machineB], createDefaultWorkshopFilters(), NO_SORT, ["15"]);
+  assert.equal(sections[0].machines[0].machine, null, "avec deux candidats, impossible de deviner laquelle doit recevoir l'OF : reste une ligne Machine non définie séparée");
+  assert.deepEqual(sections[0].machines[0].operations.map((operation) => operation.id), ["op-orphan-15b"]);
 });
 
 test("parseWorkshopViewState valide selectedDepartmentId (absent/vide ⇒ null, repli sur le premier département actif au rendu)", () => {
@@ -222,6 +251,12 @@ test("un département en mode « physical » garde un choix de catégories (✎)
   const view = await readFile(new URL("../src/features/planning/components/PlanningWorkshopView.tsx", import.meta.url), "utf8");
   assert.match(view, /const unassignedSection = buildUnassignedOperationsSection\(allRows, machines, selectedDepartment, physicalFilters, preferences\.state\.sort\);/);
   assert.match(view, /return unassignedSection \? \[unassignedSection, \.\.\.machineSections\] : machineSections;/, "la section « Opérations sans machine » reste toujours en premier, comme pour les départements en mode lié");
+});
+
+test("un département en mode lié resynchronise le réglage partagé Catégories dès qu'il est affiché, même sans clic d'onglet (ex. sélection déjà restaurée au chargement de la page)", async () => {
+  const view = await readFile(new URL("../src/features/planning/components/PlanningWorkshopView.tsx", import.meta.url), "utf8");
+  assert.match(view, /useEffect\(\(\) => \{\s*\n\s*if \(!selectedDepartment \|\| isPhysicalDepartment\) return;\s*\n\s*setVisibleTaskCategoryCodes\(selectedDepartment\.linkedCategoryCodes \?\? \[\]\);\s*\n\s*\}, \[selectedDepartment, isPhysicalDepartment\]\);/, "sans cet effet, un onglet en mode lié déjà sélectionné au premier rendu (préférence restaurée) garde l'ancienne valeur du réglage partagé au lieu des catégories réellement liées au département — ses opérations restent invisibles partout sans message d'erreur");
+  assert.match(view, /import \{ useEffect, useMemo, useState \} from "react";/);
 });
 
 test("la recherche de l'Atelier est débouncée : taper met à jour l'affichage immédiatement mais ne redéclenche le filtrage/re-rendu réel qu'après une pause, pour rester fluide sur un département chargé", async () => {
@@ -464,9 +499,26 @@ test("les colonnes par défaut couvrent les colonnes demandées, toutes visibles
   const columns = createDefaultWorkshopColumns();
   assert.equal(columns.length, WORKSHOP_COLUMN_IDS.length);
   assert.ok(columns.every((column) => column.visible));
-  ["priority", "work-order", "operation", "article", "description", "time", "status", "start-date", "end-date", "delay", "machine"].forEach((id) => {
+  ["priority", "work-order", "operation", "article", "client", "quantity", "description", "time", "status", "start-date", "end-date", "delay", "machine"].forEach((id) => {
     assert.ok(columns.some((column) => column.id === id), `colonne manquante : ${id}`);
   });
+});
+
+test("les colonnes Client et Quantité affichent le nom du client et la quantité commandée (fichier Top de l'ERP), à l'écran comme à l'impression, sans tomber dans le sélecteur de machine par défaut", async () => {
+  const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
+  assert.match(row, /if \(columnId === "client"\) return <span>\{operation\.workOrder\?\.customerName \|\| "—"\}<\/span>;/);
+  assert.match(row, /if \(columnId === "quantity"\) return <span>\{operation\.workOrder\?\.quantity != null \? operation\.workOrder\.quantity\.toLocaleString\("fr-BE"\) : "—"\}<\/span>;/);
+
+  const printView = await readFile(new URL("../src/features/planning/components/WorkshopMachinePrintView.tsx", import.meta.url), "utf8");
+  assert.match(printView, /NUMERIC_COLUMN_IDS = new Set<WorkshopColumnId>\(\["priority", "delay", "quantity"\]\);/, "la quantité s'aligne à droite à l'impression, comme Priorité/Retard");
+  assert.match(printView, /if \(columnId === "client"\) return operation\.workOrder\?\.customerName \|\| "—";/);
+  assert.match(printView, /if \(columnId === "quantity"\) return operation\.workOrder\?\.quantity != null \? operation\.workOrder\.quantity\.toLocaleString\("fr-BE"\) : "—";/);
+
+  const types = await readFile(new URL("../src/features/erp-import/types/erp-import.ts", import.meta.url), "utf8");
+  assert.match(types, /Pick<ErpWorkOrder, "id" \| "articleCode" \| "articleId" \| "articleGroupId" \| "customerName" \| "customerReference" \| "quantity">/, "la quantité doit survivre à la réduction du work order transmise à l'Atelier (toPlanningListRow)");
+
+  const service = await readFile(new URL("../src/features/erp-import/server/erp-planning-service.ts", import.meta.url), "utf8");
+  assert.match(service, /quantity: row\.workOrder\.quantity,/, "toPlanningListRow doit reporter la quantité, sinon l'Atelier reçoit un work order tronqué sans elle");
 });
 
 test("la colonne Retard reprend les mêmes seuils et libellés que le Cockpit ERP, via une table partagée unique", async () => {

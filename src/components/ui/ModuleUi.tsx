@@ -13,6 +13,10 @@ export function EmptyState({ title, description }: { title: string; description:
   return <section className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white px-6 py-12 text-center"><h2 className="font-semibold text-[var(--app-text)]">{title}</h2><p className="mt-2 text-sm text-slate-500">{description}</p></section>;
 }
 
+export function ErrorBanner({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <p role="alert" className={`rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 ${className}`}>{children}</p>;
+}
+
 export const primaryButton = "inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--app-primary)] px-4 text-sm font-semibold text-white shadow-[var(--app-shadow-sm)] hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100";
 export const secondaryButton = "inline-flex min-h-10 items-center justify-center rounded-lg border border-[var(--app-border)] bg-white px-3 text-sm font-semibold hover:bg-slate-50 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100";
 export const fieldClass = "min-h-10 rounded-lg border border-[var(--app-border)] bg-white px-3 text-sm outline-none focus:border-[var(--app-primary)] focus:ring-4 focus:ring-[color-mix(in_srgb,var(--app-primary)_12%,transparent)]";

@@ -41,7 +41,7 @@ test("createAction crée toujours une action « À faire » par défaut (compati
 
 test("planAction transforme une idée « À planifier » en action « À faire », avec le responsable et l'échéance donnés à la validation", async () => {
   const source = await read("src/features/actions/services/action-service.ts");
-  assert.match(source, /export function planAction\(id: string, responsable: string, echeance: string\): void \{/);
+  assert.match(source, /export function planAction\(id: string, responsable: string, echeance: string\): boolean \{/);
   assert.match(source, /target\.statut = "À faire";[\s\S]*?target\.responsable = responsable\.trim\(\);[\s\S]*?target\.echeance = echeance;/);
 });
 

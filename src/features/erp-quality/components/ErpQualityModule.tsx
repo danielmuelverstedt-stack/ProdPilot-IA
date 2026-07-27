@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { EmptyState, fieldClass, formatEuropeanDate, ModuleHeader, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { EmptyState, ErrorBanner, fieldClass, formatEuropeanDate, ModuleHeader, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { useDemoData } from "@/features/demo/services/demo-repository";
 import type { ErpPlanningOverview } from "@/features/erp-import/types/erp-import";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
@@ -28,7 +28,7 @@ export function ErpQualityModule() {
 
   return <div className="mx-auto max-w-7xl">
     <ModuleHeader eyebrow="Fiabilité des données" title="Qualité des données ERP" description="Contrôles calculés sur le dernier import réel. Les corrections restent locales : aucune écriture n’est effectuée dans l’ERP." actions={<Link href="/planning" className={secondaryButton}>Ouvrir le cockpit Planning</Link>} />
-    {error ? <p role="alert" className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p> : null}
+    {error ? <ErrorBanner className="mt-6">{error}</ErrorBanner> : null}
     {!overview ? <p className="mt-6 text-sm text-slate-500">Chargement des contrôles…</p> : overview.activeImport ? <RealQualityDashboard overview={overview} /> : <div className="mt-6"><EmptyState title="Aucun import ERP" description="Importez d’abord les deux exports depuis le cockpit Planning." /></div>}
     <DemoQualityArchive />
   </div>;

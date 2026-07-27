@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { secondaryButton } from "@/components/ui/ModuleUi";
 import { readImageFileAsCompressedDataUrl } from "@/lib/image-file";
 
@@ -59,7 +60,7 @@ export function MachinePhotoUploader({ photoDataUrl, alt, onChange }: { photoDat
         >
           <div role="dialog" aria-modal="true" aria-label={alt} className="relative max-h-[90vh] max-w-4xl">
             <img src={photoDataUrl} alt={alt} className="max-h-[90vh] max-w-full rounded-xl object-contain shadow-2xl" />
-            <button type="button" onClick={() => setZoomed(false)} className="absolute -top-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg hover:bg-slate-100" aria-label="Fermer">✕</button>
+            <button type="button" onClick={() => setZoomed(false)} className="absolute -top-3 -right-3 flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg hover:bg-slate-100" aria-label="Fermer"><AppIcon name="close" className="size-4" /></button>
           </div>
         </div>
       ) : null}

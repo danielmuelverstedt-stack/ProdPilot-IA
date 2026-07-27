@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
-import { EmptyState, formatEuropeanDate, primaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { EmptyState, ErrorBanner, formatEuropeanDate, primaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { ErpPlanningOperations } from "@/features/erp-import/components/ErpPlanningOperations";
 import { ErpMachineMappingsPanel } from "@/features/erp-import/components/ErpMachineMappingsPanel";
 import { PlanningFilterPanel } from "@/features/erp-import/components/PlanningFilterPanel";
@@ -224,7 +224,7 @@ export function ErpPlanningWorkspace() {
     <nav className="flex gap-1 overflow-x-auto rounded-xl border border-[var(--app-border)] bg-white p-1" aria-label="Vues du Planning ERP">
       {VIEW_LABELS.map((item) => <button key={item.id} type="button" className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${view === item.id ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-50"}`} onClick={() => changeView(item.id)}>{item.label}{item.id === "unmapped" && overview ? ` (${overview.metrics.unmappedOperations.toLocaleString("fr-BE")})` : ""}</button>)}
     </nav>
-    {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p> : null}
+    {error ? <ErrorBanner>{error}</ErrorBanner> : null}
     {notice ? <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{notice}</p> : null}
     {!activeImport && view !== "imports" ? <EmptyState title="Aucun export ERP importé" description="Ouvrez la vue Imports et sélectionnez ensemble les fichiers Top et Details." /> : null}
     {activeImport && view === "dashboard" ? <Dashboard overview={overview!} onNavigate={changeView} /> : null}

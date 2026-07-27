@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { EmptyState, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { EmptyState, ErrorBanner, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { useDemoData } from "@/features/demo/services/demo-repository";
 import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog";
 import { ERP_OPERATION_STATUS_LABELS, erpOperationDelayLabel, erpOperationDelayTone, erpOperationStatusTone } from "@/features/erp-import/services/erp-operation-status-presentation";
@@ -60,7 +60,7 @@ function ErpWorkOrderDetail({ id }: { id: string }) {
   }, [id]);
 
   if (isLoading) return <EmptyState title="Chargement…" description="Récupération de l’OF depuis la projection ERP." />;
-  if (error) return <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>;
+  if (error) return <ErrorBanner>{error}</ErrorBanner>;
   if (!state || !state.rows.length) return <EmptyState title="OF introuvable" description="Cet ordre de fabrication n’existe pas dans la projection ERP active." />;
 
   const { rows, workOrder } = state;

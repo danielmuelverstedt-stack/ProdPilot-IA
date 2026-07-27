@@ -26,11 +26,13 @@ const INTRO: AssistantMessage = {
   text: "Demandez-moi par exemple « revue des actions », « qu’est-ce que j’ai aujourd’hui » ou « planifie une réunion à 14h ». Je propose toujours une reformulation avant d’appliquer un changement.",
 };
 
+const ACTION_NOT_FOUND_REPLY = (actionId: string) => `${actionId} ne correspond plus à une action existante (peut-être déjà supprimée) : rien n’a été modifié.`;
+
 function applyActionProposal(proposal: ActionAssistantProposal, introduitPar: string): string {
-  if (proposal.kind === "complete" && proposal.actionId) { completeAction(proposal.actionId); return `${proposal.actionId} est marquée Fait.`; }
-  if (proposal.kind === "postpone" && proposal.actionId && proposal.echeance) { postponeAction(proposal.actionId, proposal.echeance); return `${proposal.actionId} est reportée.`; }
-  if (proposal.kind === "reassign" && proposal.actionId && proposal.responsable) { reassignAction(proposal.actionId, proposal.responsable); return `${proposal.actionId} est réassignée à ${proposal.responsable}.`; }
-  if (proposal.kind === "remark" && proposal.actionId && proposal.remarque) { setRemark(proposal.actionId, proposal.remarque); return `La remarque a été ajoutée sur ${proposal.actionId}.`; }
+  if (proposal.kind === "complete" && proposal.actionId) return completeAction(proposal.actionId) ? `${proposal.actionId} est marquée Fait.` : ACTION_NOT_FOUND_REPLY(proposal.actionId);
+  if (proposal.kind === "postpone" && proposal.actionId && proposal.echeance) return postponeAction(proposal.actionId, proposal.echeance) ? `${proposal.actionId} est reportée.` : ACTION_NOT_FOUND_REPLY(proposal.actionId);
+  if (proposal.kind === "reassign" && proposal.actionId && proposal.responsable) return reassignAction(proposal.actionId, proposal.responsable) ? `${proposal.actionId} est réassignée à ${proposal.responsable}.` : ACTION_NOT_FOUND_REPLY(proposal.actionId);
+  if (proposal.kind === "remark" && proposal.actionId && proposal.remarque) return setRemark(proposal.actionId, proposal.remarque) ? `La remarque a été ajoutée sur ${proposal.actionId}.` : ACTION_NOT_FOUND_REPLY(proposal.actionId);
   if (proposal.kind === "create" && proposal.description && proposal.responsable && proposal.echeance) {
     const id = createAction({ description: proposal.description, responsable: proposal.responsable, echeance: proposal.echeance, origine: proposal.origine ?? "IA", introduitPar });
     return `${id} a été créée dans le registre.`;

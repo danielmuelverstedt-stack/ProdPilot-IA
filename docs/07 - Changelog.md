@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Uniformisation : bouton « + Nouvelle action » de la réunion déplacé au même endroit que dans le module Actions — 04/08/2026
+
+- Demandé par l'utilisateur, en suite directe de l'uniformisation de la revue des actions : que « Créer une action » ait le même emplacement et le même style que dans son module parent (Actions).
+- Le bouton, jusqu'ici isolé au milieu de la page (bloc « Créer une action » entre Note rapide et Parking lot), rejoint le `ModuleHeader` de la réunion, en premier élément de `actions` — exactement l'emplacement et le style (`primaryButton`, libellé « + Nouvelle action ») du bouton du module Actions (`ActionsModule.tsx`).
+- Fonctionnalité inchangée : ouvre toujours `ActionFormDialog` avec `origine` (QRQC/Réunion de production) et `contextLink` vers la réunion en cours. La grille Note rapide/Parking lot passe de 3 à 2 colonnes suite au retrait de ce bloc.
+- Nouveau test de câblage (`tests/meeting-machine-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (406/406), `npm run build` tous verts.
+
 ### Uniformisation : la revue des actions en réunion reprend exactement le tableau du module Actions — 04/08/2026
 
 - Demandé par l'utilisateur : garder la même mise en page entre l'étape « Revue des actions » des réunions (QRQC/Production) et le module Actions, pour une meilleure compréhension entre les deux écrans.

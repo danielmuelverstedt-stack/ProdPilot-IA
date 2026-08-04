@@ -105,6 +105,14 @@ test("les étapes de la réunion se pilotent aussi depuis des onglets en haut de
   assert.match(workflow, /disabled={step === 0} onClick={\(\) => setStep\(\(value\) => value - 1\)}>Précédent/, "les boutons Précédent/Suivant restent disponibles en complément");
 });
 
+test("le bouton « + Nouvelle action » de la réunion est dans le ModuleHeader, même emplacement et même style que le module Actions", async () => {
+  const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
+  const actionsModule = await readFile(new URL("../src/features/actions/components/ActionsModule.tsx", import.meta.url), "utf8");
+  assert.match(workflow, /<ModuleHeader[^>]*actions={<><button className={primaryButton} onClick={\(\) => setCreatingAction\(true\)}>\+ Nouvelle action<\/button>/, "le bouton doit être le premier élément de ModuleHeader.actions, comme dans ActionsModule.tsx");
+  assert.match(actionsModule, /actions={<button className={primaryButton} onClick={\(\) => setCreating\(true\)}>/, "référence : emplacement/style du bouton dans le module Actions");
+  assert.doesNotMatch(workflow, /<label className="text-xs font-semibold uppercase text-slate-500">Créer une action<\/label>/, "l'ancien emplacement au milieu de la page doit disparaître");
+});
+
 test("la réunion de production remplace l'étape « Vue planning » (redondante) par « OF planifiés par machine », sans décaler les étapes QRQC", async () => {
   const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
   assert.match(workflow, /"OF planifiés par machine"/);

@@ -4,6 +4,12 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Correctif : suppression de l'étape « Vue planning », devenue redondante avec « OF planifiés par machine » — 04/08/2026
+
+- Signalé par l'utilisateur : l'ancienne étape « Vue planning » (liste brute `data.planning` de démonstration, jamais reliée aux données ERP réelles) faisait doublon avec la nouvelle étape « OF planifiés par machine », plus complète (désignation, client, article, quantité, bascule ERP réel/démonstration, création d'action).
+- `productionSteps` (`MeetingWorkflow.tsx`) perd « Vue planning » ; « OF planifiés par machine » prend directement sa place (étape 3 affichée, index 2). Les étapes suivantes de la réunion Production se décalent d'un cran vers le haut. Réunion QRQC non concernée (steps déjà indépendants par type).
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (399/399), `npm run build` tous verts.
+
 ### Amélioration : client, code article et quantité dans la revue OF par machine de la réunion de production — 04/08/2026
 
 - Demandé par l'utilisateur juste après l'ajout de l'étape : compléter chaque ligne d'OF avec le client, le code article et la quantité commandée.

@@ -83,9 +83,10 @@ test("une action créée depuis la revue OF par machine reste liée à l'OF pré
   assert.match(source, /<ActionFormDialog origine={origine} contextLink={buildContextLink\(actionTarget\.workOrderId\)}/);
 });
 
-test("la réunion de production intègre la nouvelle étape « OF planifiés par machine » sans décaler les étapes QRQC", async () => {
+test("la réunion de production remplace l'étape « Vue planning » (redondante) par « OF planifiés par machine », sans décaler les étapes QRQC", async () => {
   const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
   assert.match(workflow, /"OF planifiés par machine"/);
-  assert.match(workflow, /type === "Production" && step === 3\) return <MeetingMachineReview origine={origine} \/>/);
+  assert.doesNotMatch(workflow, /"Vue planning"/, "l'ancienne étape, devenue redondante avec la nouvelle revue par machine, doit disparaître");
+  assert.match(workflow, /type === "Production" && step === 2\) return <MeetingMachineReview origine={origine} \/>/);
   assert.match(workflow, /type === "QRQC" && \[1, 2, 3, 4\]\.includes\(step\)/, "les indices d'étapes QRQC ne doivent pas bouger");
 });

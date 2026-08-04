@@ -15,10 +15,10 @@ function withActionPlanningDefaults(value: unknown): ProductionAction {
   };
 }
 
-/** Complète un contact déjà stocké avec les champs ajoutés depuis (N° interne), `null` par défaut. */
+/** Complète un contact déjà stocké avec les champs ajoutés depuis (N° interne, N° privé), `null` par défaut. */
 function withContactDefaults(value: unknown): Contact {
   const contact = value as Contact;
-  return { ...contact, internalNumber: contact.internalNumber ?? null };
+  return { ...contact, internalNumber: contact.internalNumber ?? null, privateNumber: contact.privateNumber ?? null };
 }
 
 /**

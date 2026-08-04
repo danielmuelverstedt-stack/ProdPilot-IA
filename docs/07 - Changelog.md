@@ -4,6 +4,12 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Ajout : N° privé sur la fiche contact — 04/08/2026
+
+- Demandé par l'utilisateur : ajouter un numéro privé, distinct des numéros professionnels déjà présents (téléphone, mobile, N° interne).
+- Nouveau champ `Contact.privateNumber`, câblé type/service/formulaire/fiche, avec le même repli de migration que le N° interne pour les contacts déjà enregistrés. Affiché sur la fiche comme un lien `tel:` cliquable, au même titre que téléphone/mobile.
+- 1 nouveau test (`tests/contacts.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (446/446), `npm run build` tous verts.
+
 ### Correctif : l'annuaire TKMI n'apparaissait pas sur une installation déjà en cours d'utilisation — 04/08/2026
 
 - Signalé par l'utilisateur juste après la saisie de l'annuaire : « pourquoi je ne vois que la fiche que j'ai créée moi et pas la fiche que tu viens de faire ». Cause confirmée : les 27 contacts ajoutés au seed (`initialDemoData`) ne servent qu'à une toute nouvelle installation (`localStorage` vide) — une installation déjà utilisée (comme celle de l'utilisateur, avec son propre contact déjà créé) ne relit jamais le fichier de seed après son tout premier chargement.

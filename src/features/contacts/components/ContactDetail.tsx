@@ -53,6 +53,7 @@ export function ContactDetail({ id }: { id: string }) {
           <Info label="Téléphone" value={contact.phone ? <a className="text-[var(--app-primary)] underline" href={`tel:${contact.phone}`}>{contact.phone}</a> : "—"} />
           <Info label="Mobile" value={contact.mobile ? <a className="text-[var(--app-primary)] underline" href={`tel:${contact.mobile}`}>{contact.mobile}</a> : "—"} />
           <Info label="N° interne" value={contact.internalNumber || "—"} />
+          <Info label="N° privé" value={contact.privateNumber ? <a className="text-[var(--app-primary)] underline" href={`tel:${contact.privateNumber}`}>{contact.privateNumber}</a> : "—"} />
           <Info label="E-mail" value={contact.email ? <a className="text-[var(--app-primary)] underline" href={`mailto:${contact.email}`}>{contact.email}</a> : "—"} />
           <Info label="Site internet" value={contact.website ? <a className="text-[var(--app-primary)] underline" href={contact.website} target="_blank" rel="noreferrer">{contact.website}</a> : "—"} />
           <Info label="Adresse" value={contact.address || "—"} />

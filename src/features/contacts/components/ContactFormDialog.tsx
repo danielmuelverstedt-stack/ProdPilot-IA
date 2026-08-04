@@ -10,14 +10,14 @@ import type { Contact, ContactType } from "@/features/demo/types/demo";
 const CONTACT_TYPES: ContactType[] = ["Interne", "Externe"];
 
 function toInput(contact: Contact): ContactInput {
-  return { type: contact.type, firstName: contact.firstName, lastName: contact.lastName, company: contact.company, role: contact.role, categoryIds: contact.categoryIds, phone: contact.phone, mobile: contact.mobile, internalNumber: contact.internalNumber, email: contact.email, address: contact.address, website: contact.website, notes: contact.notes };
+  return { type: contact.type, firstName: contact.firstName, lastName: contact.lastName, company: contact.company, role: contact.role, categoryIds: contact.categoryIds, phone: contact.phone, mobile: contact.mobile, internalNumber: contact.internalNumber, privateNumber: contact.privateNumber, email: contact.email, address: contact.address, website: contact.website, notes: contact.notes };
 }
 
 /** Fenêtre unique pour créer ou modifier un contact — mêmes champs dans les deux cas, comme `ActionFormDialog`. */
 export function ContactFormDialog({ contact = null, onClose, onSaved }: { contact?: Contact | null; onClose: () => void; onSaved?: (id: string) => void }) {
   const { settings } = useSettings();
   const categories = [...settings.contacts.categories].filter((item) => item.active).sort((a, b) => a.order - b.order);
-  const [form, setForm] = useState<ContactInput>(contact ? toInput(contact) : { type: "Interne", firstName: "", lastName: "", company: "", role: "", categoryIds: [], phone: "", mobile: "", internalNumber: "", email: "", address: "", website: "", notes: "" });
+  const [form, setForm] = useState<ContactInput>(contact ? toInput(contact) : { type: "Interne", firstName: "", lastName: "", company: "", role: "", categoryIds: [], phone: "", mobile: "", internalNumber: "", privateNumber: "", email: "", address: "", website: "", notes: "" });
   const isEditing = contact !== null;
 
   function toggleCategory(categoryId: string) {
@@ -54,10 +54,11 @@ export function ContactFormDialog({ contact = null, onClose, onSaved }: { contac
           return <button key={category.id} type="button" onClick={() => toggleCategory(category.id)} className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${active ? "text-white" : "border-[var(--app-border)] bg-white text-slate-600 hover:bg-slate-50"}`} style={active ? { backgroundColor: category.color, borderColor: category.color } : undefined}>{category.label}</button>;
         })}</div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm font-medium">Téléphone<input type="tel" className={`${fieldClass} mt-1 w-full`} value={form.phone ?? ""} onChange={(event) => setForm({ ...form, phone: event.target.value })} /></label>
         <label className="text-sm font-medium">Mobile<input type="tel" className={`${fieldClass} mt-1 w-full`} value={form.mobile ?? ""} onChange={(event) => setForm({ ...form, mobile: event.target.value })} /></label>
         <label className="text-sm font-medium">N° interne<input className={`${fieldClass} mt-1 w-full`} value={form.internalNumber ?? ""} onChange={(event) => setForm({ ...form, internalNumber: event.target.value })} /></label>
+        <label className="text-sm font-medium">N° privé<input type="tel" className={`${fieldClass} mt-1 w-full`} value={form.privateNumber ?? ""} onChange={(event) => setForm({ ...form, privateNumber: event.target.value })} /></label>
       </div>
       <label className="text-sm font-medium">Adresse e-mail<input type="email" className={`${fieldClass} mt-1 w-full`} value={form.email ?? ""} onChange={(event) => setForm({ ...form, email: event.target.value })} /></label>
       <label className="text-sm font-medium">Adresse<textarea className={`${fieldClass} mt-1 min-h-16 w-full py-3`} value={form.address ?? ""} onChange={(event) => setForm({ ...form, address: event.target.value })} /></label>

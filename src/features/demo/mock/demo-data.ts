@@ -101,8 +101,8 @@ export const initialDemoData: DemoData = {
     { id: "person-julie-qualite", name: "Julie Qualité", weeklyCapacityHours: 32, order: 2 },
   ],
   contacts: [
-    { id: "CT-001", type: "Externe", firstName: "Anke", lastName: "Verhoeven", company: "Mazak Europe", role: "Support technique", categoryIds: ["contact-category-fournisseur", "contact-category-maintenance"], phone: "+49 2151 5058 0", mobile: null, internalNumber: null, email: "support@mazak-europe.example", address: "Mazak-Allee 1, 41069 Mönchengladbach, Allemagne", website: "https://www.mazakeu.example", notes: "Contact pièces détachées et interventions Tournage." },
-    { id: "CT-002", type: "Externe", firstName: "Bruno", lastName: "Fontaine", company: "Thermitech SA", role: "Responsable clientèle", categoryIds: ["contact-category-sous-traitance-traitement-thermique"], phone: "+32 71 98 76 54", mobile: "+32 478 98 76 54", internalNumber: null, email: "b.fontaine@thermitech.example", address: "Rue de l’Industrie 12, 6000 Charleroi, Belgique", website: null, notes: "Traitement thermique — délai habituel 5 jours ouvrés." },
+    { id: "CT-001", type: "Externe", firstName: "Anke", lastName: "Verhoeven", company: "Mazak Europe", role: "Support technique", categoryIds: ["contact-category-fournisseur", "contact-category-maintenance"], phone: "+49 2151 5058 0", mobile: null, internalNumber: null, privateNumber: null, email: "support@mazak-europe.example", address: "Mazak-Allee 1, 41069 Mönchengladbach, Allemagne", website: "https://www.mazakeu.example", notes: "Contact pièces détachées et interventions Tournage." },
+    { id: "CT-002", type: "Externe", firstName: "Bruno", lastName: "Fontaine", company: "Thermitech SA", role: "Responsable clientèle", categoryIds: ["contact-category-sous-traitance-traitement-thermique"], phone: "+32 71 98 76 54", mobile: "+32 478 98 76 54", internalNumber: null, privateNumber: null, email: "b.fontaine@thermitech.example", address: "Rue de l’Industrie 12, 6000 Charleroi, Belgique", website: null, notes: "Traitement thermique — délai habituel 5 jours ouvrés." },
     ...TKMI_DIRECTORY_CONTACTS,
   ],
 };

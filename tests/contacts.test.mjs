@@ -142,6 +142,20 @@ test("le N° interne (poste du standard téléphonique) est un champ à part ent
   assert.match(detail, /<Info label="N° interne" value={contact\.internalNumber \|\| "—"} \/>/);
 });
 
+test("le N° privé (numéro personnel de la personne, distinct de ses numéros professionnels) est un champ à part entière, câblé dans le service, le formulaire et la fiche, cliquable en tel:", async () => {
+  const type = await read("src/features/demo/types/demo.ts");
+  assert.match(type, /privateNumber: string \| null;/);
+  const service = await read("src/features/contacts/services/contact-service.ts");
+  assert.match(service, /privateNumber\?: string \| null;/);
+  assert.match(service, /privateNumber: input\.privateNumber\?\.trim\(\) \|\| null,/);
+  const dialog = await read("src/features/contacts/components/ContactFormDialog.tsx");
+  assert.match(dialog, /N° privé<input type="tel" className={`\$\{fieldClass\} mt-1 w-full`} value={form\.privateNumber \?\? ""}/);
+  const detail = await read("src/features/contacts/components/ContactDetail.tsx");
+  assert.match(detail, /<Info label="N° privé" value={contact\.privateNumber \? <a className="text-\[var\(--app-primary\)\] underline" href={`tel:\$\{contact\.privateNumber\}`}>{contact\.privateNumber}<\/a> : "—"} \/>/);
+  const migration = await read("src/features/demo/services/demo-data-migration.ts");
+  assert.match(migration, /privateNumber: contact\.privateNumber \?\? null/, "repli de migration pour les contacts déjà enregistrés avant l'ajout de ce champ");
+});
+
 test("l'annuaire interne TKMI fourni par l'utilisateur (photo du standard téléphonique) est saisi dans un module dédié, séparé du reste du seed pour pouvoir être fusionné dans les installations existantes", async () => {
   const directory = await read("src/features/demo/mock/tkmi-directory-seed.ts");
   const contactEntries = directory.match(/\{ id: "CT-\d+",/g) ?? [];

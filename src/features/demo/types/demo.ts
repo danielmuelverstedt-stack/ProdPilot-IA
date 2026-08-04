@@ -263,6 +263,8 @@ export interface Contact {
   mobile: string | null;
   /** Numéro de poste interne (standard téléphonique de l'entreprise), distinct du téléphone/mobile externe. */
   internalNumber: string | null;
+  /** Numéro privé/personnel de la personne, distinct de ses numéros professionnels (téléphone/mobile). */
+  privateNumber: string | null;
   email: string | null;
   address: string | null;
   website: string | null;

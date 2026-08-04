@@ -849,3 +849,9 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [x] Annuaire extrait dans un module dédié (`tkmi-directory-seed.ts`), réutilisé par une nouvelle fusion à sens unique (`withTkmiDirectorySeed`) : ajouté une seule fois aux installations existantes, sans jamais toucher/dupliquer/remplacer les contacts déjà créés par l'utilisateur ; marqueur d'exécution unique par id fixe, jamais réinjecté après suppression volontaire.
 - [x] 2 nouveaux tests comportementaux (import direct de `migrateDemoData`, redevenu directement testable). `npx tsc --noEmit`, `npm run lint`, `npm test` (445/445), `npm run build` tous verts.
 - [ ] Recette manuelle nécessaire pour l'utilisateur : recharger l'application et confirmer que les 27 contacts TKMI apparaissent bien à côté du contact déjà créé, sans perte.
+
+## N° privé sur la fiche contact — 04/08/2026
+
+- [x] Demandé par l'utilisateur : numéro privé, distinct des numéros professionnels déjà présents. Nouveau champ `Contact.privateNumber`, câblé type/service/formulaire/fiche (lien `tel:` cliquable), avec repli de migration.
+- [x] 1 nouveau test. `npx tsc --noEmit`, `npm run lint`, `npm test` (446/446), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : ajouter un N° privé à un contact, confirmer l'affichage et le lien tel: sur la fiche.

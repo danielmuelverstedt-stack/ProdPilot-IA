@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Amélioration : colonne Retard de l'Atelier resserrée — 04/08/2026
+
+- Demandé par l'utilisateur après le correctif de resserrement précédent : la colonne Retard restait « trop grande ».
+- Cause : `StatusPill` (badge partagé, utilisé aussi pour les statuts machine/OF en taille normale ailleurs dans l'app) n'avait jamais été resserré comme le reste du tableau Atelier — `px-2.5 py-1 text-xs`, nettement plus grand que les 10px/20px de ligne du tableau resserré.
+- Nouvelle variante `size="sm"` sur `StatusPill` (`px-1.5 py-0 text-[10px]`, même palette de couleurs par ton) ; taille par défaut (`"md"`) inchangée pour tous les autres usages (Parc Machines, Réunions, Qualité ERP…). Colonne Retard de l'Atelier (`WorkshopOperationRow.tsx`) utilise désormais `size="sm"`.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (392/392), `npm run build` tous verts.
+
 ### Correctif racine : le resserrement visuel de l'Atelier du 31/07/2026 n'appliquait pas ses propres réductions de padding, et les cadres machine différaient en hauteur — 04/08/2026
 
 - Signalé par l'utilisateur en recettant l'onglet Atelier : « tout les planning n'ont pas la même taille » et « dans la case priorité on ne voit plus tellement que c'est petit ».

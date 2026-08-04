@@ -90,7 +90,7 @@ function renderCell(columnId: WorkshopColumnId, operation: OperationView, machin
   </select>;
   if (columnId === "start-date") return <span>{formatDate(operation.plannedDate)}</span>;
   if (columnId === "end-date") return <span>{formatDate(operation.dueDate)}</span>;
-  if (columnId === "delay") return <StatusPill tone={erpOperationDelayTone(operation.delayDays)}>{erpOperationDelayLabel(operation.delayDays)}</StatusPill>;
+  if (columnId === "delay") return <StatusPill tone={erpOperationDelayTone(operation.delayDays)} size="sm">{erpOperationDelayLabel(operation.delayDays)}</StatusPill>;
   return <WorkshopMachinePicker machines={machines} currentMachineId={operation.machineId} busy={busy} onSelect={(nextMachineId) => onUpdateMachine(operation.id, nextMachineId)} />;
 }
 

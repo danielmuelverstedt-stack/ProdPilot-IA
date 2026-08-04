@@ -4,14 +4,17 @@
 
 import { useEffect, useState } from "react";
 import { AppIcon } from "@/components/ui/AppIcon";
+import { ImageCropperDialog } from "@/components/ui/ImageCropperDialog";
 import { secondaryButton } from "@/components/ui/ModuleUi";
 import { readImageFileAsCompressedDataUrl } from "@/lib/image-file";
 
-/** Champ photo générique (machine, contact…) : aperçu, agrandissement, remplacement. Réutilisé par toute fiche ayant une photo. */
+/** Champ photo générique (machine, contact…) : aperçu, agrandissement, remplacement, recadrage (zoom + repositionnement). Réutilisé par toute fiche ayant une photo. */
 export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: string; alt: string; onChange: (dataUrl: string) => Promise<void> }) {
   const [zoomed, setZoomed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  /** Image source à recadrer : soit fraîchement sélectionnée, soit la photo déjà enregistrée (bouton « Recadrer »). */
+  const [cropSource, setCropSource] = useState<string | null>(null);
 
   useEffect(() => {
     if (!zoomed) return;
@@ -27,12 +30,21 @@ export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: s
     setError(null);
     setPending(true);
     try {
-      const dataUrl = await readImageFileAsCompressedDataUrl(file);
-      await onChange(dataUrl);
+      setCropSource(await readImageFileAsCompressedDataUrl(file));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Cette photo n’a pas pu être ajoutée.");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function confirmCrop(dataUrl: string) {
+    setError(null);
+    try {
+      await onChange(dataUrl);
+      setCropSource(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Cette photo n’a pas pu être enregistrée.");
     }
   }
 
@@ -46,12 +58,13 @@ export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: s
       ) : (
         <div className="flex h-40 w-64 items-center justify-center rounded-xl border border-dashed border-[var(--app-border)] bg-slate-50 text-center text-xs text-slate-400">Aucune photo</div>
       )}
-      <div>
+      <div className="flex flex-wrap gap-2">
         <label className={`${secondaryButton} cursor-pointer ${pending ? "pointer-events-none opacity-60" : ""}`}>
           {pending ? "Traitement…" : photoDataUrl ? "Changer la photo" : "Ajouter une photo"}
           <input type="file" accept="image/*" className="hidden" disabled={pending} onChange={(event) => { void readPhoto(event.target.files?.[0]); event.target.value = ""; }} />
         </label>
-        {error ? <p role="alert" className="mt-2 max-w-xs rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{error}</p> : null}
+        {photoDataUrl ? <button type="button" className={secondaryButton} onClick={() => setCropSource(photoDataUrl)} title="Zoomer et déplacer la photo pour mieux la centrer">Recadrer</button> : null}
+        {error ? <p role="alert" className="mt-2 w-full max-w-xs rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{error}</p> : null}
       </div>
       {zoomed && photoDataUrl ? (
         <div
@@ -65,6 +78,7 @@ export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: s
           </div>
         </div>
       ) : null}
+      {cropSource ? <ImageCropperDialog imageSrc={cropSource} alt={alt} onCancel={() => setCropSource(null)} onConfirm={confirmCrop} /> : null}
     </div>
   );
 }

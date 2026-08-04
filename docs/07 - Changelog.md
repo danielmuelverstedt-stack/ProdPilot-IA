@@ -4,6 +4,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Amélioration : e-mail/téléphone sur la fiche récap Contacts, et recadrage de photo (zoom + déplacement) — 04/08/2026
+
+- Demandé par l'utilisateur, en suite directe du module Contacts : voir l'e-mail et le téléphone directement sur la carte récapitulative (sans devoir ouvrir la fiche complète), et pouvoir recadrer une photo (zoomer, déplacer, mieux centrer) plutôt que subir le cadrage automatique de l'image d'origine.
+- `ContactsModule.tsx` : chaque carte affiche désormais l'e-mail et le téléphone (fixe, à défaut mobile) sous la fonction/société, avec icônes dédiées (texte simple, non cliquable depuis la carte — la carte entière est déjà un lien vers la fiche, où ces coordonnées sont cliquables en tel:/mailto:).
+- Nouveau `ImageCropperDialog.tsx` (`src/components/ui/`) : recadrage interactif sans dépendance externe (canvas + événements pointeur, sur le même principe que les autres widgets faits main du projet). Glisser pour repositionner, curseur pour zoomer, toujours borné pour ne jamais laisser d'espace vide dans le cadre carré de sortie.
+- Logique de recadrage (échelle de couverture, bornes de déplacement, rectangle source pour l'export canvas) extraite en module pur et testé `src/lib/image-crop-math.ts`, séparé du composant interactif.
+- `PhotoUploader.tsx` (partagé Machines/Contacts) : une nouvelle sélection de fichier ouvre désormais le recadrage avant l'enregistrement (au lieu d'un centrage automatique) ; un bouton « Recadrer » permet aussi d'ajuster une photo déjà enregistrée sans devoir la re-téléverser. Bénéficie aussi bien à la fiche machine qu'aux fiches Contacts, sans duplication.
+- 8 nouveaux tests (`tests/image-crop-math.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (439/439), `npm run build` tous verts. Contenu vérifié dans le HTML rendu (e-mail/téléphone visibles sur la carte).
+- [ ] Recette manuelle dans le navigateur nécessaire (aucun outil interactif disponible dans cet environnement) : tester le glisser-déposer et le zoom du recadrage sur desktop et tactile, confirmer qu'aucun espace vide n'apparaît aux valeurs extrêmes de zoom, et vérifier le rendu final de la photo recadrée dans les vignettes.
+
 ### Ajout : module Contacts — annuaire d'entreprise centralisé — 04/08/2026
 
 - Demandé par l'utilisateur : un module Contacts servant de base centralisée pour toutes les personnes avec qui l'entreprise travaille (collaborateurs, fournisseurs, sous-traitants…), avec fiche complète, type (interne/externe), catégories configurables multiples, recherche/filtres, et vocation à être utilisé plus tard par les autres modules (Actions, Mails…) — cette dernière partie explicitement présentée comme un objectif futur, non demandée pour ce chantier.

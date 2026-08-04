@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { EmptyState, fieldClass, ModuleHeader, primaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { AppIcon } from "@/components/ui/AppIcon";
 import { PhotoThumbnail } from "@/components/ui/PhotoThumbnail";
 import { useDemoData } from "@/features/demo/services/demo-repository";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
@@ -52,6 +53,10 @@ export function ContactsModule() {
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold text-[var(--app-text)]">{contactFullName(contact)}</p>
           <p className="truncate text-sm text-slate-500">{[contact.role, contact.company].filter(Boolean).join(" · ") || (contact.type === "Interne" ? "Contact interne" : "Contact externe")}</p>
+          <div className="mt-1.5 flex flex-col gap-0.5 text-xs text-slate-500">
+            {contact.email ? <span className="flex items-center gap-1 truncate"><AppIcon name="mail" className="size-3.5 shrink-0" />{contact.email}</span> : null}
+            {contact.phone || contact.mobile ? <span className="flex items-center gap-1 truncate"><AppIcon name="phone" className="size-3.5 shrink-0" />{contact.phone || contact.mobile}</span> : null}
+          </div>
           <div className="mt-2 flex flex-wrap gap-1">
             <StatusPill tone={contact.type === "Interne" ? "info" : "neutral"}>{contact.type}</StatusPill>
             {contactCategories.slice(0, 2).map((category) => <StatusPill key={category.id} tone="neutral">{category.label}</StatusPill>)}

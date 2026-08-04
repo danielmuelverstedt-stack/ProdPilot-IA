@@ -823,3 +823,10 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [ ] **Non fait, explicitement présenté comme un objectif futur par l'utilisateur** : intégration de Contacts dans les autres modules (assigner une action à un contact, appeler/e-mailer en un clic depuis un autre écran, sélection automatique lors d'une demande de sous-traitance/achat). Seule la fiche contact elle-même propose des liens tel:/mailto:/site cliquables.
 - [ ] Recetter manuellement dans le navigateur : créer/modifier/supprimer un contact, tester recherche et filtres (nom, société, type, catégorie), ajouter une photo, vérifier les liens tel:/mailto:/site, gérer les catégories depuis Réglages → Contacts, et confirmer l'affichage correct de l'entrée de navigation pour un rôle non-administrateur.
 - [ ] Étendre le CSV import/export (déjà existant pour le Parc Machines) aux Contacts, si le volume de saisie manuelle le justifie — non demandé pour ce chantier.
+
+## E-mail/téléphone sur la fiche récap Contacts, et recadrage de photo — 04/08/2026
+
+- [x] Demandé par l'utilisateur : voir l'e-mail et le téléphone directement sur la carte récapitulative de chaque contact ; pouvoir zoomer/déplacer une photo pour mieux la centrer/rogner, plutôt qu'un centrage automatique subi.
+- [x] Cartes Contacts affichent e-mail/téléphone. Nouveau `ImageCropperDialog.tsx` (zoom + déplacement, canvas, sans dépendance externe) et module pur testé `image-crop-math.ts`, intégrés dans `PhotoUploader.tsx` (partagé Machines/Contacts) : recadrage à l'ajout d'une photo, et bouton « Recadrer » pour ajuster une photo déjà enregistrée.
+- [x] 8 nouveaux tests (`tests/image-crop-math.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (439/439), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : glisser-déposer et zoom du recadrage sur desktop et tactile (souris, pavé tactile, écran tactile), confirmer l'absence d'espace vide aux valeurs extrêmes de zoom, vérifier le rendu final sur la fiche machine et la fiche Contacts.

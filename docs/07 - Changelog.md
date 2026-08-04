@@ -4,6 +4,15 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Ajout : questions et commandes IA sur le planning ERP (machine, priorité) — 04/08/2026
+
+- Demandé par l'utilisateur : « développe l'IA que tout soit relié et que je puisse poser des questions du genre que l'OF-63596 est sur quelle machine, quelle est le niveau de priorité de l'OF-65489, ou peux-tu la passer en priorité n2 ».
+- Nouvel interprète local déterministe (`planning-assistant-interpreter.ts`), sans aucun appel IA payant, conforme à l'escalade « local avant IA » de la Constitution IA : reconnaît un numéro d'OF dans le texte (y compris la faute de frappe fréquente sans le F, ex. « o63596 »), distingue une simple consultation (machine, priorité) d'une demande de modification, et **ne propose jamais** de modification de priorité tant que l'opération visée n'est pas identifiée sans ambiguïté — un OF à opération unique, ou un numéro d'opération explicitement précisé par l'utilisateur en cas de plusieurs opérations. La Constitution IA interdit à l'assistant de décider seul d'une priorité engageante ; en cas d'ambiguïté, l'assistant liste les opérations candidates et attend une précision, sans jamais deviner.
+- Nouvelle couche d'orchestration (`planning-assistant-orchestration.ts`), raccordée à l'orchestrateur central existant (`assistant-orchestrator.ts`) exactement comme le Mail Copilot et le Calendrier : la consultation passe par un outil de risque `read` (même route `GET /api/erp/planning` que la fiche OF, aucune deuxième source de vérité), la modification par un outil `mutate-local` (même route `PATCH /api/erp/operations/[id]` que l'Atelier et Planning capacité), jamais exécutée avant confirmation explicite de l'utilisateur dans la conversation.
+- `AssistantPanel.tsx` : nouveau flux de dispatch (proposition de modification en attente → confirmation/annulation → désambiguïsation par numéro d'opération si plusieurs opérations pour l'OF → nouvelle demande), câblé après les flux Calendrier/Actions déjà en place et avant le repli sur l'interprète Actions. L'OF cité dans une question est mémorisé pour permettre une question de suivi sans le répéter (« et sa priorité ? »).
+- 13 nouveaux tests unitaires (`tests/planning-assistant.test.mjs`), purs et sans appel réseau : extraction d'OF/priorité/numéro d'opération, distinction consultation/modification, réponse directe vs. détaillée pour un OF multi-opérations, et les trois issues de `buildSetPriorityOutcome` (proposition directe, désambiguïsation demandée, numéro d'opération résolu). `npx tsc --noEmit`, `npm run lint`, `npm test` (458/458), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire pour l'utilisateur : poser une question de machine/priorité sur un OF réellement importé, confirmer une modification de priorité, déclencher une désambiguïsation (OF à plusieurs opérations) et une annulation.
+
 ### Ajout : N° privé sur la fiche contact — 04/08/2026
 
 - Demandé par l'utilisateur : ajouter un numéro privé, distinct des numéros professionnels déjà présents (téléphone, mobile, N° interne).

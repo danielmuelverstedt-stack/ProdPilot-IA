@@ -1,0 +1,85 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { buildDemoMachineReview, buildErpMachineReview } from "../src/features/meetings/services/meeting-machine-review.ts";
+
+const machineBase = { active: true, visible: true, deleted: false, name: "Machine", displayName: "Machine", department: "Fraisage", departmentId: "dept-fraisage", machineType: "Fraisage", color: "", order: 0, technicalInformation: "" };
+
+const machines = [
+  { ...machineBase, id: "cv5-500", displayName: "CV5-500", order: 0 },
+  { ...machineBase, id: "dmu50", displayName: "DMU50", order: 1 },
+  { ...machineBase, id: "dmu60", displayName: "DMU60", order: 2, active: false },
+  { ...machineBase, id: "masked-machine", displayName: "Masquée", order: 3, visible: false },
+];
+
+const opBase = { isRemoved: false, isVisible: true, isWithoutMachine: false, articleWorkOrderCount: 1, department: null, resourceGroup: null, sourcePriority: 1, userPriority: null, sourceOperationStatusId: 1, sourceOrderStatus: "OUVERT", effectiveStatus: "not-started", plannedDate: null, dueDate: null, delayDays: null, comment: null, operationNumber: 10, taskCode: "T1", articleCode: "A100", workOrder: { customerName: "EXAIL" } };
+
+function op(overrides) { return { ...opBase, ...overrides }; }
+
+test("buildErpMachineReview : les OF les plus prioritaires de chaque machine active et visible, limités à N, avec leur désignation", () => {
+  const operations = [
+    op({ id: "op-1", workOrderId: "OF-100", machineId: "cv5-500", machine: "CV5-500", description: "Bride", effectivePriority: 3 }),
+    op({ id: "op-2", workOrderId: "OF-101", machineId: "cv5-500", machine: "CV5-500", description: "Axe", effectivePriority: 1 }),
+    op({ id: "op-3", workOrderId: "OF-102", machineId: "cv5-500", machine: "CV5-500", description: "Support", effectivePriority: 2 }),
+    op({ id: "op-4", workOrderId: "OF-200", machineId: "dmu50", machine: "DMU50", description: "Flasque", effectivePriority: 5 }),
+    op({ id: "op-5", workOrderId: "OF-300", machineId: "dmu60", machine: "DMU60", description: "Sur machine inactive", effectivePriority: 1 }),
+  ];
+  const groups = buildErpMachineReview(operations, machines, 2);
+  assert.deepEqual(groups.map((group) => group.machineId), ["cv5-500", "dmu50"], "ordre des machines actives/visibles, machine inactive exclue");
+  assert.deepEqual(groups[0].rows.map((row) => row.workOrderId), ["OF-101", "OF-102"], "les 2 OF de plus haute priorité (numéro le plus bas), limité à N");
+  assert.deepEqual(groups[0].rows.map((row) => row.description), ["Axe", "Support"]);
+  assert.deepEqual(groups[1].rows.map((row) => row.workOrderId), ["OF-200"]);
+});
+
+test("buildErpMachineReview : machine masquée exclue, machine sans opération absente du résultat, description manquante repliée sur « Sans description »", () => {
+  const operations = [
+    op({ id: "op-1", workOrderId: "OF-100", machineId: "masked-machine", machine: "Masquée", description: "Ne doit pas apparaître", effectivePriority: 1 }),
+    op({ id: "op-2", workOrderId: "OF-101", machineId: "cv5-500", machine: "CV5-500", description: "", effectivePriority: 1 }),
+  ];
+  const groups = buildErpMachineReview(operations, machines, 5);
+  assert.deepEqual(groups.map((group) => group.machineId), ["cv5-500"], "machine masquée exclue, DMU50 sans opération absente du résultat");
+  assert.equal(groups[0].rows[0].description, "Sans description");
+});
+
+const demoMachines = [
+  { id: "m-1", displayName: "Machine 1" },
+  { id: "m-2", displayName: "Machine 2" },
+];
+
+function planned(overrides) { return { id: "po-1", workOrderId: "OF-1", operationId: "op-1", machineId: "m-1", startAt: "2026-08-01T08:00:00Z", endAt: "2026-08-01T10:00:00Z", status: "À faire", comments: "", ...overrides }; }
+
+test("buildDemoMachineReview : regroupe par machine dans l'ordre chronologique, limite à N, résout la désignation depuis l'opération de l'OF de démonstration", () => {
+  const workOrders = [
+    { id: "OF-1", description: "OF description générale", operations: [{ id: "op-1", description: "Perçage" }, { id: "op-2", description: "Fraisage" }] },
+    { id: "OF-2", description: "Autre OF", operations: [] },
+  ];
+  const planning = [
+    planned({ id: "po-1", machineId: "m-1", operationId: "op-2", startAt: "2026-08-01T14:00:00Z" }),
+    planned({ id: "po-2", machineId: "m-1", operationId: "op-1", startAt: "2026-08-01T08:00:00Z" }),
+    planned({ id: "po-3", machineId: "m-1", workOrderId: "OF-2", operationId: "op-x", startAt: "2026-08-01T09:00:00Z" }),
+  ];
+  const groups = buildDemoMachineReview(planning, demoMachines, workOrders, 2);
+  assert.deepEqual(groups.map((group) => group.machineId), ["m-1"], "Machine 2 sans planning absente du résultat");
+  assert.deepEqual(groups[0].rows.map((row) => row.workOrderId), ["OF-1", "OF-2"], "ordre chronologique, limité à N");
+  assert.equal(groups[0].rows[0].description, "Perçage", "opération résolue par id dans l'OF");
+  assert.equal(groups[0].rows[1].description, "Autre OF", "repli sur la description de l'OF quand l'opération est introuvable");
+});
+
+test("le nouveau composant de revue OF par machine bascule entre planning ERP réel et démonstration, comme la fiche OF", async () => {
+  const source = await readFile(new URL("../src/features/meetings/components/MeetingMachineReview.tsx", import.meta.url), "utf8");
+  assert.match(source, /useErpImportActive/, "doit réutiliser le même bascule ERP/démonstration que WorkOrderDetail.tsx");
+  assert.match(source, /hasActiveImport \? <ErpMachineReview/);
+});
+
+test("une action créée depuis la revue OF par machine reste liée à l'OF précis (module workOrder), pas seulement à la réunion", async () => {
+  const source = await readFile(new URL("../src/features/meetings/components/MeetingMachineReview.tsx", import.meta.url), "utf8");
+  assert.match(source, /module: "workOrder", id: workOrderId, label: workOrderId, href: `\/of\/\$\{workOrderId\}`/);
+  assert.match(source, /<ActionFormDialog origine={origine} contextLink={buildContextLink\(actionTarget\.workOrderId\)}/);
+});
+
+test("la réunion de production intègre la nouvelle étape « OF planifiés par machine » sans décaler les étapes QRQC", async () => {
+  const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
+  assert.match(workflow, /"OF planifiés par machine"/);
+  assert.match(workflow, /type === "Production" && step === 3\) return <MeetingMachineReview origine={origine} \/>/);
+  assert.match(workflow, /type === "QRQC" && \[1, 2, 3, 4\]\.includes\(step\)/, "les indices d'étapes QRQC ne doivent pas bouger");
+});

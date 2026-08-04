@@ -6,10 +6,11 @@ import { fieldClass, ModuleHeader, primaryButton, secondaryButton, StatusPill } 
 import { updateDemoData, useDemoData } from "@/features/demo/services/demo-repository";
 import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog";
 import { MeetingActionReview } from "@/features/meetings/components/MeetingActionReview";
+import { MeetingMachineReview } from "@/features/meetings/components/MeetingMachineReview";
 import type { ActionContextLink } from "@/features/demo/types/demo";
 
 const qrqcSteps = ["Revue des actions QRQC", "OF en cours", "Prochains OF", "Points bloquants", "Besoins des départements", "Actions créées", "Synthèse", "Clôture"];
-const productionSteps = ["Revue des actions précédentes", "Cinq projets critiques", "Vue planning", "OF urgents", "Demandes des départements", "Décisions", "Synthèse", "Compte rendu"];
+const productionSteps = ["Revue des actions précédentes", "Cinq projets critiques", "Vue planning", "OF planifiés par machine", "OF urgents", "Demandes des départements", "Décisions", "Synthèse", "Compte rendu"];
 const needs = ["Qualité", "Planning", "Programme", "Outillage", "Matière", "Maintenance", "Achats", "Autre"];
 
 function originForType(type: "QRQC" | "Production") { return type === "QRQC" ? "QRQC" : "Réunion de production"; }
@@ -46,9 +47,10 @@ export function MeetingWorkflow({ type }: { type: "QRQC" | "Production" }) {
 
 function StepContent({ type, step, data, criticalOrders, origine }: { type: "QRQC" | "Production"; step: number; data: ReturnType<typeof useDemoData>; criticalOrders: ReturnType<typeof useDemoData>["workOrders"]; origine: string }) {
   if (step === 0) return <MeetingActionReview origine={origine} />;
-  if ((type === "QRQC" && [1, 2, 3, 4].includes(step)) || (type === "Production" && [1, 3].includes(step))) return <div className="mt-4 grid gap-3">{criticalOrders.map((order) => <article key={order.id} className="rounded-xl border border-[var(--app-border)] p-4"><div className="flex flex-wrap justify-between gap-2"><Link href={`/of/${order.id}`} className="font-semibold text-[var(--app-primary)]">{order.id} · {order.customer}</Link><StatusPill tone={order.status === "Bloqué" ? "danger" : "warning"}>{order.status}</StatusPill></div><p className="mt-2 text-sm">Cet OF a-t-il besoin de quelque chose ?</p><div className="mt-2 flex flex-wrap gap-1">{needs.map((need) => <button key={need} className="rounded-full border px-2.5 py-1 text-xs hover:bg-slate-50">{need}</button>)}</div></article>)}</div>;
+  if (type === "Production" && step === 3) return <MeetingMachineReview origine={origine} />;
+  if ((type === "QRQC" && [1, 2, 3, 4].includes(step)) || (type === "Production" && [1, 4].includes(step))) return <div className="mt-4 grid gap-3">{criticalOrders.map((order) => <article key={order.id} className="rounded-xl border border-[var(--app-border)] p-4"><div className="flex flex-wrap justify-between gap-2"><Link href={`/of/${order.id}`} className="font-semibold text-[var(--app-primary)]">{order.id} · {order.customer}</Link><StatusPill tone={order.status === "Bloqué" ? "danger" : "warning"}>{order.status}</StatusPill></div><p className="mt-2 text-sm">Cet OF a-t-il besoin de quelque chose ?</p><div className="mt-2 flex flex-wrap gap-1">{needs.map((need) => <button key={need} className="rounded-full border px-2.5 py-1 text-xs hover:bg-slate-50">{need}</button>)}</div></article>)}</div>;
   if ((type === "Production" && step === 2)) return <List items={data.planning.map((item) => `${item.workOrderId} · ${item.machineId} · ${item.startAt.slice(0, 10)}`)} />;
-  if ((type === "Production" && step === 4)) return <List items={data.requests.filter((item) => item.status !== "Terminée").map((item) => `${item.id} · ${item.title} · ${item.status}`)} />;
+  if ((type === "Production" && step === 5)) return <List items={data.requests.filter((item) => item.status !== "Terminée").map((item) => `${item.id} · ${item.title} · ${item.status}`)} />;
   if (step >= 5) return <List items={[`${data.actions.filter((item) => item.statut !== "Fait").length} actions ouvertes`, `${data.requests.filter((item) => item.status !== "Terminée").length} demandes actives`, `${data.machines.filter((item) => item.status === "En panne").length} machine en panne`]} />;
   return <p className="mt-4 text-sm text-slate-600">Ajoutez les décisions et points à suivre dans les champs ci-dessous.</p>;
 }

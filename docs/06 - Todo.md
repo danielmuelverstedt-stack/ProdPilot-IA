@@ -768,3 +768,20 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [x] Tests existants mis à jour dans `tests/planning-workshop.test.mjs` (2 assertions sur l'ancien minimum 80px, 1 assertion sur l'ancienne classe du menu Statut) pour refléter les nouvelles valeurs ; aucun nouveau test ajouté (changement purement visuel, déjà couvert par les tests de câblage/comportement existants qui restent valides).
 - [x] `npx tsc --noEmit`, `npm run lint`, `npm test` (392/392), `npm run build` tous verts. Les nouvelles classes compactes ont été retrouvées dans le bundle client réellement construit (`.next/static/chunks/`), preuve que le code compacté est bien celui qui serait servi — mais faute d'outil de navigateur interactif dans cet environnement, l'onglet Atelier n'a pas pu être ouvert et capturé visuellement (il n'est monté côté client qu'après un premier clic sur l'onglet, jamais au premier rendu serveur de `/planning`).
 - [ ] Recetter manuellement dans le navigateur (non fait faute d'outil de navigateur automatisé) : ouvrir l'onglet Atelier et juger si le resserrement est suffisant/pas trop agressif, vérifier qu'aucun texte des colonnes Article/Client/Désignation ne devient illisible aux nouvelles largeurs, tester le redimensionnement manuel d'une colonne jusqu'à son nouveau minimum (60px), et confirmer que les 3 boutons d'action tiennent bien sur une seule ligne à la largeur d'écran habituelle.
+
+## Correctifs de resserrement Atelier (padding/hauteurs inégales) et colonne Retard — 04/08/2026
+
+- [x] Corrigé racine : le padding `px-1`/`px-1.5` du resserrement du 31/07 restait sans effet (conflit d'ordre de génération Tailwind v4 avec `px-3` de `fieldClass`/`secondaryButton`) — classes autonomes (`compactFieldClass`/`compactButtonClass`) dans `WorkshopOperationRow.tsx` et `WorkshopMachinePicker.tsx`.
+- [x] Corrigé : cadres machine à hauteur inégale (`maxHeight` au lieu d'une hauteur fixe) dans `WorkshopMachinePanel.tsx`.
+- [x] Ajouté : variante `size="sm"` sur `StatusPill` (partagé), utilisée par la colonne Retard de l'Atelier ; taille par défaut inchangée ailleurs.
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm test` (392/392), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : confirmer que la colonne Priorité est lisible, que les boutons d'action tiennent sur une ligne, que les cadres machine ont désormais tous la même hauteur à réglage égal, et que la colonne Retard n'est plus disproportionnée par rapport au reste du tableau.
+
+## Étape « OF planifiés par machine » dans la réunion de production — 04/08/2026
+
+- [x] Demandé par l'utilisateur : revoir, machine par machine, les 5 OF planifiés avec leur désignation, et pouvoir créer une action liée à l'OF pendant la revue.
+- [x] Nouveau service testé `meeting-machine-review.ts` (`buildErpMachineReview`/`buildDemoMachineReview`), nouveau composant `MeetingMachineReview.tsx` basculant ERP réel/démonstration comme `WorkOrderDetail.tsx`, nouvelle étape dans `productionSteps` (`MeetingWorkflow.tsx`), bouton « + Action » par OF ouvrant `ActionFormDialog` avec `contextLink` vers l'OF précis et `origine` = « Réunion de production ».
+- [x] Réunion QRQC volontairement non modifiée (demande limitée à la réunion de production).
+- [x] 6 nouveaux tests (`tests/meeting-machine-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (398/398), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : parcourir la réunion de production jusqu'à la nouvelle étape, vérifier l'affichage par machine en mode ERP réel et en mode démonstration (sans import actif), créer une action depuis un OF et confirmer qu'elle apparaît bien sur la fiche de cet OF puis dans la revue des actions d'une prochaine réunion.
+- [ ] Étendre éventuellement cette étape à la réunion QRQC, si le besoin est confirmé (hors périmètre de cette demande).

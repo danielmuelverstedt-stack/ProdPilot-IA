@@ -4,6 +4,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Ajout : étape « OF planifiés par machine » dans la réunion de production, avec création d'action liée à l'OF — 04/08/2026
+
+- Demandé par l'utilisateur : une étape de la réunion de production où revoir, machine par machine, les 5 OF planifiés avec leur désignation, et pouvoir créer une action directement liée à l'OF si un point le nécessite pendant la revue.
+- Nouveau service pur et testé `meeting-machine-review.ts` (`buildErpMachineReview`/`buildDemoMachineReview`) : les 5 OF de plus haute priorité de chaque machine active et visible, avec leur désignation. Réutilise le regroupement et le tri déjà utilisés par l'Atelier (`groupOperationsByMachineId`/`sortOperations`), sans redéfinir aucune règle de correspondance machine ou de priorité.
+- Nouveau composant `MeetingMachineReview.tsx`, basculant automatiquement entre le planning ERP réel (import actif) et le repli démonstration, exactement comme la fiche OF (`WorkOrderDetail.tsx`, `useErpImportActive`) — jamais les deux mélangés.
+- Chaque ligne d'OF propose un bouton « + Action » qui ouvre la fenêtre unique `ActionFormDialog` déjà utilisée partout ailleurs, avec `contextLink` pointant vers l'OF précis (`module: "workOrder"`, comme la fiche OF et Parc Machines) et `origine` = « Réunion de production » : l'action créée réapparaît dans la revue des actions (étape 1) d'une prochaine réunion, comme toute autre action de cette origine.
+- Nouvelle étape insérée dans `productionSteps` (`MeetingWorkflow.tsx`), juste après « Vue planning » ; les étapes suivantes de la réunion Production se décalent d'un cran. Étapes et logique de la réunion QRQC inchangées (chantier explicitement limité à la réunion de production, demande de l'utilisateur).
+- 6 nouveaux tests (`tests/meeting-machine-review.test.mjs`) : regroupement/tri/limite par machine (ERP et démonstration), exclusion des machines inactives/masquées, repli de désignation, bascule ERP/démonstration, câblage du `contextLink` vers l'OF, non-régression des indices d'étapes QRQC.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (398/398), `npm run build` tous verts. Route `/reunions/production` testée servie sans erreur de compilation ; le parcours interactif (navigation entre étapes, ouverture de la fenêtre d'action) reste à recetter manuellement dans un navigateur, aucun outil interactif n'étant disponible dans cet environnement.
+
 ### Amélioration : colonne Retard de l'Atelier resserrée — 04/08/2026
 
 - Demandé par l'utilisateur après le correctif de resserrement précédent : la colonne Retard restait « trop grande ».

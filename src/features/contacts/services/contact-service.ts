@@ -10,6 +10,7 @@ export interface ContactInput {
   categoryIds?: string[];
   phone?: string | null;
   mobile?: string | null;
+  internalNumber?: string | null;
   email?: string | null;
   address?: string | null;
   website?: string | null;
@@ -34,6 +35,7 @@ function normalize(input: ContactInput): Omit<Contact, "id"> {
     categoryIds: input.categoryIds ?? [],
     phone: input.phone?.trim() || null,
     mobile: input.mobile?.trim() || null,
+    internalNumber: input.internalNumber?.trim() || null,
     email: input.email?.trim() || null,
     address: input.address?.trim() || null,
     website: input.website?.trim() || null,

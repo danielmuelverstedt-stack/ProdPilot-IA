@@ -1,4 +1,4 @@
-import type { ActionContextLink, ActionStatus, DemoData, ProductionAction } from "@/features/demo/types/demo";
+import type { ActionContextLink, ActionStatus, Contact, DemoData, ProductionAction } from "@/features/demo/types/demo";
 
 /** Complète une action déjà stockée (avant la planification équipe) avec les nouveaux champs, tous `null` par défaut — jamais `undefined`, pour rester conforme au type même sur des données anciennes. */
 function withActionPlanningDefaults(value: unknown): ProductionAction {
@@ -12,6 +12,12 @@ function withActionPlanningDefaults(value: unknown): ProductionAction {
     planningOrder: action.planningOrder ?? null,
     parentActionId: action.parentActionId ?? null,
   };
+}
+
+/** Complète un contact déjà stocké avec les champs ajoutés depuis (N° interne), `null` par défaut. */
+function withContactDefaults(value: unknown): Contact {
+  const contact = value as Contact;
+  return { ...contact, internalNumber: contact.internalNumber ?? null };
 }
 
 interface LegacyAction {
@@ -104,7 +110,7 @@ function withMachineSheetDefaults(value: Record<string, unknown>): Record<string
     savContacts: Array.isArray(value.savContacts) ? value.savContacts : [],
     consumables: Array.isArray(value.consumables) ? value.consumables : [],
     people: Array.isArray(value.people) ? value.people : [],
-    contacts: Array.isArray(value.contacts) ? value.contacts : [],
+    contacts: Array.isArray(value.contacts) ? value.contacts.map(withContactDefaults) : [],
     actions: Array.isArray(value.actions) ? value.actions.map(withActionPlanningDefaults) : [],
   };
 }

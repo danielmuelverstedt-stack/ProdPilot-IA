@@ -4,6 +4,15 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Ajout : annuaire interne TKMI saisi dans Contacts, nouveau champ N° interne — 04/08/2026
+
+- Demandé par l'utilisateur : saisir la fiche contact de toutes les personnes d'une photo du standard téléphonique interne fournie (27 lignes : personnes nommées et quelques boîtes de service/salles de réunion), en tant que contacts internes.
+- Nouveau champ `Contact.internalNumber` (poste du standard téléphonique de l'entreprise, distinct du téléphone/mobile externe) : ajouté au type, au service (`contact-service.ts`), au formulaire (`ContactFormDialog.tsx`) et à la fiche (`ContactDetail.tsx`), avec repli de migration pour les contacts déjà enregistrés (`withContactDefaults`, même principe que les actions).
+- 27 contacts internes saisis dans les données de démonstration (`demo-data.ts`) à partir de la photo fournie : nom, e-mail, téléphone, mobile, poste interne. Les entrées correspondant à une boîte de service ou une salle de réunion (Comptabilité, Contrôle Qualité, Salle Aquarium, Salle Meuse, Tôlerie Production, Transport) sont saisies sans prénom, avec une note explicite « boîte de service, pas une personne ».
+- **Trois numéros de téléphone fixe signalés comme incertains plutôt que devinés silencieusement** (transcription depuis une image) : Coralie Demeyere (numéro visiblement corrompu sur l'image, corrigé pour suivre le format commun aux autres postes — à confirmer), Daniel Mülverstedt et Frédéric Schyns (longueur inhabituelle par rapport aux autres numéros de la même liste — conservés tels que lus, signalés). Voir la note sur chaque fiche concernée.
+- 4 nouveaux tests (`tests/contacts.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (443/443), `npm run build` tous verts. Contenu vérifié dans le HTML rendu (27 occurrences `@tkmi.be`, N° interne affiché sur la fiche).
+- [ ] **À vérifier par l'utilisateur** : les 3 numéros signalés ci-dessus, ainsi que les deux postes internes identiques (219) relevés pour Frédéric Schyns et William Toorop — possible erreur de transcription à confirmer avec la source.
+
 ### Amélioration : photo plus grande et carrée sur la fiche Contacts — 04/08/2026
 
 - Demandé par l'utilisateur : la photo de la fiche Contacts n'était pas assez visible.

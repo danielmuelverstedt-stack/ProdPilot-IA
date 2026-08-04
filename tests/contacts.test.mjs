@@ -23,6 +23,10 @@ test("contactFullName concatène prénom et nom", () => {
   assert.equal(contactFullName(contact({ firstName: "Marc", lastName: "Lambert" })), "Marc Lambert");
 });
 
+test("contactFullName gère une fiche de service sans prénom (ex. boîte partagée, salle de réunion) sans espace résiduel", () => {
+  assert.equal(contactFullName(contact({ firstName: "", lastName: "Comptabilité TKMI" })), "Comptabilité TKMI");
+});
+
 test("filterContacts : la recherche par nom couvre aussi la société, insensible à la casse et aux accents de casse", () => {
   const filters = { ...createDefaultContactFilters(), search: "mazak" };
   assert.deepEqual(filterContacts(contacts, filters).map((item) => item.id), ["CT-2"]);
@@ -104,9 +108,10 @@ test("les Réglages migrent contacts.categories avec le même mécanisme génér
   assert.match(repository, /categories: migrateStandards\(saved\.categories, defaults\.categories\) \};/);
 });
 
-test("les données de démonstration migrent le tableau contacts comme savContacts/consumables/people (repli sur [] pour les installations existantes)", async () => {
+test("les données de démonstration migrent le tableau contacts comme savContacts/consumables/people (repli sur [] pour les installations existantes), avec un repli par champ pour le N° interne ajouté depuis", async () => {
   const migration = await read("src/features/demo/services/demo-data-migration.ts");
-  assert.match(migration, /contacts: Array\.isArray\(value\.contacts\) \? value\.contacts : \[\],/);
+  assert.match(migration, /contacts: Array\.isArray\(value\.contacts\) \? value\.contacts\.map\(withContactDefaults\) : \[\],/);
+  assert.match(migration, /internalNumber: contact\.internalNumber \?\? null/);
   const repository = await read("src/features/demo/services/demo-repository.ts");
   assert.match(repository, /item\.savContacts, item\.consumables, item\.people, item\.contacts\]/);
 });
@@ -116,4 +121,26 @@ test("le sélecteur machine de l'Atelier et la revue de réunion réutilisent Ph
   assert.match(contactsModule, /import \{ PhotoThumbnail \} from "@\/components\/ui\/PhotoThumbnail";/);
   const machineDetail = await read("src/features/machines/components/MachineDetail.tsx");
   assert.match(machineDetail, /import \{ PhotoUploader \} from "@\/components\/ui\/PhotoUploader";/, "la fiche machine réutilise aussi le nouvel emplacement partagé, plus sa copie locale d'origine");
+});
+
+test("le N° interne (poste du standard téléphonique) est un champ à part entière, câblé dans le service, le formulaire et la fiche", async () => {
+  const type = await read("src/features/demo/types/demo.ts");
+  assert.match(type, /internalNumber: string \| null;/);
+  const service = await read("src/features/contacts/services/contact-service.ts");
+  assert.match(service, /internalNumber\?: string \| null;/);
+  assert.match(service, /internalNumber: input\.internalNumber\?\.trim\(\) \|\| null,/);
+  const dialog = await read("src/features/contacts/components/ContactFormDialog.tsx");
+  assert.match(dialog, /N° interne<input className={`\$\{fieldClass\} mt-1 w-full`} value={form\.internalNumber \?\? ""}/);
+  const detail = await read("src/features/contacts/components/ContactDetail.tsx");
+  assert.match(detail, /<Info label="N° interne" value={contact\.internalNumber \|\| "—"} \/>/);
+});
+
+test("l'annuaire interne TKMI fourni par l'utilisateur (photo du standard téléphonique) est saisi dans les données de démonstration, avec les entrées incertaines de la transcription explicitement signalées", async () => {
+  const seed = await read("src/features/demo/mock/demo-data.ts");
+  const contactEntries = seed.match(/\{ id: "CT-\d+",/g) ?? [];
+  assert.equal(contactEntries.length, 29, "2 contacts externes d'exemple + 27 personnes/services de l'annuaire TKMI");
+  ["Alain", "Hamacher", "daniel.mulverstedt@tkmi.be", "Yves", "Peizer", "Comptabilité TKMI", "Salle Aquarium", "Transport TKMI"].forEach((needle) => {
+    assert.ok(seed.includes(needle), `entrée manquante dans l'annuaire TKMI : ${needle}`);
+  });
+  assert.match(seed, /notes: "Numéro fixe à vérifier \(longueur inhabituelle sur l'image source\)\."/, "les numéros à la longueur inhabituelle sur l'image source doivent rester signalés, pas silencieusement acceptés");
 });

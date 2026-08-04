@@ -834,3 +834,13 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [ ] Recetter manuellement dans le navigateur : confirmer que cliquer sur une photo déjà enregistrée (fiche machine, fiche Contacts) ouvre bien le recadrage, avec déplacement et zoom fonctionnels.
 - [x] Demandé par l'utilisateur : photo pas assez visible sur la fiche Contacts. `PhotoUploader.tsx` gagne un prop `size` (`md` gabarit historique inchangé, `lg` nouveau carré 288px) ; `ContactDetail.tsx` utilise `size="lg"`, `MachineDetail.tsx` inchangé. Test étendu (440/440).
 - [ ] Recetter manuellement dans le navigateur : confirmer que la photo de la fiche Contacts est bien plus grande et lisible, sans casser la mise en page de la colonne « Photo ».
+
+## Annuaire interne TKMI saisi dans Contacts, nouveau champ N° interne — 04/08/2026
+
+- [x] Demandé par l'utilisateur : saisir la fiche de toutes les personnes d'une photo du standard téléphonique interne fournie (27 lignes), en contacts internes.
+- [x] Nouveau champ `Contact.internalNumber` (poste interne), câblé type/service/formulaire/fiche, avec migration de repli pour les contacts déjà enregistrés.
+- [x] 27 contacts internes saisis dans `demo-data.ts` (nom, e-mail, téléphone, mobile, poste). Boîtes de service/salles de réunion saisies sans prénom, avec note explicite.
+- [x] 4 nouveaux tests (`tests/contacts.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (443/443), `npm run build` tous verts.
+- [ ] **À vérifier par l'utilisateur, signalé explicitement plutôt que deviné silencieusement** : 3 numéros de téléphone fixe incertains (Coralie Demeyere — corrigé pour suivre le format commun, à confirmer ; Daniel Mülverstedt et Frédéric Schyns — longueur inhabituelle, conservés tels que lus) ; deux postes internes identiques relevés (219, Frédéric Schyns et William Toorop) — possible erreur de transcription à confirmer avec la source.
+- [ ] Recetter manuellement dans le navigateur : parcourir l'annuaire Contacts, vérifier les 27 fiches TKMI, corriger les 3 numéros signalés et le doublon de poste interne (219) une fois vérifiés auprès de la source.
+- [ ] Rappel : ces contacts vivent uniquement dans les données de démonstration locales (`localStorage`) — sur une installation déjà en cours d'utilisation (comme celle-ci), ils n'apparaissent qu'après réinitialisation des données de démonstration depuis Réglages, ou automatiquement sur une toute nouvelle installation.

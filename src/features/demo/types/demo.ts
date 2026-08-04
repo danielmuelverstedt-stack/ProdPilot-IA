@@ -261,6 +261,8 @@ export interface Contact {
   categoryIds: string[];
   phone: string | null;
   mobile: string | null;
+  /** Numéro de poste interne (standard téléphonique de l'entreprise), distinct du téléphone/mobile externe. */
+  internalNumber: string | null;
   email: string | null;
   address: string | null;
   website: string | null;

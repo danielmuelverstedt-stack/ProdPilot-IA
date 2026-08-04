@@ -2,7 +2,7 @@
 
 import { memo, useState } from "react";
 import Link from "next/link";
-import { fieldClass, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { StatusPill } from "@/components/ui/ModuleUi";
 import { ERP_OPERATION_STATUS_LABELS, erpOperationDelayLabel, erpOperationDelayTone } from "@/features/erp-import/services/erp-operation-status-presentation";
 import { articleColor } from "@/features/erp-import/services/erp-planning-grouping";
 import { WorkshopMachinePicker } from "@/features/planning/components/WorkshopMachinePicker";
@@ -11,6 +11,17 @@ import type { MachineSettings } from "@/features/settings/types/settings";
 import type { WorkshopColumnId } from "@/features/planning/types/workshop-view";
 
 export const WORKSHOP_OPERATION_DRAG_MIME_TYPE = "application/x-prodpilot-workshop-operation";
+
+/**
+ * `fieldClass`/`secondaryButton` imposent `px-3`/`text-sm`/`min-h-10` : empilés avec des
+ * utilitaires plus petits (`px-1`, `h-5`…) pour ce tableau resserré, Tailwind v4 ne garantit pas
+ * que le second l'emporte (conflit résolu par l'ordre du CSS généré, pas par l'ordre des classes
+ * dans le JSX) — en pratique le padding `px-3` d'origine restait appliqué, écrasant visuellement
+ * le contenu des cellules compactes. Classes entièrement autonomes ci-dessous, sans dépendance
+ * aux primitives standard, pour éviter tout conflit de propriété CSS.
+ */
+const compactFieldClass = "h-5 rounded-md border border-[var(--app-border)] bg-white px-1 py-0 text-[10px] leading-none outline-none focus:border-[var(--app-primary)] disabled:cursor-not-allowed disabled:opacity-50";
+const compactButtonClass = "inline-flex h-5 items-center justify-center whitespace-nowrap rounded-md border border-[var(--app-border)] bg-white px-1.5 text-[10px] font-semibold hover:bg-slate-100 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-45 disabled:active:scale-100";
 
 interface WorkshopOperationRowProps {
   operation: OperationView;
@@ -40,9 +51,9 @@ export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operati
       {visibleColumnIds.map((columnId) => <td key={columnId} className="p-1 text-[11px]">{renderCell(columnId, operation, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus)}</td>)}
       <td className="p-1 text-right text-[11px]">
         <div className="flex flex-wrap justify-end gap-0.5">
-          <button type="button" className={`${secondaryButton} min-h-0 h-5 px-1.5 py-0 text-[10px]`} aria-expanded={isExpanded} title={isExpanded ? "Fermer" : "Ouvrir l’opération"} onClick={() => setIsExpanded((current) => !current)}>{isExpanded ? "Fermer" : "Détails"}</button>
-          {machineId ? <Link href={`/machines/${machineId}`} className={`${secondaryButton} min-h-0 h-5 px-1.5 py-0 text-[10px]`} title="Fiche machine">Fiche</Link> : null}
-          <Link href={`/of/${operation.workOrderId}`} className={`${secondaryButton} min-h-0 h-5 px-1.5 py-0 text-[10px]`} title="Ouvrir l’OF">OF</Link>
+          <button type="button" className={compactButtonClass} aria-expanded={isExpanded} title={isExpanded ? "Fermer" : "Ouvrir l’opération"} onClick={() => setIsExpanded((current) => !current)}>{isExpanded ? "Fermer" : "Détails"}</button>
+          {machineId ? <Link href={`/machines/${machineId}`} className={compactButtonClass} title="Fiche machine">Fiche</Link> : null}
+          <Link href={`/of/${operation.workOrderId}`} className={compactButtonClass} title="Ouvrir l’OF">OF</Link>
         </div>
       </td>
     </tr>
@@ -56,7 +67,7 @@ function renderCell(columnId: WorkshopColumnId, operation: OperationView, machin
     type="number"
     min="0"
     max="999"
-    className={`${fieldClass} min-h-0 h-5 w-11 px-1 py-0 text-[10px]`}
+    className={`${compactFieldClass} w-11`}
     defaultValue={operation.effectivePriority}
     disabled={busy}
     onBlur={(event) => {
@@ -74,7 +85,7 @@ function renderCell(columnId: WorkshopColumnId, operation: OperationView, machin
   if (columnId === "quantity") return <span>{operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—"}</span>;
   if (columnId === "description") return <span className="line-clamp-1" title={operation.description ?? ""}>{operation.description || "Sans description"}</span>;
   if (columnId === "time") return <span className="text-[9px] italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disp.</span>;
-  if (columnId === "status") return <select className={`${fieldClass} min-h-0 h-5 py-0 text-[10px]`} value={operation.effectiveStatus} disabled={busy} onChange={(event) => onUpdateStatus(operation.id, event.target.value as OperationView["status"])}>
+  if (columnId === "status") return <select className={`${compactFieldClass} w-full`} value={operation.effectiveStatus} disabled={busy} onChange={(event) => onUpdateStatus(operation.id, event.target.value as OperationView["status"])}>
     {(Object.keys(ERP_OPERATION_STATUS_LABELS) as Array<OperationView["status"]>).map((code) => <option key={code} value={code}>{ERP_OPERATION_STATUS_LABELS[code]}</option>)}
   </select>;
   if (columnId === "start-date") return <span>{formatDate(operation.plannedDate)}</span>;

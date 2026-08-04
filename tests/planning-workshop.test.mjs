@@ -837,7 +837,7 @@ test("le statut d'une opération se modifie directement dans l'Atelier, via la m
   assert.match(panel, /onUpdateStatus: \(operationId: string, status: OperationView\["status"\]\) => void;/);
 
   const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
-  assert.match(row, /if \(columnId === "status"\) return <select className={`\$\{fieldClass\} min-h-0 h-5 py-0 text-\[10px\]`} value={operation\.effectiveStatus} disabled={busy} onChange={\(event\) => onUpdateStatus\(operation\.id, event\.target\.value as OperationView\["status"\]\)}>/, "la colonne Statut n'est plus un badge en lecture seule");
+  assert.match(row, /if \(columnId === "status"\) return <select className={`\$\{compactFieldClass\} w-full`} value={operation\.effectiveStatus} disabled={busy} onChange={\(event\) => onUpdateStatus\(operation\.id, event\.target\.value as OperationView\["status"\]\)}>/, "la colonne Statut n'est plus un badge en lecture seule");
   assert.doesNotMatch(row, /if \(columnId === "status"\) return <StatusPill/, "l'ancien affichage en lecture seule a bien disparu");
 });
 

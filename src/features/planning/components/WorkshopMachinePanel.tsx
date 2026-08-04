@@ -169,7 +169,10 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
     </div>
     {isPrintDialogOpen ? <WorkshopMachinePrintDialog machineLabel={machine?.displayName ?? "Machine non définie"} totalOperationCount={operations.length} onConfirm={handlePrintConfirm} onClose={() => setIsPrintDialogOpen(false)} /> : null}
     {!isCollapsed ? (operations.length ? <div className="border-t border-[var(--app-border)] p-1">
-      <div className="overflow-auto rounded-md border border-slate-200" style={{ maxHeight: frameMaxHeight }} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
+      {/* `height` (fixe) et non `maxHeight` : sinon une machine avec moins d'opérations que le
+          réglage « Lignes par machine » affiche un cadre plus court que ses voisines — but signalé
+          par l'utilisateur (« tous les planning n'ont pas la même taille »). */}
+      <div className="overflow-auto rounded-md border border-slate-200" style={{ height: frameMaxHeight }} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
         <table className="w-full min-w-[560px] table-fixed text-left">
           <colgroup>
             {visibleColumnIds.map((columnId) => <col key={columnId} ref={(element) => { if (element) colRefs.current[columnId] = element; }} style={{ width: `${columnWidths[columnId] ?? DEFAULT_COLUMN_WIDTH_PX[columnId]}px` }} />)}

@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Correctif : le recadrage de photo s'active en cliquant directement sur la photo — 04/08/2026
+
+- Demandé par l'utilisateur juste après l'ajout du recadrage : l'activer au clic sur la photo elle-même plutôt que via un bouton séparé dans la fiche, et confirmer qu'il permette bien de déplacer et recadrer (pas seulement zoomer).
+- `PhotoUploader.tsx` : cliquer sur la photo déjà enregistrée ouvre désormais directement `ImageCropperDialog` (déplacement + zoom, déjà en place). Suppression de l'ancienne fenêtre d'agrandissement passive (lecture seule, sans possibilité d'édition) et du bouton « Recadrer » devenu redondant — un seul geste (cliquer la photo) pour recadrer, au lieu de deux entrées séparées.
+- Le bouton « Ajouter une photo »/« Changer la photo » reste inchangé pour choisir un nouveau fichier, qui ouvre lui aussi le recadrage avant l'enregistrement.
+- Assertion de test mise à jour (`tests/image-crop-math.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (439/439), `npm run build` tous verts.
+
 ### Amélioration : e-mail/téléphone sur la fiche récap Contacts, et recadrage de photo (zoom + déplacement) — 04/08/2026
 
 - Demandé par l'utilisateur, en suite directe du module Contacts : voir l'e-mail et le téléphone directement sur la carte récapitulative (sans devoir ouvrir la fiche complète), et pouvoir recadrer une photo (zoomer, déplacer, mieux centrer) plutôt que subir le cadrage automatique de l'image d'origine.

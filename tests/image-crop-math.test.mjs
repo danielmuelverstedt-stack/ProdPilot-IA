@@ -47,10 +47,11 @@ test("clampCropOffset : une image carrée dans un cadre carré à l'échelle de 
   assert.deepEqual(clampCropOffset({ x: 50, y: 50 }, scale, 400, 400, 288), { x: 0, y: 0 });
 });
 
-test("PhotoUploader propose « Recadrer » sur une photo déjà enregistrée, en plus du remplacement complet, et ouvre le même ImageCropperDialog après une nouvelle sélection de fichier", async () => {
+test("cliquer directement sur la photo déjà enregistrée ouvre le recadrage (pas une fenêtre d'agrandissement passive, pas un bouton séparé dans la fiche)", async () => {
   const source = await read("src/components/ui/PhotoUploader.tsx");
   assert.match(source, /import \{ ImageCropperDialog \} from "@\/components\/ui\/ImageCropperDialog";/);
-  assert.match(source, /onClick={\(\) => setCropSource\(photoDataUrl\)}[^>]*>Recadrer</, "recadrer la photo déjà enregistrée, sans repasser par un nouvel upload");
+  assert.match(source, /<button type="button" onClick={\(\) => setCropSource\(photoDataUrl\)}[^>]*aria-label="Recadrer la photo"/, "cliquer sur la photo elle-même déclenche le recadrage");
+  assert.doesNotMatch(source, /setZoomed|Agrandir/, "l'ancienne fenêtre d'agrandissement passive (lecture seule) a disparu, remplacée par le recadrage");
   assert.match(source, /setCropSource\(await readImageFileAsCompressedDataUrl\(file\)\);/, "une nouvelle sélection de fichier ouvre aussi le recadrage avant d'appeler onChange");
 });
 

@@ -1,15 +1,39 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildMachineAmbiguousReply,
   buildMachineLookupReply,
+  buildMachineNotFoundReply,
+  buildMachineOfListReply,
   buildPriorityLookupReply,
   buildSetPriorityOutcome,
+  extractMachineQuery,
   extractOperationNumber,
   extractTargetPriority,
   extractWorkOrderId,
   interpretPlanningIntent,
+  isMachineOfListRequest,
   isPlanningAssistantRequest,
+  resolveMachineQuery,
 } from "../src/features/planning/services/planning-assistant-interpreter.ts";
+
+function buildMachine(overrides = {}) {
+  return {
+    id: "VTC-200",
+    active: true,
+    visible: true,
+    name: "VTC-200",
+    displayName: "VTC-200 · Centre 5 axes",
+    department: "Usinage",
+    departmentId: "dep-usinage",
+    machineType: "Centre d'usinage",
+    color: "#123d30",
+    order: 0,
+    technicalInformation: "",
+    deleted: false,
+    ...overrides,
+  };
+}
 
 function buildOperation(overrides = {}) {
   return {
@@ -147,4 +171,58 @@ test("buildSetPriorityOutcome signale un OF introuvable", () => {
   const outcome = buildSetPriorityOutcome("OF-00000", [], 2, null);
   assert.equal(outcome.proposal, null);
   assert.match(outcome.reply, /introuvable/);
+});
+
+test("isMachineOfListRequest reconnaît une question d'OF par machine et exclut une question sur un OF précis", () => {
+  assert.equal(isMachineOfListRequest("quels sont les 5 OF en priorité sur la VTC-200"), true);
+  assert.equal(isMachineOfListRequest("les OF sur VTC-200"), true);
+  assert.equal(isMachineOfListRequest("l'OF-63596 est sur quelle machine"), false);
+  assert.equal(isMachineOfListRequest("bonjour"), false);
+});
+
+test("extractMachineQuery capture le texte de machine en fin de phrase et le nombre d'OF demandé", () => {
+  assert.deepEqual(extractMachineQuery("quels sont les 5 OF en priorité sur la VTC-200"), { machineText: "VTC-200", limit: 5 });
+  assert.deepEqual(extractMachineQuery("les OF sur la machine VTC-200 ?"), { machineText: "VTC-200", limit: 5 });
+  assert.deepEqual(extractMachineQuery("les 3 OF sur VTC-200"), { machineText: "VTC-200", limit: 3 });
+});
+
+test("resolveMachineQuery trouve une machine par id ou par nom d'affichage, sans jamais deviner entre plusieurs", () => {
+  const machines = [buildMachine(), buildMachine({ id: "FRA-01", name: "FRA-01", displayName: "FRA-01 · Fraiseuse" })];
+  assert.equal(resolveMachineQuery("VTC-200", machines).machine.id, "VTC-200");
+  assert.equal(resolveMachineQuery("vtc 200", machines).machine.id, "VTC-200");
+  assert.equal(resolveMachineQuery("fraiseuse", machines).machine.id, "FRA-01");
+  assert.equal(resolveMachineQuery("machine inconnue", machines).machine, null);
+  assert.deepEqual(resolveMachineQuery("machine inconnue", machines).candidates, []);
+});
+
+test("resolveMachineQuery renvoie les candidats sans choisir quand plusieurs machines correspondent", () => {
+  const machines = [buildMachine({ id: "VTC-200" }), buildMachine({ id: "VTC-300", name: "VTC-300", displayName: "VTC-300 · Centre 5 axes" })];
+  const resolution = resolveMachineQuery("centre 5 axes", machines);
+  assert.equal(resolution.machine, null);
+  assert.equal(resolution.candidates.length, 2);
+});
+
+test("resolveMachineQuery ignore les machines supprimées", () => {
+  const machines = [buildMachine({ deleted: true })];
+  assert.equal(resolveMachineQuery("VTC-200", machines).machine, null);
+});
+
+test("buildMachineOfListReply liste les OF triés par priorité et signale le surplus au-delà de la limite", () => {
+  const operations = [buildOperation({ id: "op-1", workOrderId: "OF-100", effectivePriority: 1 }), buildOperation({ id: "op-2", workOrderId: "OF-200", effectivePriority: 2 })];
+  const reply = buildMachineOfListReply("VTC-200 · Centre 5 axes", operations, 1);
+  assert.match(reply, /OF-100/);
+  assert.match(reply, /autre\(s\) OF/);
+  assert.doesNotMatch(reply, /OF-200/);
+});
+
+test("buildMachineOfListReply signale l'absence d'OF sur la machine sans en inventer", () => {
+  assert.match(buildMachineOfListReply("VTC-200 · Centre 5 axes", [], 5), /Aucun OF planifié/);
+});
+
+test("buildMachineNotFoundReply et buildMachineAmbiguousReply restent honnêtes sans deviner", () => {
+  assert.match(buildMachineNotFoundReply("VTC-999"), /Aucune machine/);
+  const machines = [buildMachine({ id: "VTC-200" }), buildMachine({ id: "VTC-300", displayName: "VTC-300" })];
+  const reply = buildMachineAmbiguousReply("VTC", machines);
+  assert.match(reply, /VTC-200 · Centre 5 axes/);
+  assert.match(reply, /VTC-300/);
 });

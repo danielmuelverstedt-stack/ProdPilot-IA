@@ -9,17 +9,26 @@ import { interpretActionAssistantMessage, isCancellation, isConfirmation, type A
 import { interpretCalendarAssistantMessage, isCalendarAssistantRequest, type CalendarAssistantProposal } from "@/features/calendar/services/calendar-assistant-interpreter";
 import type { CalendarEvent } from "@/features/calendar/types/calendar";
 import {
+  buildMachineAmbiguousReply,
   buildMachineLookupReply,
+  buildMachineNotFoundReply,
+  buildMachineOfListReply,
   buildPriorityLookupReply,
   buildSetPriorityOutcome,
+  extractMachineQuery,
   extractOperationNumber,
   extractTargetPriority,
   extractWorkOrderId,
   interpretPlanningIntent,
+  isMachineOfListRequest,
   isPlanningAssistantRequest,
+  resolveMachineQuery,
+  type MachineOfListQuery,
   type PlanningAssistantProposal,
 } from "@/features/planning/services/planning-assistant-interpreter";
-import { applyPlanningPriorityChange, fetchOperationsForWorkOrder } from "@/features/planning/services/planning-assistant-orchestration";
+import { applyPlanningPriorityChange, fetchOperationsForMachine, fetchOperationsForWorkOrder } from "@/features/planning/services/planning-assistant-orchestration";
+import { sortOperations } from "@/features/planning/services/workshop-view-service";
+import { interpretContactAssistantMessage } from "@/features/contacts/services/contact-assistant-interpreter";
 import type { OperationView } from "@/features/erp-import/types/erp-import";
 
 interface AssistantMessage {
@@ -42,7 +51,7 @@ const MAIL_COMPOSE_INTENT = /\b(écris|écrit|rédige|prépare)\b.*\b(mail|e-?ma
 const INTRO: AssistantMessage = {
   id: "intro",
   role: "assistant",
-  text: "Demandez-moi par exemple « revue des actions », « qu’est-ce que j’ai aujourd’hui », « l’OF-63596 est sur quelle machine » ou « passe l’OF-65489 en priorité 2 ». Je propose toujours une reformulation avant d’appliquer un changement.",
+  text: "Demandez-moi par exemple « revue des actions », « qu’est-ce que j’ai aujourd’hui », « l’OF-63596 est sur quelle machine », « passe l’OF-65489 en priorité 2 », « les 5 OF les plus prioritaires sur la VTC-200 » ou « le numéro de téléphone de Jean Dupont ». Je propose toujours une reformulation avant d’appliquer un changement.",
 };
 
 const ACTION_NOT_FOUND_REPLY = (actionId: string) => `${actionId} ne correspond plus à une action existante (peut-être déjà supprimée) : rien n’a été modifié.`;
@@ -98,6 +107,27 @@ export function AssistantPanel({ todayEvents }: { todayEvents: CalendarEvent[] }
 
   function appendMessages(...entries: AssistantMessage[]) {
     setConversation((current) => [...current, ...entries]);
+  }
+
+  /** Résout le nom/identifiant de machine cité, puis liste ses OF les plus prioritaires — jamais de choix silencieux entre deux machines proches. */
+  async function handleMachineOfListRequest(query: MachineOfListQuery) {
+    const resolution = resolveMachineQuery(query.machineText, settings.production.machines);
+    if (resolution.candidates.length > 1) {
+      appendMessages({ id: crypto.randomUUID(), role: "assistant", text: buildMachineAmbiguousReply(query.machineText, resolution.candidates) });
+      return;
+    }
+    if (!resolution.machine) {
+      appendMessages({ id: crypto.randomUUID(), role: "assistant", text: buildMachineNotFoundReply(query.machineText) });
+      return;
+    }
+    setIsBusy(true);
+    try {
+      const operations = await fetchOperationsForMachine(resolution.machine.id);
+      const sorted = sortOperations(operations, { column: "priority", direction: "asc" });
+      appendMessages({ id: crypto.randomUUID(), role: "assistant", text: buildMachineOfListReply(resolution.machine.displayName, sorted, query.limit) });
+    } finally {
+      setIsBusy(false);
+    }
   }
 
   /** Interroge le planning ERP importé pour un OF donné, puis répond ou propose selon l'intention détectée — jamais de modification sans opération identifiée sans ambiguïté. */
@@ -233,6 +263,21 @@ export function AssistantPanel({ todayEvents }: { todayEvents: CalendarEvent[] }
       appendMessages(userMessage, { id: crypto.randomUUID(), role: "assistant", text: outcome.reply });
       setPendingCalendarProposal(outcome.proposal);
       setMessage("");
+      return;
+    }
+
+    const contactReply = interpretContactAssistantMessage(text, data.contacts);
+    if (contactReply) {
+      appendMessages(userMessage, { id: crypto.randomUUID(), role: "assistant", text: contactReply });
+      setMessage("");
+      return;
+    }
+
+    const machineQuery = isMachineOfListRequest(text) ? extractMachineQuery(text) : null;
+    if (machineQuery) {
+      appendMessages(userMessage);
+      setMessage("");
+      await handleMachineOfListRequest(machineQuery);
       return;
     }
 

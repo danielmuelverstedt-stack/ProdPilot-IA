@@ -1,4 +1,5 @@
 import type { OperationView } from "@/features/erp-import/types/erp-import";
+import type { MachineSettings } from "@/features/settings/types/settings";
 
 export interface PlanningAssistantProposal {
   kind: "set-priority";
@@ -107,4 +108,73 @@ export function buildSetPriorityOutcome(workOrderId: string, operations: Operati
     proposal: { kind: "set-priority", operationId: target.id, workOrderId, operationNumber: target.operationNumber, priority },
     referencedWorkOrderId: workOrderId,
   };
+}
+
+export interface MachineOfListQuery {
+  machineText: string;
+  limit: number;
+}
+
+export interface MachineResolution {
+  machine: MachineSettings | null;
+  candidates: MachineSettings[];
+}
+
+function normalizeMachineToken(value: string): string {
+  return value.trim().toLocaleLowerCase("fr").replace(/[\s-]+/g, "");
+}
+
+/**
+ * Ne devine jamais entre deux machines proches : un identifiant/nom qui correspond à une seule
+ * machine la renvoie directement, plusieurs correspondances renvoient la liste à préciser (même
+ * principe que la désambiguïsation d'opération de `buildSetPriorityOutcome`).
+ */
+export function resolveMachineQuery(machineText: string, machines: MachineSettings[]): MachineResolution {
+  const usable = machines.filter((machine) => !machine.deleted);
+  const normalizedQuery = normalizeMachineToken(machineText);
+  const idMatches = usable.filter((machine) => normalizeMachineToken(machine.id) === normalizedQuery);
+  if (idMatches.length === 1) return { machine: idMatches[0], candidates: [] };
+  const loose = machineText.trim().toLocaleLowerCase("fr");
+  const nameMatches = usable.filter((machine) =>
+    machine.displayName.toLocaleLowerCase("fr").includes(loose)
+    || machine.name.toLocaleLowerCase("fr").includes(loose)
+    || normalizeMachineToken(machine.id).includes(normalizedQuery));
+  if (nameMatches.length === 1) return { machine: nameMatches[0], candidates: [] };
+  if (nameMatches.length > 1) return { machine: null, candidates: nameMatches };
+  if (idMatches.length > 1) return { machine: null, candidates: idMatches };
+  return { machine: null, candidates: [] };
+}
+
+/** Ancré sur la fin de phrase pour capturer le dernier « sur »/« de » (« les 5 OF en priorité sur la VTC-200 »), jamais un « de » antérieur non lié à la machine. */
+const MACHINE_TEXT_PATTERN = /.*\b(?:sur|de)\s+(?:la\s+|le\s+|l['’]\s*)?(?:machine\s+)?([A-Za-zÀ-ÿ0-9][A-Za-zÀ-ÿ0-9 _-]*?)\s*[?!.]*$/i;
+
+export function isMachineOfListRequest(text: string): boolean {
+  if (extractWorkOrderId(text)) return false;
+  return /\bOFs?\b/i.test(text) && MACHINE_TEXT_PATTERN.test(text);
+}
+
+export function extractMachineQuery(text: string): MachineOfListQuery | null {
+  const match = text.match(MACHINE_TEXT_PATTERN);
+  if (!match) return null;
+  const machineText = match[1].trim();
+  if (!machineText) return null;
+  const countMatch = text.match(/\b(\d{1,3})\s*OFs?\b/i);
+  const limit = countMatch ? Math.min(Math.max(Number(countMatch[1]), 1), 50) : 5;
+  return { machineText, limit };
+}
+
+export function buildMachineOfListReply(machineLabel: string, operations: OperationView[], limit: number): string {
+  if (!operations.length) return `Aucun OF planifié trouvé sur ${machineLabel}.`;
+  const shown = operations.slice(0, limit);
+  const lines = shown.map((operation) => `- ${operation.workOrderId} · Op. ${operation.operationNumber}${operation.description ? ` (${operation.description})` : ""} · priorité ${operation.effectivePriority}`);
+  const suffix = operations.length > shown.length ? `\n… et ${operations.length - shown.length} autre(s) OF sur cette machine.` : "";
+  return `${shown.length} OF sur ${machineLabel}, du plus prioritaire :\n${lines.join("\n")}${suffix}`;
+}
+
+export function buildMachineNotFoundReply(machineText: string): string {
+  return `Aucune machine ne correspond à « ${machineText} ».`;
+}
+
+export function buildMachineAmbiguousReply(machineText: string, candidates: MachineSettings[]): string {
+  return `Plusieurs machines correspondent à « ${machineText} » : ${candidates.map((machine) => machine.displayName).join(", ")}. Précisez laquelle.`;
 }

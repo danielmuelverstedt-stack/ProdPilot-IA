@@ -46,6 +46,36 @@ export async function fetchOperationsForWorkOrder(workOrderId: string): Promise<
 }
 
 /**
+ * Opérations réelles planifiées sur une machine (planning ERP importé), pour lister les OF les
+ * plus prioritaires d'une machine à la demande de l'assistant. Même route/filtre `machine=` que
+ * l'Atelier, passée par l'orchestrateur central comme `fetchOperationsForWorkOrder`.
+ */
+export async function fetchOperationsForMachine(machineId: string): Promise<OperationView[]> {
+  const requestId = crypto.randomUUID();
+  const toolName = "planning.lookup-machine";
+  const tool: AssistantTool<string, OperationView[]> = {
+    name: toolName,
+    description: "Recherche les opérations planifiées sur une machine dans le planning ERP importé.",
+    capabilities: ["information-retrieval"],
+    modules: ["planning"],
+    risk: "read",
+    execute: async (id) => {
+      const response = await fetch(`/api/erp/planning?machine=${encodeURIComponent(id)}&pageSize=200`, { cache: "no-store" });
+      if (!response.ok) throw new Error(await apiMessage(response));
+      const payload = await response.json() as ErpPlanningQueryResult;
+      return { data: payload.rows, summary: `${payload.rows.length} opération(s) trouvée(s) sur la machine ${id}.`, sourceLinks: [] };
+    },
+  };
+  const result = await orchestrateAssistantRequest({
+    request: { id: requestId, text: machineId, context: assistantContext() },
+    plan: { requestId, steps: [{ id: crypto.randomUUID(), toolName, capability: "information-retrieval", input: machineId, isConfirmed: true }] },
+    registry: new AssistantToolRegistry([tool]),
+  });
+  if (result.status !== "completed") return [];
+  return result.outputs[0].data as OperationView[];
+}
+
+/**
  * Applique un changement de priorité déjà confirmé explicitement par l'utilisateur (jamais avant),
  * via la même route PATCH que l'Atelier/Planning capacité — aucune règle de mutation redéfinie ici.
  */

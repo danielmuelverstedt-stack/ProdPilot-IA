@@ -793,4 +793,11 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [x] Demandé par l'utilisateur : pouvoir revenir et sauter directement entre les étapes depuis le haut de l'écran, comme des onglets, au lieu de seulement Précédent/Suivant. Nouveau `StepTabs` (`MeetingWorkflow.tsx`), même style que les onglets de vue d'Actions, appliqué à QRQC et Production. Boutons Précédent/Suivant/Clôturer conservés en complément ; onglets désactivés une fois la réunion clôturée.
 - [x] `npx tsc --noEmit`, `npm run lint`, `npm test` (401/401), `npm run build` tous verts.
 - [ ] Recetter manuellement dans le navigateur : cliquer un onglet non adjacent (ex. de l'étape 1 à l'étape 6) et confirmer que le contenu affiché correspond bien, sur les deux types de réunion, et que les onglets se replient proprement sur petit écran.
+
+## Uniformisation de la revue des actions en réunion avec le module Actions — 04/08/2026
+
+- [x] Demandé par l'utilisateur : garder la même mise en page entre l'étape « Revue des actions » des réunions et le module Actions, pour une meilleure compréhension entre les deux écrans.
+- [x] `MeetingActionReview.tsx` réutilise directement `ActionGroupedList`/`ActionRow` (mêmes colonnes configurées dans Réglages → Actions, même regroupement, mêmes actions rapides) au lieu de cartes ad hoc ; toute la logique de mutation dupliquée disparaît du composant. Réassignation désormais via la colonne Responsable éditable, comme dans le module Actions.
+- [x] 4 nouveaux tests (`tests/meeting-action-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (405/405), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : vérifier que la revue des actions en réunion (QRQC et Production) ressemble bien au tableau du module Actions, tester Fait/Reporter, la réassignation via la colonne Responsable et le changement de regroupement (Par personne/Par échéance).
 - [ ] Étendre éventuellement cette étape à la réunion QRQC, si le besoin est confirmé (hors périmètre de cette demande).

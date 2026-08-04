@@ -1,32 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { fieldClass, formatEuropeanDate, secondaryButton } from "@/components/ui/ModuleUi";
+import { useMemo, useState } from "react";
 import { useDemoData } from "@/features/demo/services/demo-repository";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
-import { completeAction, postponeAction, reassignAction } from "@/features/actions/services/action-service";
+import { ActionGroupedList } from "@/features/actions/components/ActionGroupedList";
+import type { ActionGroupMode } from "@/features/actions/services/action-grouping";
 
+const GROUP_OPTIONS: { mode: ActionGroupMode; label: string }[] = [
+  { mode: "personne", label: "Par personne" },
+  { mode: "echeance", label: "Par échéance" },
+];
+
+/**
+ * Étape 1 des réunions QRQC/Production : revue des actions « À faire » de cette origine, avant
+ * les nouveaux sujets. Réutilise directement le tableau du module Actions (mêmes colonnes
+ * configurées dans Réglages → Actions, même `ActionRow`, mêmes actions rapides Fait/Reporter),
+ * plutôt qu'une présentation ad hoc, pour que les deux écrans restent immédiatement
+ * reconnaissables l'un de l'autre. Regroupement par origine non proposé ici : toutes les actions
+ * affichées partagent déjà la même origine, celle de la réunion en cours.
+ */
 export function MeetingActionReview({ origine }: { origine: string }) {
   const data = useDemoData();
   const { settings } = useSettings();
-  const items = data.actions.filter((item) => item.origine === origine && item.statut === "À faire");
-  const [postponingId, setPostponingId] = useState<string | null>(null);
-  const [newDate, setNewDate] = useState("");
+  const [mode, setMode] = useState<ActionGroupMode>("personne");
+  const items = useMemo(() => data.actions.filter((item) => item.origine === origine && item.statut === "À faire"), [data.actions, origine]);
 
   if (!items.length) return <p className="mt-4 text-sm text-slate-600">Aucune action « À faire » en attente pour cette origine. Vous pouvez passer aux nouveaux sujets.</p>;
 
-  return <div className="mt-4 grid gap-2">{items.map((action) => <article key={action.id} className="rounded-xl border border-[var(--app-border)] p-3">
-    <p className="text-sm font-medium">{action.description}</p>
-    <p className="mt-1 text-xs text-slate-500">{action.responsable} · Échéance {formatEuropeanDate(action.echeance)}</p>
-    {postponingId === action.id
-      ? <div className="mt-2 flex flex-wrap items-center gap-1"><input type="date" className={`${fieldClass} min-h-9`} value={newDate} onChange={(event) => setNewDate(event.target.value)} /><button className={secondaryButton} onClick={() => { if (newDate) { postponeAction(action.id, newDate); setPostponingId(null); } }}>Confirmer</button><button className={secondaryButton} onClick={() => setPostponingId(null)}>Annuler</button></div>
-      : <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button className={secondaryButton} onClick={() => completeAction(action.id)}>Fait</button>
-        <button className={secondaryButton} onClick={() => { setPostponingId(action.id); setNewDate(action.echeance); }}>Reporté</button>
-        <select aria-label={`Réassigner ${action.id}`} className={`${fieldClass} min-h-9`} value={action.responsable} onChange={(event) => reassignAction(action.id, event.target.value)}>
-          <option value={action.responsable}>{action.responsable}</option>
-          {settings.users.filter((user) => user.active).map((user) => `${user.firstName} ${user.lastName}`).filter((name) => name !== action.responsable).map((name) => <option key={name} value={name}>{name}</option>)}
-        </select>
-      </div>}
-  </article>)}</div>;
+  return <div className="mt-4">
+    <div className="flex flex-wrap gap-2">{GROUP_OPTIONS.map((option) => <button key={option.mode} type="button" onClick={() => setMode(option.mode)} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${mode === option.mode ? "border-[color-mix(in_srgb,var(--app-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--app-primary)_10%,white)] text-[var(--app-primary)]" : "border-[var(--app-border)] bg-white text-slate-600 hover:bg-slate-50"}`}>{option.label}</button>)}</div>
+    <ActionGroupedList actions={items} mode={mode} columns={settings.actions.columns} origins={settings.actions.origins} people={data.people} variant="current" />
+  </div>;
 }

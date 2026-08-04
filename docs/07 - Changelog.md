@@ -4,6 +4,14 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Uniformisation : la revue des actions en réunion reprend exactement le tableau du module Actions — 04/08/2026
+
+- Demandé par l'utilisateur : garder la même mise en page entre l'étape « Revue des actions » des réunions (QRQC/Production) et le module Actions, pour une meilleure compréhension entre les deux écrans.
+- `MeetingActionReview.tsx` affichait jusqu'ici des cartes ad hoc (description, responsable/échéance en texte libre, 3 boutons Fait/Reporté/Réassigner) — une présentation différente du tableau du module Actions, avec ses propres colonnes non configurables. Remplacé par un usage direct de `ActionGroupedList`/`ActionRow`, les composants du module Actions lui-même : mêmes colonnes (celles configurées dans Réglages → Actions), même regroupement, mêmes actions rapides Fait/Reporter, mêmes badges de statut.
+- Toute la logique de mutation dupliquée (`completeAction`/`postponeAction`/`reassignAction` appelés directement) disparaît de ce composant : `ActionRow` s'en charge déjà, une seule implémentation pour les deux écrans. La réassignation, auparavant un menu déroulant dédié, se fait désormais en éditant la colonne Responsable directement dans le tableau — comme dans le module Actions.
+- Regroupement proposé limité à « Par personne »/« Par échéance » (pas « Par origine », qui n'aurait affiché qu'un seul groupe puisque les actions listées partagent déjà l'origine de la réunion en cours).
+- 4 nouveaux tests (`tests/meeting-action-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (405/405), `npm run build` tous verts.
+
 ### Amélioration : navigation par onglets entre les étapes de réunion (QRQC et Production) — 04/08/2026
 
 - Demandé par l'utilisateur : pouvoir revenir et sauter directement entre les étapes depuis le haut de l'écran, comme des onglets, plutôt que seulement pas à pas.

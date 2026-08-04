@@ -1,16 +1,28 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { EmptyState, fieldClass, formatEuropeanDate, ModuleHeader, StatusPill } from "@/components/ui/ModuleUi";
 import { useDemoData } from "@/features/demo/services/demo-repository";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { ERP_OPERATION_STATUS_LABELS, erpOperationStatusTone } from "@/features/erp-import/services/erp-operation-status-presentation";
 import { groupErpPlanningRows } from "@/features/erp-import/services/erp-planning-grouping";
+import type { ErpPlanningOverview } from "@/features/erp-import/types/erp-import";
 import { useErpImportActive } from "@/features/planning/hooks/useErpImportActive";
 import { useWorkshopOperations } from "@/features/planning/hooks/useWorkshopOperations";
 import { matchesErpWorkOrderFilters, summarizeErpWorkOrder } from "@/features/work-orders/services/erp-work-order-summary";
 import { useVisibleTaskCategoryCodes } from "@/lib/visible-task-categories-store";
+
+type WorkOrderView = "all" | "closed" | "new" | "waiting";
+
+/** Fenêtres proposées pour l'onglet « Clôturées récemment ». */
+const CLOSED_PERIOD_OPTIONS = [7, 30] as const;
+
+function closedAfterDate(days: number): string {
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - days);
+  return cutoff.toISOString().slice(0, 10);
+}
 
 export function WorkOrdersModule() {
   const data = useDemoData();
@@ -21,6 +33,16 @@ export function WorkOrdersModule() {
   const visibleTaskCategoryCodes = useVisibleTaskCategoryCodes();
   const { rows, isLoading } = useWorkshopOperations(machines, visibleTaskCategoryCodes);
   const { hasActiveImport } = useErpImportActive();
+  // Id du dernier import actif, pour repérer les OF apparues depuis (voir ErpWorkOrder.firstSeenImportId) — même point d'accès que MachineDetail.tsx/ErpQualityModule.tsx.
+  const [activeImportId, setActiveImportId] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/erp/imports", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => { if (active && payload) setActiveImportId((payload as ErpPlanningOverview).activeImport?.id ?? null); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("Tous");
@@ -28,6 +50,13 @@ export function WorkOrdersModule() {
   const [machineFilter, setMachineFilter] = useState("Toutes");
   const [department, setDepartment] = useState("Tous");
   const [delay, setDelay] = useState("Tous");
+  // Onglet unique (comme les départements de l'Atelier/Parc Machines), à la demande explicite de
+  // l'utilisateur, à la place d'un filtre déroulant + une case à cocher séparés.
+  const [view, setView] = useState<WorkOrderView>("all");
+  const [closedPeriodDays, setClosedPeriodDays] = useState<(typeof CLOSED_PERIOD_OPTIONS)[number]>(7);
+  const closedAfter = view === "closed" ? closedAfterDate(closedPeriodDays) : null;
+  const newOnly = view === "new";
+  const waitingOnly = view === "waiting";
 
   const filteredDemo = useMemo(() => data.workOrders.filter((item) => {
     const text = `${item.id} ${item.customer} ${item.article} ${item.description}`.toLocaleLowerCase("fr");
@@ -49,15 +78,30 @@ export function WorkOrdersModule() {
   const erpMachineOptions = useMemo(() => [...new Set(erpSummaries.map((item) => item.machine).filter((value) => value !== "Non définie"))].sort((a, b) => a.localeCompare(b, "fr")), [erpSummaries]);
   const erpDepartmentOptions = useMemo(() => [...new Set(machines.map((item) => item.department))].sort((a, b) => a.localeCompare(b, "fr")), [machines]);
 
+  // Compteurs par onglet indépendants des autres filtres (recherche, statut…), comme les onglets de
+  // département de l'Atelier/Parc Machines.
+  const closedCount = useMemo(() => erpSummaries.filter((item) => item.closedAt !== null && item.closedAt >= closedAfterDate(closedPeriodDays)).length, [erpSummaries, closedPeriodDays]);
+  const newCount = useMemo(() => erpSummaries.filter((item) => item.firstSeenImportId !== null && item.firstSeenImportId === activeImportId).length, [erpSummaries, activeImportId]);
+  const waitingCount = useMemo(() => erpSummaries.filter((item) => item.hasWaitingOperation).length, [erpSummaries]);
+
   const filteredErp = useMemo(
-    () => erpSummaries.filter((item) => matchesErpWorkOrderFilters(item, { search, statusLabel: status, machine: machineFilter, department, delay }, ERP_OPERATION_STATUS_LABELS)),
-    [erpSummaries, search, status, machineFilter, department, delay],
+    () => erpSummaries.filter((item) => matchesErpWorkOrderFilters(item, { search, statusLabel: status, machine: machineFilter, department, delay, closedAfter, newOnly, activeImportId, waitingOnly }, ERP_OPERATION_STATUS_LABELS)),
+    [erpSummaries, search, status, machineFilter, department, delay, closedAfter, newOnly, activeImportId, waitingOnly],
   );
 
   if (hasActiveImport) {
     return <div className="mx-auto max-w-7xl">
       <ModuleHeader eyebrow="Production" title="Ordres de fabrication" description="Consultez les OF réels importés d’ERP, leur avancement et leurs opérations." />
-      <section aria-label="Filtres des OF" className="mt-6 grid gap-2 rounded-2xl border border-[var(--app-border)] bg-white p-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-6 flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
+        <WorkOrderViewTabButton label="Tous" count={erpSummaries.length} isSelected={view === "all"} onClick={() => setView("all")} />
+        <WorkOrderViewTabButton label="Clôturées récemment" count={closedCount} isSelected={view === "closed"} onClick={() => setView("closed")} />
+        <WorkOrderViewTabButton label="Nouvelles depuis le dernier import" count={newCount} isSelected={view === "new"} onClick={() => setView("new")} />
+        <WorkOrderViewTabButton label="En attente" count={waitingCount} isSelected={view === "waiting"} onClick={() => setView("waiting")} />
+        {view === "closed" ? <div className="ml-1 flex items-center gap-1">
+          {CLOSED_PERIOD_OPTIONS.map((days) => <button key={days} type="button" onClick={() => setClosedPeriodDays(days)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${closedPeriodDays === days ? "bg-slate-800 text-white" : "border border-[var(--app-border)] bg-white text-slate-600 hover:bg-slate-50"}`}>{days} derniers jours</button>)}
+        </div> : null}
+      </div>
+      <section aria-label="Filtres des OF" className="mt-3 grid gap-2 rounded-2xl border border-[var(--app-border)] bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
         <input className={fieldClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="OF, client, article…" />
         <Filter value={status} setValue={setStatus} values={["Tous", ...Object.values(ERP_OPERATION_STATUS_LABELS)]} />
         <Filter value={machineFilter} setValue={setMachineFilter} values={["Toutes", ...erpMachineOptions]} />
@@ -85,3 +129,10 @@ export function WorkOrdersModule() {
 }
 
 function Filter({ value, setValue, values }: { value: string; setValue: (value: string) => void; values: Iterable<string> }) { return <select className={fieldClass} value={value} onChange={(event) => setValue(event.target.value)}>{[...values].map((item) => <option key={item}>{item}</option>)}</select>; }
+
+/** Même gabarit que les onglets de département (Atelier, Parc Machines) : pastille comptée, un seul onglet actif à la fois. */
+function WorkOrderViewTabButton({ label, count, isSelected, onClick }: { label: string; count: number; isSelected: boolean; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`shrink-0 rounded-full px-3 py-2 text-sm font-semibold transition ${isSelected ? "bg-[var(--app-primary)] text-white" : "border border-[var(--app-border)] bg-white text-slate-600 hover:bg-slate-50"}`}>
+    {label} <span className={`text-xs font-normal ${isSelected ? "text-white/80" : "text-slate-500"}`}>({count.toLocaleString("fr-BE")})</span>
+  </button>;
+}

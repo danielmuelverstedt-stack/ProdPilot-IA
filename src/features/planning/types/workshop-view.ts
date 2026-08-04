@@ -28,7 +28,7 @@ export interface WorkshopColumnPreference {
 }
 
 /** Largeur minimale/maximale acceptée pour une colonne redimensionnée à la souris. */
-export const WORKSHOP_COLUMN_MIN_WIDTH_PX = 80;
+export const WORKSHOP_COLUMN_MIN_WIDTH_PX = 44;
 export const WORKSHOP_COLUMN_MAX_WIDTH_PX = 640;
 
 export interface WorkshopFilterState {

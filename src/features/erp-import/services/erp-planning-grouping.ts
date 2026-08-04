@@ -72,7 +72,7 @@ function distinctWorkOrders(rows: OperationView[]): number {
 }
 
 function statusLabel(status: OperationView["status"]): string {
-  return { "not-started": "À faire", "in-progress": "En cours", completed: "Terminée", blocked: "Bloquée", unknown: "À qualifier" }[status];
+  return { "not-started": "À faire", "in-progress": "En cours", completed: "Terminée", blocked: "Bloquée", unknown: "À qualifier", waiting: "En attente" }[status];
 }
 
 function formatDate(value: string): string {

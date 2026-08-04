@@ -11,7 +11,11 @@ const UNASSIGNED_DEPARTMENT_ID = "unassigned";
 /** Regroupe les opérations déjà filtrées (recherche + articles) par machine, quel que soit le mode de regroupement des sections (département ou catégorie). */
 export function groupOperationsByMachineId(rows: OperationView[], machines: MachineSettings[], filters: WorkshopFilterState): { byMachineId: Map<string, OperationView[]>; unassigned: OperationView[] } {
   const searchFiltered = filterEngine.apply(rows, { ...emptyPlanningFilters(), search: filters.search, articleMultiplicity: filters.articleMultiplicity });
-  const machineGroups = groupErpPlanningRows(searchFiltered, "machine", machines);
+  // Une opération terminée n'a plus sa place dans le planning au jour le jour (demande explicite de
+  // l'utilisateur) — elle reste néanmoins visible dans le module OF, qui ne passe pas par cette
+  // fonction, et dans le Cockpit ERP, non plus concerné par ce filtre.
+  const activeRows = searchFiltered.filter((operation) => operation.effectiveStatus !== "completed");
+  const machineGroups = groupErpPlanningRows(activeRows, "machine", machines);
   const byMachineId = new Map<string, OperationView[]>();
   let unassigned: OperationView[] = [];
   machineGroups.forEach((group) => {
@@ -173,7 +177,9 @@ export function buildDepartmentOperationIndex(rows: OperationView[]): Department
   const operationCountByMachineId = new Map<string, number>();
   const machineIdsByTaskCode = new Map<string, Set<string>>();
   const unassignedOperationCountByTaskCode = new Map<string, number>();
-  rows.forEach((row) => {
+  // Mêmes opérations terminées exclues qu'à l'affichage réel (groupOperationsByMachineId), sinon le
+  // compteur d'un onglet resterait supérieur à ce qui y est effectivement listé.
+  rows.filter((row) => row.effectiveStatus !== "completed").forEach((row) => {
     if (row.machineId) {
       operationCountByMachineId.set(row.machineId, (operationCountByMachineId.get(row.machineId) ?? 0) + 1);
       const machineIds = machineIdsByTaskCode.get(row.taskCode) ?? new Set<string>();

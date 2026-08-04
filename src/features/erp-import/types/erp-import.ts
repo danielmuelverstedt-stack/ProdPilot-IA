@@ -2,7 +2,7 @@ export const ERP_IMPORT_VERSION = 1;
 
 export type ErpImportStatus = "accepted" | "rejected";
 export type ErpIssueSeverity = "blocking" | "high" | "medium" | "low";
-export type ErpOperationStatus = "not-started" | "in-progress" | "completed" | "blocked" | "unknown";
+export type ErpOperationStatus = "not-started" | "in-progress" | "completed" | "blocked" | "unknown" | "waiting";
 export type ErpRecordStatus = "Active" | "Removed";
 
 export interface ErpImportFileSummary {
@@ -47,6 +47,12 @@ export interface ErpWorkOrder {
   sourceRow: number;
   sourceRows: number[];
   orderLines: ErpWorkOrderLine[];
+  /**
+   * Id du tout premier import où cet OF est apparu. Absent à la sortie du parseur (qui ignore
+   * l'historique des imports) ; toujours renseigné, et jamais réécrit ensuite, par
+   * `SynchronizationService.synchronize`. Sert à repérer les OF nouvelles depuis le dernier import.
+   */
+  firstSeenImportId?: string;
 }
 
 export interface ErpWorkOrderLine {
@@ -62,7 +68,7 @@ export interface ErpWorkOrderLine {
   customerOrderDetailId: string;
 }
 
-export type ErpPlanningWorkOrderSummary = Pick<ErpWorkOrder, "id" | "articleCode" | "articleId" | "articleGroupId" | "customerName" | "customerReference" | "quantity">;
+export type ErpPlanningWorkOrderSummary = Pick<ErpWorkOrder, "id" | "articleCode" | "articleId" | "articleGroupId" | "customerName" | "customerReference" | "quantity" | "firstSeenImportId">;
 
 export interface ErpOperation {
   id: string;

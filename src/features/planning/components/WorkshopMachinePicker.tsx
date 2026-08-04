@@ -38,33 +38,33 @@ export function WorkshopMachinePicker({ machines, currentMachineId, busy, onSele
     if (machineId !== currentMachineId) onSelect(machineId);
   }
 
-  return <div className="relative inline-block">
-    <button type="button" className={`${secondaryButton} gap-2`} disabled={busy} aria-expanded={isOpen} onClick={() => setIsOpen((current) => !current)}>
+  return <div className="relative inline-block max-w-full">
+    <button type="button" className={`${secondaryButton} min-h-0 h-5 w-full max-w-full gap-1 px-1 py-0 text-[10px]`} disabled={busy} aria-expanded={isOpen} onClick={() => setIsOpen((current) => !current)}>
       <MachineThumbnail photoDataUrl={currentMachine ? photos[currentMachine.id] : undefined} />
-      <span>{currentMachine?.displayName ?? "Non définie"}</span>
+      <span className="truncate">{currentMachine?.displayName ?? "Non définie"}</span>
     </button>
-    {isOpen ? <div className="absolute z-40 mt-1 w-72 rounded-xl border border-[var(--app-border)] bg-white p-2 shadow-lg">
-      <input autoFocus className={`${fieldClass} w-full`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une machine" />
-      <ul className="mt-2 max-h-64 space-y-1 overflow-y-auto">
+    {isOpen ? <div className="absolute z-40 mt-1 w-60 rounded-lg border border-[var(--app-border)] bg-white p-1.5 shadow-lg">
+      <input autoFocus className={`${fieldClass} min-h-0 h-6 w-full px-1.5 text-[11px]`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une machine" />
+      <ul className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto">
         {candidates.map((machine) => <li key={machine.id}>
           <button
             type="button"
-            className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-50 ${machine.id === currentMachineId ? "bg-slate-100 font-semibold" : ""}`}
+            className={`flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-left text-[11px] hover:bg-slate-50 ${machine.id === currentMachineId ? "bg-slate-100 font-semibold" : ""}`}
             onClick={() => select(machine.id)}
           >
             <MachineThumbnail photoDataUrl={photos[machine.id]} />
-            <span className="flex-1">{machine.displayName}</span>
-            {!machine.active ? <span className="text-xs text-slate-400">Inactive</span> : null}
-            {!machine.visible ? <span className="text-xs text-slate-400">Masquée</span> : null}
+            <span className="flex-1 truncate">{machine.displayName}</span>
+            {!machine.active ? <span className="text-[9px] text-slate-400">Inactive</span> : null}
+            {!machine.visible ? <span className="text-[9px] text-slate-400">Masquée</span> : null}
           </button>
         </li>)}
-        {!candidates.length ? <li className="px-2 py-3 text-xs text-slate-400">Aucune machine trouvée</li> : null}
+        {!candidates.length ? <li className="px-1.5 py-2 text-[11px] text-slate-400">Aucune machine trouvée</li> : null}
       </ul>
     </div> : null}
   </div>;
 }
 
 function MachineThumbnail({ photoDataUrl }: { photoDataUrl: string | undefined }) {
-  if (!photoDataUrl) return <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-xs text-slate-400" aria-hidden="true">—</span>;
-  return <img src={photoDataUrl} alt="" className="h-8 w-8 shrink-0 rounded-md object-cover" />;
+  if (!photoDataUrl) return <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-slate-100 text-[9px] text-slate-400" aria-hidden="true">—</span>;
+  return <img src={photoDataUrl} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />;
 }

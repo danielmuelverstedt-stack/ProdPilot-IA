@@ -66,6 +66,6 @@ function isDemoData(value: unknown): value is DemoData {
   return item.version === 2
     && [item.actions, item.workOrders, item.planning, item.machines, item.maintenance,
       item.meetings, item.requests, item.erpQuality, item.notifications,
-      item.savContacts, item.consumables]
+      item.savContacts, item.consumables, item.people]
       .every(Array.isArray);
 }

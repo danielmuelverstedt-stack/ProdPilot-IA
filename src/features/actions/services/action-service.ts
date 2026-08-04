@@ -37,6 +37,11 @@ export function createAction(input: NewActionInput): string {
       statut: input.statut ?? "À faire",
       dateCloture: null,
       remarque: input.remarque?.trim() || null,
+      priority: null,
+      responsableId: null,
+      estimatedHours: null,
+      plannedWeek: null,
+      planningOrder: null,
     };
     draft.actions.unshift(action);
   });

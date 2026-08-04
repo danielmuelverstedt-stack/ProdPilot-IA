@@ -122,7 +122,9 @@ export function buildPlanningView(data: DemoData, settings: AppSettings, operati
 
 function buildErpOperationBlocks(operations: OperationView[], machineIds: Set<string>): ErpOperationPlanningBlock[] {
   return operations
-    .filter((operation): operation is OperationView & { machineId: string; plannedDate: string } => operation.machineId !== null && machineIds.has(operation.machineId) && operation.plannedDate !== null)
+    // Une opération terminée n'a plus sa place dans le planning au jour le jour (demande explicite
+    // de l'utilisateur) — le module OF, qui ne passe pas par cette fonction, continue de la montrer.
+    .filter((operation): operation is OperationView & { machineId: string; plannedDate: string } => operation.effectiveStatus !== "completed" && operation.machineId !== null && machineIds.has(operation.machineId) && operation.plannedDate !== null)
     .map((operation) => ({
       id: `erp-${operation.id}`,
       source: "erp-operation" as const,

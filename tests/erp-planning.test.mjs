@@ -143,6 +143,45 @@ test("la synchronisation conserve les retraits et toutes les décisions", () => 
   assert.equal(next.report.removedOperations, 0);
 });
 
+test("la synchronisation fige firstSeenImportId au premier import où un OF apparaît, sans jamais le réécrire ensuite ; une OF nouvelle reçoit l'id de l'import courant", () => {
+  const firstImport = synchronizationService.synchronize({
+    importId: "import-1", startedAt: "2026-07-20T08:00:00.000Z", completedAt: "2026-07-20T08:00:01.000Z",
+    previousWorkOrders: [], previousOperations: [],
+    incomingWorkOrders: [{ id: "62541" }], incomingOperations: [], decisionCount: 0,
+  });
+  assert.equal(firstImport.workOrders.find((order) => order.id === "62541").firstSeenImportId, "import-1", "premier import de l'app : tout est nouveau");
+
+  const secondImport = synchronizationService.synchronize({
+    importId: "import-2", startedAt: "2026-07-21T08:00:00.000Z", completedAt: "2026-07-21T08:00:01.000Z",
+    previousWorkOrders: firstImport.workOrders, previousOperations: [],
+    incomingWorkOrders: [{ id: "62541" }, { id: "62999" }], incomingOperations: [], decisionCount: 0,
+  });
+  assert.equal(secondImport.workOrders.find((order) => order.id === "62541").firstSeenImportId, "import-1", "OF déjà connue : firstSeenImportId jamais réécrit");
+  assert.equal(secondImport.workOrders.find((order) => order.id === "62999").firstSeenImportId, "import-2", "OF réellement nouvelle : reçoit l'id de l'import courant");
+  assert.equal(secondImport.report.newWorkOrders, 1);
+});
+
+test("le statut « waiting » (En attente) est présent aux 6 endroits où le vocabulaire de statuts ERP est référencé, pas seulement dans le type", async () => {
+  const types = await readFile(new URL("../src/features/erp-import/types/erp-import.ts", import.meta.url), "utf8");
+  assert.match(types, /"not-started" \| "in-progress" \| "completed" \| "blocked" \| "unknown" \| "waiting"/, "1. le type ErpOperationStatus");
+
+  const presentation = await readFile(new URL("../src/features/erp-import/services/erp-operation-status-presentation.ts", import.meta.url), "utf8");
+  assert.match(presentation, /waiting: "En attente",/, "2a. ERP_OPERATION_STATUS_LABELS");
+  assert.match(presentation, /if \(status === "waiting"\) return "warning";/, "2b. erpOperationStatusTone");
+
+  const grouping = await readFile(new URL("../src/features/erp-import/services/erp-planning-grouping.ts", import.meta.url), "utf8");
+  assert.match(grouping, /unknown: "À qualifier", waiting: "En attente" }\[status\];/, "3. le Record dupliqué statusLabel() du regroupement Cockpit ERP");
+
+  const operations = await readFile(new URL("../src/features/erp-import/components/ErpPlanningOperations.tsx", import.meta.url), "utf8");
+  assert.match(operations, /\{ value: "waiting", label: "En attente" \}/, "4. STATUS_OPTIONS du Cockpit ERP");
+
+  const route = await readFile(new URL("../src/app/api/erp/operations/[id]/route.ts", import.meta.url), "utf8");
+  assert.match(route, /\["not-started", "in-progress", "completed", "blocked", "unknown", "waiting"\]/, "5. la liste blanche de validation de la route PATCH");
+
+  const summary = await readFile(new URL("../src/features/work-orders/services/erp-work-order-summary.ts", import.meta.url), "utf8");
+  assert.match(summary, /if \(rows\.some\(\(row\) => row\.effectiveStatus === "blocked"\)\) return "blocked";\s*\n\s*if \(rows\.some\(\(row\) => row\.effectiveStatus === "waiting"\)\) return "waiting";\s*\n\s*if \(rows\.some\(\(row\) => row\.effectiveStatus === "in-progress"\)\) return "in-progress";/, "6. la priorité bloquée > en attente > en cours dans deriveErpWorkOrderStatus");
+});
+
 test("OperationView centralise machine, priorité, visibilité et indicateurs", () => {
   const operation = {
     id: "62541::20::FRAISAGE", stableId: "62541::20::FRAISAGE", erpStatus: "Active", workOrderId: "62541",
@@ -238,6 +277,24 @@ test("les mappings supprimés, inactifs et inexistants restent explicitement qua
   assert.equal(classifyErpMachineMapping(null, [base]).status, "unmapped");
   const row = { machineId: "ABSENTE", machine: "ABSENTE", isWithoutMachine: false };
   assert.deepEqual(reconcileOperationViewMachineCatalog([row], [base])[0], { machineId: null, machine: "Non définie", isWithoutMachine: true });
+});
+
+test("reconcileOperationViewMachineCatalog assigne automatiquement un OF sans machine à l'unique machine taguée sur sa catégorie de tâche, et le rend réversible sans jamais rien écrire", () => {
+  const peinture = { id: "PEI-01", displayName: "Peinture", active: true, deleted: false, name: "Peinture", department: "Traitement surface", departmentId: "traitement-surface", machineType: "", color: "", order: 0, photoDataUrl: "", technicalInformation: "", taskCategoryCode: "18" };
+
+  // (a) OF sans machine, une seule machine taguée sur la catégorie 18 : assignation automatique.
+  const unassigned = { machineId: null, machine: "Non définie", isWithoutMachine: true, taskCode: "18" };
+  const reconciled = reconcileOperationViewMachineCatalog([unassigned], [peinture])[0];
+  assert.deepEqual(reconciled, { machineId: "PEI-01", machine: "Peinture", isWithoutMachine: false, taskCode: "18" });
+
+  // (b) OF déjà assigné manuellement à une autre machine réelle : la règle catégorie ne le touche jamais.
+  const autreMachine = { id: "FRA-01", displayName: "Fraisage 1", active: true, deleted: false, name: "Fraisage 1", department: "Fraisage", departmentId: "milling", machineType: "", color: "", order: 0, photoDataUrl: "", technicalInformation: "", taskCategoryCode: null };
+  const dejaAssigne = { machineId: "FRA-01", machine: "Fraisage 1", isWithoutMachine: false, taskCode: "18" };
+  assert.deepEqual(reconcileOperationViewMachineCatalog([dejaAssigne], [peinture, autreMachine])[0], dejaAssigne, "une assignation manuelle réelle garde toujours la priorité sur la règle catégorie");
+
+  // (c) Une deuxième machine tague la même catégorie : impossible de deviner laquelle doit recevoir l'OF, il redevient « sans machine » sans qu'aucune donnée n'ait jamais été perdue (rien n'avait été écrit).
+  const peinture2 = { ...peinture, id: "PEI-02", displayName: "Peinture 2" };
+  assert.deepEqual(reconcileOperationViewMachineCatalog([unassigned], [peinture, peinture2])[0], unassigned, "deux machines candidates pour la même catégorie : aucune assignation automatique, l'OF reste sans machine");
 });
 
 test("les anciens états ERP sont extraits puis retirés du mapping canonique", () => {

@@ -4,6 +4,51 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Correctif : 3 assertions de tests Atelier désynchronisées du resserrement visuel du 31/07/2026 — 04/08/2026
+
+- Passe de remise à jour/sauvegarde du dépôt : `npx tsc --noEmit` et `npm run lint` verts, mais `npm test` révélait 3 échecs dans `tests/planning-workshop.test.mjs`, tous dans `WorkshopOperationRow.tsx`, non liés aux 3 assertions de dimensions déjà corrigées lors du resserrement du 31/07/2026 (entrée précédente) : badge « N OF » de la colonne Article devenu un simple nombre (texte complet conservé en infobulle), colonne Client ayant reçu `className="block truncate"`, et libellé « Non disponible » du Temps raccourci en « Non disp. » (texte complet conservé en infobulle).
+- Ces trois changements de texte/markup étaient des effets du resserrement visuel intentionnel, jamais répercutés dans les assertions correspondantes. Assertions mises à jour pour refléter le rendu actuel plutôt que revenir sur le resserrement demandé par l'utilisateur.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (392/392), `npm run build` tous verts.
+
+### Amélioration : tableau Atelier resserré visuellement — 31/07/2026
+
+- Demandé par l'utilisateur : réduire les dimensions de colonnes/lignes des tableaux planning ; clarifié au périmètre de l'Atelier uniquement, avec un resserrement marqué (texte, paddings et largeurs de colonnes réduits, pas seulement l'espacement).
+- `WorkshopMachinePanel.tsx`/`WorkshopOperationRow.tsx`/`WorkshopMachinePicker.tsx`/`WorkshopDepartmentSection.tsx` : hauteurs de ligne/en-tête, largeurs de colonnes par défaut, paddings et tailles de police réduits ; les contrôles (priorité, statut, sélecteur de machine, boutons d'action) reçoivent `min-h-0` pour contourner la hauteur minimale partagée de `fieldClass`/`secondaryButton` (sans quoi `h-6`/`h-8` restait sans effet). Libellés des 3 boutons d'action par ligne raccourcis (texte complet conservé en infobulle) pour tenir sur une seule ligne dans la colonne resserrée.
+- Borne minimale de redimensionnement manuel des colonnes (`WORKSHOP_COLUMN_MIN_WIDTH_PX`) abaissée de 80 à 60px, pour rester cohérente avec les nouvelles largeurs par défaut.
+- Changement purement visuel : aucun autre tableau (Planning capacité, Planification équipe Actions, Cockpit ERP/module OF) n'est concerné. `npx tsc --noEmit`, `npm run lint`, `npm test` (392/392, 3 assertions de dimensions mises à jour), `npm run build` tous verts ; le rendu réel de l'onglet Atelier reste à recetter dans un navigateur, aucun outil interactif n'étant disponible dans cet environnement.
+
+### Ajout : Planification équipe dans le module Actions — 28/07/2026
+
+- Demandé par l'utilisateur : planifier la charge des personnes du bureau (responsable/charge/période par action), avec un onglet « Liste des actions » enrichi et un nouvel onglet « Planification équipe » calqué visuellement sur Planning capacité (grille personnes × semaines/mois, glisser-déposer, réordonnancement, ligne « Total équipe »), sans modifier Planning capacité ni ajouter de dépendance externe.
+- Nouveau modèle `TeamMember` et 5 champs ajoutés à `ProductionAction` (`priority`, `responsableId`, `estimatedHours`, `plannedWeek`, `planningOrder`) ; le responsable est désormais référencé par id, jamais par nom, avec synchronisation automatique du champ texte libre existant pour ne rien casser ailleurs dans l'app. Migration `DemoData` mise à jour pour ne perdre aucune donnée locale existante.
+- Nouveaux services purs `iso-week.ts` (semaines ISO 8601 autonomes) et `team-planning-service.ts` (mutateurs + index de performance `Map` personne+semaine → actions/charge, construit une seule fois par rendu). Couleurs de charge reprises telles quelles des Réglages Production → Planning, jamais de seuil réinventé.
+- Nouveaux composants : `TeamCapacityCard`, `MoveActionMenu` (repli clic « Déplacer vers… » sans glisser-déposer), `UnscheduledActionsPanel` (panneau « Non planifiées »), `TeamCapacityGrid`, `TeamManagementDialog`, `TeamPlanningTab`. Interprétation signalée : le panneau des actions sans période a été nommé « Non planifiées » pour éviter toute confusion avec le statut existant `"À planifier"` (idées de backlog), sémantiquement opposé.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (392/392, dont 22 nouveaux), `npm run build` tous verts. Page `/actions` vérifiée servie et rendue côté serveur ; le glisser-déposer et les dialogues interactifs restent à recetter manuellement, aucun outil de navigateur automatisé n'étant disponible dans cet environnement.
+
+### Ajout : statut « En attente » éditable dans l'Atelier et la fiche OF, avec remarque et onglet dédié — 27/07/2026
+
+- Demandé par l'utilisateur : pouvoir changer le statut d'une opération à la fois dans l'Atelier et depuis la fiche OF, avec « En attente » comme statut à part entière, et un 4ᵉ onglet dans le module OF pour y associer une remarque.
+- Le statut manuel et la remarque existaient déjà entièrement côté données/API (`PlanningDecision.planningStatus`/`comment`) — seule l'interface manquait. Nouveau statut `waiting` (« En attente ») ajouté à `ErpOperationStatus` et répercuté aux 6 endroits où ce vocabulaire est référencé, avec la priorité bloquée > en attente > en cours > terminée > à faire.
+- Atelier : la colonne Statut devient un menu déroulant modifiable directement (nouveau `updateStatus`, même mécanisme PATCH optimiste que la machine/la priorité). Fiche OF : statut modifiable sur chaque opération, plus un champ remarque éditable. Module OF : 4ᵉ onglet « En attente », calculé indépendamment du statut global affiché pour ne perdre aucune OF réellement en attente.
+
+### Amélioration : « Clôturées depuis » et « Nouvelles depuis le dernier import » passent en onglets dans le module OF — 27/07/2026
+
+- Demandé par l'utilisateur : « je préfère des onglets comme les départements et non un filtre » (pour ces deux vues précisément, pas le filtre Statut existant).
+- Le menu déroulant et la case à cocher ajoutés juste avant sont remplacés par une barre de 3 onglets (Tous / Clôturées récemment / Nouvelles depuis le dernier import), même gabarit que les onglets de département du Parc Machines/de l'Atelier — pastille comptée par onglet, un seul actif à la fois. Le choix de période (7/30 jours) reste disponible en boutons secondaires, visibles uniquement sur l'onglet « Clôturées récemment ».
+
+### Ajout : masquage des opérations terminées du planning + suivi des OF clôturés/nouveaux dans le module OF — 27/07/2026
+
+- Demandé par l'utilisateur, clarifié par 4 questions avant tout code : une opération terminée dans un futur export ERP ne doit plus apparaître dans le planning au jour le jour (Atelier + Planning capacité, par opération), tandis que le module OF doit continuer à montrer les OF clôturés — avec un filtre de période choisi à l'écran — et permettre de repérer les OF apparues lors du tout dernier import.
+- `groupOperationsByMachineId` (Atelier, tous modes de département) et `buildErpOperationBlocks` (Planning capacité) excluent désormais les opérations `effectiveStatus === "completed"` ; les compteurs par onglet (`buildDepartmentOperationIndex`) suivent. Module OF et Cockpit ERP inchangés.
+- Nouveau champ `closedAt` sur chaque résumé d'OF (dérivé des `actualEndAt` déjà importées, aucune nouvelle donnée) et nouveau filtre « Clôturées depuis » (Toutes/7/30 jours) dans le module OF.
+- Nouveau champ persisté `ErpWorkOrder.firstSeenImportId`, fixé une seule fois par OF dans `synchronizationService.synchronize` et jamais réécrit ensuite, pour repérer les OF nouvelles depuis le dernier import (donnée qui n'existait nulle part avant, seul un compteur agrégé existait) — nouvelle case à cocher dans le module OF. Effet transitoire attendu : aucun OF déjà importé n'a cette information tant qu'un nouvel import réel n'a pas eu lieu.
+
+### Ajout : assignation automatique et permanente d'une catégorie à sa machine unique, partout dans l'app — 27/07/2026
+
+- Demandé par l'utilisateur, en allant plus loin que le regroupement d'affichage précédent : que les OF d'une catégorie (ex. Peinture, 18) rejoignent automatiquement leur machine unique partout (pas seulement dans l'Atelier), y compris pour les OF apportés par de futurs imports ERP, sans action manuelle répétée.
+- `reconcileOperationViewMachineCatalog` (`erp-machine-mapping-status.ts`), déjà appelée à chaque affichage par l'Atelier, Planning capacité, le module OF et le Cockpit ERP, assigne désormais automatiquement un OF sans machine réellement assignée à l'unique machine/poste taguée sur sa catégorie de tâche (`MachineSettings.taskCategoryCode`, déjà existant sur la fiche machine). Calculé à la lecture, jamais écrit : une assignation manuelle explicite garde toujours la priorité, et la règle cesse proprement de s'appliquer (sans purge nécessaire) dès qu'une deuxième machine est taguée sur la même catégorie.
+- Limite assumée : le tableau de bord Qualité des données ERP (calculé côté serveur, sans accès aux machines qui vivent uniquement dans le navigateur) n'est pas concerné par cette règle — mesure différente et indépendante (complétude du mapping code ERP → machine).
+
 ### Ajout : une catégorie à une seule machine candidate absorbe directement ses OF sans machine assignée — 27/07/2026
 
 - Demandé par l'utilisateur : quand une seule machine/poste existe pour une catégorie (ex. Peinture), les OF de cette catégorie sans machine assignée doivent rejoindre directement cette machine plutôt que rester dans une ligne « Machine non définie » séparée.

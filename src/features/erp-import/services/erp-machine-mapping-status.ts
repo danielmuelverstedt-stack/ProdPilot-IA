@@ -19,13 +19,47 @@ export function classifyErpMachineMapping(machineId: string | null, machines: Ma
   return { status: "mapped", machine, hasMissingTarget: false };
 }
 
-/** Index une seule fois les machines par id (au lieu d'un `.find()` par opération) : sensible sur ~23 000 lignes, appelé à chaque import/mutation. */
+/**
+ * Catégorie de tâche dont une seule machine (ou poste) non supprimée est taguée
+ * (`MachineSettings.taskCategoryCode`, champ de la fiche machine — Parc Machines → la machine →
+ * Identité → Catégorie) : ce champ « lie constamment » la machine à sa catégorie, comme demandé
+ * par l'utilisateur. Dès qu'une deuxième machine porte la même catégorie, elle n'a plus de
+ * candidate unique et n'apparaît plus dans cette table — aucune purge nécessaire, rien n'a jamais
+ * été écrit pour ces OF (voir plus bas).
+ */
+function buildSoleCategoryMachineIdByTaskCode(machines: MachineSettings[]): Map<string, string> {
+  const candidatesByTaskCode = new Map<string, string[]>();
+  machines.forEach((machine) => {
+    if (machine.deleted || !machine.taskCategoryCode) return;
+    const list = candidatesByTaskCode.get(machine.taskCategoryCode) ?? [];
+    list.push(machine.id);
+    candidatesByTaskCode.set(machine.taskCategoryCode, list);
+  });
+  const soleMachineIdByTaskCode = new Map<string, string>();
+  candidatesByTaskCode.forEach((ids, taskCode) => { if (ids.length === 1) soleMachineIdByTaskCode.set(taskCode, ids[0]); });
+  return soleMachineIdByTaskCode;
+}
+
+/**
+ * Index une seule fois les machines par id (au lieu d'un `.find()` par opération) : sensible sur
+ * ~23 000 lignes, appelé à chaque import/mutation. Assigne aussi automatiquement à sa machine
+ * unique tout OF sans machine réellement assignée dont la catégorie n'a qu'une seule candidate
+ * (voir `buildSoleCategoryMachineIdByTaskCode`) — calculé à chaque lecture, donc toujours à jour
+ * (nouveaux OF d'un futur import compris) sans qu'aucune action ne soit nécessaire. Une assignation
+ * manuelle explicite (glisser-déposer/sélecteur, qui écrit un vrai `machineId` via
+ * `PlanningDecision`) garde toujours la priorité : cette fonction ne touche jamais une ligne dont
+ * `machineId` pointe déjà vers une machine réelle non supprimée.
+ */
 export function reconcileOperationViewMachineCatalog(rows: OperationView[], machines: MachineSettings[]): OperationView[] {
   const machineById = new Map(machines.map((machine) => [machine.id, machine]));
+  const soleCategoryMachineIdByTaskCode = buildSoleCategoryMachineIdByTaskCode(machines);
   return rows.map((row) => {
     const machine = row.machineId ? machineById.get(row.machineId) ?? null : null;
     if (machine && !machine.deleted) return row;
-    return row.machineId === null ? row : { ...row, machineId: null, machine: "Non définie", isWithoutMachine: true };
+    if (row.machineId !== null) return { ...row, machineId: null, machine: "Non définie", isWithoutMachine: true };
+    const ruleMachineId = soleCategoryMachineIdByTaskCode.get(row.taskCode) ?? null;
+    if (!ruleMachineId) return row;
+    return { ...row, machineId: ruleMachineId, machine: machineById.get(ruleMachineId)!.displayName, isWithoutMachine: false };
   });
 }
 

@@ -28,7 +28,7 @@ export function PlanningWorkshopView() {
   // Réglage partagé « catégories visibles », dans son propre stockage rapide (pas dans les Réglages
   // partagés) : changer d'onglet ne doit toucher que ce champ, pas cloner/réécrire toute l'application.
   const visibleTaskCategoryCodes = useVisibleTaskCategoryCodes();
-  const { rows, allRows, isLoading, isMutating, error, updatePriority, updateMachine, reorderOperations, renumberOperations } = useWorkshopOperations(machines, visibleTaskCategoryCodes);
+  const { rows, allRows, isLoading, isMutating, error, updatePriority, updateMachine, updateStatus, reorderOperations, renumberOperations } = useWorkshopOperations(machines, visibleTaskCategoryCodes);
   function updateVisibleTaskCategoryCodes(codes: string[]) {
     setVisibleTaskCategoryCodes(codes);
   }
@@ -189,6 +189,7 @@ export function PlanningWorkshopView() {
         onToggleMachineCollapsed={preferences.toggleMachineCollapsed}
         onUpdatePriority={updatePriority}
         onUpdateMachine={updateMachine}
+        onUpdateStatus={updateStatus}
         onReorderOperations={reorderOperations}
         onRenumberOperations={renumberOperations}
         onMoveColumn={preferences.reorderColumns}

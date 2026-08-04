@@ -28,6 +28,22 @@ export interface ProductionAction {
   statut: ActionStatus;
   dateCloture: string | null;
   remarque: string | null;
+  /** Priorité affichée sur les cartes de la planification équipe ; `null` = non définie. */
+  priority: Priority | null;
+  /**
+   * Champs de la planification équipe (module Actions → onglet Planification équipe), séparés de
+   * `responsable` (texte libre, inchangé, alimente tout le reste de l'app) pour que le glisser-
+   * déposer référence toujours une personne par id, jamais par nom. `responsableId` pointe vers
+   * `DemoData.people`, y compris vers un id supprimé (`responsableId` n'est jamais effacé par une
+   * suppression de personne — seule la planification l'est, voir `deleteTeamMember`) pour ne
+   * jamais perdre la charge/l'historique d'une action.
+   */
+  responsableId: string | null;
+  estimatedHours: number | null;
+  /** Semaine ISO 8601 planifiée, format "AAAA-Www" (ex. "2026-W31") ; `null` = case « Non planifiées ». */
+  plannedWeek: string | null;
+  /** Ordre au sein de la case personne+semaine, croissant. `null` tant que jamais planifiée. */
+  planningOrder: number | null;
 }
 
 export interface WorkOperation {
@@ -207,6 +223,14 @@ export interface DemoNotification {
   read: boolean;
 }
 
+/** Membre de l'équipe bureaux (planification équipe du module Actions) — distinct de `UserSettings` (compte/rôle), volontairement minimal. */
+export interface TeamMember {
+  id: string;
+  name: string;
+  weeklyCapacityHours: number;
+  order: number;
+}
+
 export interface DemoData {
   version: 2;
   actions: ProductionAction[];
@@ -220,4 +244,5 @@ export interface DemoData {
   notifications: DemoNotification[];
   savContacts: MachineSavContact[];
   consumables: MachineConsumable[];
+  people: TeamMember[];
 }

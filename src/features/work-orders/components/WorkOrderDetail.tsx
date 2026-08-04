@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { EmptyState, ErrorBanner, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { EmptyState, ErrorBanner, fieldClass, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { useDemoData } from "@/features/demo/services/demo-repository";
 import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog";
 import { ERP_OPERATION_STATUS_LABELS, erpOperationDelayLabel, erpOperationDelayTone, erpOperationStatusTone } from "@/features/erp-import/services/erp-operation-status-presentation";
+import { applyOperationPatchLocally, type OperationViewLocalPatch } from "@/features/erp-import/services/operation-view-local-patch";
 import { useErpImportActive } from "@/features/planning/hooks/useErpImportActive";
 import type { ErpPlanningQueryResult, ErpWorkOrder, OperationView } from "@/features/erp-import/types/erp-import";
 
@@ -59,12 +60,38 @@ function ErpWorkOrderDetail({ id }: { id: string }) {
     return () => { active = false; window.clearTimeout(timer); };
   }, [id]);
 
+  /**
+   * Statut et commentaire modifiables directement depuis la fiche OF, en plus de l'Atelier
+   * (demandé explicitement). Réutilise `applyOperationPatchLocally` (même fonction pure que
+   * `useWorkshopOperations.ts`) pour la mise à jour optimiste locale ; cette page garde son
+   * propre fetch (au lieu de `useWorkshopOperations`) car elle a besoin du détail complet du bon
+   * de commande (`include=work-order-details`), pas seulement du résumé réduit.
+   */
+  async function patchOperation(operationId: string, patch: OperationViewLocalPatch, errorMessage: string) {
+    let previousRows: OperationView[] | null = null;
+    setState((current) => {
+      if (!current) return current;
+      previousRows = current.rows;
+      return { ...current, rows: current.rows.map((row) => row.id === operationId ? applyOperationPatchLocally(row, patch) : row) };
+    });
+    try {
+      const response = await fetch(`/api/erp/operations/${encodeURIComponent(operationId)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(apiMessage(payload));
+    } catch (nextError) {
+      if (previousRows) { const restored = previousRows; setState((current) => current ? { ...current, rows: restored } : current); }
+      setError(nextError instanceof Error ? nextError.message : errorMessage);
+    }
+  }
+  const updateStatus = (operationId: string, status: OperationView["status"]) => void patchOperation(operationId, { status }, "Le statut n’a pas pu être modifié.");
+  const updateComment = (operationId: string, comment: string) => void patchOperation(operationId, { comment: comment.trim() || null }, "La remarque n’a pas pu être modifiée.");
+
   if (isLoading) return <EmptyState title="Chargement…" description="Récupération de l’OF depuis la projection ERP." />;
   if (error) return <ErrorBanner>{error}</ErrorBanner>;
   if (!state || !state.rows.length) return <EmptyState title="OF introuvable" description="Cet ordre de fabrication n’existe pas dans la projection ERP active." />;
 
   const { rows, workOrder } = state;
-  const current = rows.find((row) => row.effectiveStatus === "blocked") ?? rows.find((row) => row.effectiveStatus === "in-progress") ?? rows[0];
+  const current = rows.find((row) => row.effectiveStatus === "blocked") ?? rows.find((row) => row.effectiveStatus === "waiting") ?? rows.find((row) => row.effectiveStatus === "in-progress") ?? rows[0];
   const next = rows[rows.findIndex((row) => row.id === current.id) + 1];
   const completedCount = rows.filter((row) => row.effectiveStatus === "completed").length;
   const progress = rows.length ? Math.round((completedCount / rows.length) * 100) : 0;
@@ -84,7 +111,7 @@ function ErpWorkOrderDetail({ id }: { id: string }) {
       <Metric label="Opération suivante" value={next ? `Op. ${next.operationNumber} · ${next.description ?? "Sans description"}` : "Fin de gamme"} />
       <Metric label="Machine actuelle" value={current.machine} />
     </section>
-    <section className="mt-5 rounded-2xl border border-[var(--app-border)] bg-white p-5"><h2 className="text-lg font-semibold">Gamme complète</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">N°</th><th className="p-3">Tâche</th><th className="p-3">Machine</th><th className="p-3">Temps</th><th className="p-3">Date</th><th className="p-3">Statut</th><th className="p-3">Retard</th><th className="p-3">Commentaire</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-b last:border-0"><td className="p-3 font-semibold">{row.operationNumber}</td><td className="p-3">{row.taskCode || "—"}</td><td className="p-3">{row.machine}</td><td className="p-3 text-xs italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disponible</td><td className="p-3">{row.plannedDate ? formatEuropeanDate(row.plannedDate) : "—"}</td><td className="p-3"><StatusPill tone={erpOperationStatusTone(row.effectiveStatus)}>{ERP_OPERATION_STATUS_LABELS[row.effectiveStatus]}</StatusPill></td><td className="p-3"><StatusPill tone={erpOperationDelayTone(row.delayDays)}>{erpOperationDelayLabel(row.delayDays)}</StatusPill></td><td className="p-3 text-slate-600">{row.comment || "—"}</td></tr>)}</tbody></table></div></section>
+    <section className="mt-5 rounded-2xl border border-[var(--app-border)] bg-white p-5"><h2 className="text-lg font-semibold">Gamme complète</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="border-b bg-slate-50 text-xs uppercase text-slate-500"><tr><th className="p-3">N°</th><th className="p-3">Tâche</th><th className="p-3">Machine</th><th className="p-3">Temps</th><th className="p-3">Date</th><th className="p-3">Statut</th><th className="p-3">Retard</th><th className="p-3">Commentaire</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-b last:border-0"><td className="p-3 font-semibold">{row.operationNumber}</td><td className="p-3">{row.taskCode || "—"}</td><td className="p-3">{row.machine}</td><td className="p-3 text-xs italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disponible</td><td className="p-3">{row.plannedDate ? formatEuropeanDate(row.plannedDate) : "—"}</td><td className="p-3"><select className={`${fieldClass} h-8 py-0 text-xs`} value={row.effectiveStatus} onChange={(event) => updateStatus(row.id, event.target.value as OperationView["status"])}>{(Object.keys(ERP_OPERATION_STATUS_LABELS) as Array<OperationView["status"]>).map((code) => <option key={code} value={code}>{ERP_OPERATION_STATUS_LABELS[code]}</option>)}</select></td><td className="p-3"><StatusPill tone={erpOperationDelayTone(row.delayDays)}>{erpOperationDelayLabel(row.delayDays)}</StatusPill></td><td className="p-3"><input className={`${fieldClass} h-8 w-full py-0 text-xs`} defaultValue={row.comment ?? ""} placeholder="Remarque…" onBlur={(event) => { if (event.target.value.trim() !== (row.comment ?? "")) updateComment(row.id, event.target.value); }} /></td></tr>)}</tbody></table></div></section>
     <div className="mt-5 grid gap-5 lg:grid-cols-2">
       <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5"><h2 className="font-semibold">Actions liées</h2><ul className="mt-3 space-y-2">{linkedActions.length ? linkedActions.map((action) => <li key={action.id}><Link className="block rounded-lg bg-slate-50 p-3 text-sm hover:bg-slate-100" href={`/actions/${action.id}`}><strong>{action.id} · {action.description}</strong><span className="mt-1 block text-xs text-slate-500">{action.responsable} · {action.statut}</span></Link></li>) : <li className="text-sm text-slate-500">Aucune action liée.</li>}</ul></section>
       <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5"><h2 className="font-semibold">Lignes de commande</h2>{workOrder && workOrder.orderLines.length > 1 ? <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[500px] text-left text-xs"><thead className="text-slate-500"><tr><th className="p-2">Commande / poste</th><th className="p-2">Référence</th><th className="p-2">Quantité</th><th className="p-2">Demandée</th><th className="p-2">Confirmée</th></tr></thead><tbody>{workOrder.orderLines.map((line) => <tr key={line.sourceRow} className="border-t border-slate-100"><td className="p-2">{line.customerOrderNumber} / {line.customerOrderLine}</td><td className="p-2">{line.customerReference || "—"}</td><td className="p-2">{line.quantity.toLocaleString("fr-BE")}</td><td className="p-2">{line.requestedDueDate ? formatEuropeanDate(line.requestedDueDate) : "—"}</td><td className="p-2">{line.confirmedDueDate ? formatEuropeanDate(line.confirmedDueDate) : "—"}</td></tr>)}</tbody></table></div> : <p className="mt-3 text-sm text-slate-500">{workOrder ? "Une seule ligne de commande." : "Détail de commande non disponible : cet OF est absent du fichier Top (opération orpheline)."}</p>}</section>

@@ -1,5 +1,18 @@
 import type { ActionContextLink, ActionStatus, DemoData, ProductionAction } from "@/features/demo/types/demo";
 
+/** Complète une action déjà stockée (avant la planification équipe) avec les nouveaux champs, tous `null` par défaut — jamais `undefined`, pour rester conforme au type même sur des données anciennes. */
+function withActionPlanningDefaults(value: unknown): ProductionAction {
+  const action = value as ProductionAction;
+  return {
+    ...action,
+    priority: action.priority ?? null,
+    responsableId: action.responsableId ?? null,
+    estimatedHours: action.estimatedHours ?? null,
+    plannedWeek: action.plannedWeek ?? null,
+    planningOrder: action.planningOrder ?? null,
+  };
+}
+
 interface LegacyAction {
   id: string;
   title?: string;
@@ -68,15 +81,27 @@ function migrateAction(value: unknown): ProductionAction | null {
     statut,
     dateCloture: statut === "Fait" ? (lastHistoryEntry?.date ?? legacy.createdAt ?? null) : null,
     remarque: comments.length ? comments.join(" | ") : null,
+    priority: null,
+    responsableId: null,
+    estimatedHours: null,
+    plannedWeek: null,
+    planningOrder: null,
   };
 }
 
-/** Complète un DemoData v2 déjà stocké localement avec les tableaux ajoutés depuis (fiche machine : contacts SAV, consommables). */
+/**
+ * Complète un DemoData v2 déjà stocké localement avec les champs ajoutés depuis (fiche machine :
+ * contacts SAV, consommables ; planification équipe : personnes, champs de planification par
+ * action) — sans backfill, ces payloads plus anciens échoueraient `isDemoData()` et seraient
+ * réinitialisés au premier chargement, perdant les données locales de l'utilisateur.
+ */
 function withMachineSheetDefaults(value: Record<string, unknown>): Record<string, unknown> {
   return {
     ...value,
     savContacts: Array.isArray(value.savContacts) ? value.savContacts : [],
     consumables: Array.isArray(value.consumables) ? value.consumables : [],
+    people: Array.isArray(value.people) ? value.people : [],
+    actions: Array.isArray(value.actions) ? value.actions.map(withActionPlanningDefaults) : [],
   };
 }
 

@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import Link from "next/link";
 import { fieldClass, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
-import { ERP_OPERATION_STATUS_LABELS, erpOperationDelayLabel, erpOperationDelayTone, erpOperationStatusTone } from "@/features/erp-import/services/erp-operation-status-presentation";
+import { ERP_OPERATION_STATUS_LABELS, erpOperationDelayLabel, erpOperationDelayTone } from "@/features/erp-import/services/erp-operation-status-presentation";
 import { articleColor } from "@/features/erp-import/services/erp-planning-grouping";
 import { WorkshopMachinePicker } from "@/features/planning/components/WorkshopMachinePicker";
 import type { OperationView } from "@/features/erp-import/types/erp-import";
@@ -20,10 +20,11 @@ interface WorkshopOperationRowProps {
   busy: boolean;
   onUpdatePriority: (operationId: string, priority: number) => void;
   onUpdateMachine: (operationId: string, machineId: string) => void;
+  onUpdateStatus: (operationId: string, status: OperationView["status"]) => void;
   onReorder: (draggedOperationId: string, targetOperationId: string) => void;
 }
 
-export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operation, visibleColumnIds, machineId, machines, busy, onUpdatePriority, onUpdateMachine, onReorder }: WorkshopOperationRowProps) {
+export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operation, visibleColumnIds, machineId, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus, onReorder }: WorkshopOperationRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   return <>
     <tr
@@ -34,28 +35,28 @@ export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operati
         const draggedId = event.dataTransfer.getData(WORKSHOP_OPERATION_DRAG_MIME_TYPE);
         if (draggedId && draggedId !== operation.id) onReorder(draggedId, operation.id);
       }}
-      className="cursor-grab border-t border-slate-100 align-top hover:bg-slate-50 active:cursor-grabbing"
+      className="cursor-grab border-t border-slate-100 align-middle hover:bg-slate-50 active:cursor-grabbing"
     >
-      {visibleColumnIds.map((columnId) => <td key={columnId} className="p-3 text-sm">{renderCell(columnId, operation, machines, busy, onUpdatePriority, onUpdateMachine)}</td>)}
-      <td className="p-3 text-right text-sm">
-        <div className="flex justify-end gap-2">
-          <button type="button" className={secondaryButton} aria-expanded={isExpanded} onClick={() => setIsExpanded((current) => !current)}>{isExpanded ? "Fermer" : "Ouvrir l’opération"}</button>
-          {machineId ? <Link href={`/machines/${machineId}`} className={secondaryButton}>Fiche machine</Link> : null}
-          <Link href={`/of/${operation.workOrderId}`} className={secondaryButton}>Ouvrir l’OF</Link>
+      {visibleColumnIds.map((columnId) => <td key={columnId} className="p-1 text-[11px]">{renderCell(columnId, operation, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus)}</td>)}
+      <td className="p-1 text-right text-[11px]">
+        <div className="flex flex-wrap justify-end gap-0.5">
+          <button type="button" className={`${secondaryButton} min-h-0 h-5 px-1.5 py-0 text-[10px]`} aria-expanded={isExpanded} title={isExpanded ? "Fermer" : "Ouvrir l’opération"} onClick={() => setIsExpanded((current) => !current)}>{isExpanded ? "Fermer" : "Détails"}</button>
+          {machineId ? <Link href={`/machines/${machineId}`} className={`${secondaryButton} min-h-0 h-5 px-1.5 py-0 text-[10px]`} title="Fiche machine">Fiche</Link> : null}
+          <Link href={`/of/${operation.workOrderId}`} className={`${secondaryButton} min-h-0 h-5 px-1.5 py-0 text-[10px]`} title="Ouvrir l’OF">OF</Link>
         </div>
       </td>
     </tr>
-    {isExpanded ? <tr className="border-t border-slate-50 bg-slate-50/60"><td colSpan={visibleColumnIds.length + 1} className="p-4"><OperationDetail operation={operation} /></td></tr> : null}
+    {isExpanded ? <tr className="border-t border-slate-50 bg-slate-50/60"><td colSpan={visibleColumnIds.length + 1} className="p-3"><OperationDetail operation={operation} /></td></tr> : null}
   </>;
 });
 
-function renderCell(columnId: WorkshopColumnId, operation: OperationView, machines: MachineSettings[], busy: boolean, onUpdatePriority: (operationId: string, priority: number) => void, onUpdateMachine: (operationId: string, machineId: string) => void) {
+function renderCell(columnId: WorkshopColumnId, operation: OperationView, machines: MachineSettings[], busy: boolean, onUpdatePriority: (operationId: string, priority: number) => void, onUpdateMachine: (operationId: string, machineId: string) => void, onUpdateStatus: (operationId: string, status: OperationView["status"]) => void) {
   if (columnId === "priority") return <input
     key={operation.effectivePriority}
     type="number"
     min="0"
     max="999"
-    className={`${fieldClass} w-20`}
+    className={`${fieldClass} min-h-0 h-5 w-11 px-1 py-0 text-[10px]`}
     defaultValue={operation.effectivePriority}
     disabled={busy}
     onBlur={(event) => {
@@ -64,16 +65,18 @@ function renderCell(columnId: WorkshopColumnId, operation: OperationView, machin
     }}
   />;
   if (columnId === "work-order") return <span className="font-semibold">{operation.workOrderId}</span>;
-  if (columnId === "operation") return <><span>Op. {operation.operationNumber}</span><span className="block text-xs text-slate-500">Tâche {operation.taskCode || "—"}</span></>;
+  if (columnId === "operation") return <span className="block truncate" title={`Op. ${operation.operationNumber} · Tâche ${operation.taskCode || "—"}`}>Op. {operation.operationNumber} · T.{operation.taskCode || "—"}</span>;
   if (columnId === "article") {
     const colors = operation.articleWorkOrderCount > 1 ? articleColor(operation.articleCode) : null;
-    return <div><span className="font-semibold">{operation.articleCode || "Article inconnu"}</span>{colors ? <span className="ml-2 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold" style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }} title="Cet article est présent dans plusieurs OF en cours">{operation.articleWorkOrderCount} OF</span> : null}</div>;
+    return <div className="flex items-center gap-1"><span className="min-w-0 truncate font-semibold">{operation.articleCode || "Article inconnu"}</span>{colors ? <span className="shrink-0 rounded-full border px-1 text-[9px] font-semibold" style={{ backgroundColor: colors.background, borderColor: colors.border, color: colors.text }} title="Cet article est présent dans plusieurs OF en cours">{operation.articleWorkOrderCount}</span> : null}</div>;
   }
-  if (columnId === "client") return <span>{operation.workOrder?.customerName || "—"}</span>;
+  if (columnId === "client") return <span className="block truncate">{operation.workOrder?.customerName || "—"}</span>;
   if (columnId === "quantity") return <span>{operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—"}</span>;
-  if (columnId === "description") return <span className="line-clamp-2" title={operation.description ?? ""}>{operation.description || "Sans description"}</span>;
-  if (columnId === "time") return <span className="text-xs italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disponible</span>;
-  if (columnId === "status") return <StatusPill tone={erpOperationStatusTone(operation.effectiveStatus)}>{ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus]}</StatusPill>;
+  if (columnId === "description") return <span className="line-clamp-1" title={operation.description ?? ""}>{operation.description || "Sans description"}</span>;
+  if (columnId === "time") return <span className="text-[9px] italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disp.</span>;
+  if (columnId === "status") return <select className={`${fieldClass} min-h-0 h-5 py-0 text-[10px]`} value={operation.effectiveStatus} disabled={busy} onChange={(event) => onUpdateStatus(operation.id, event.target.value as OperationView["status"])}>
+    {(Object.keys(ERP_OPERATION_STATUS_LABELS) as Array<OperationView["status"]>).map((code) => <option key={code} value={code}>{ERP_OPERATION_STATUS_LABELS[code]}</option>)}
+  </select>;
   if (columnId === "start-date") return <span>{formatDate(operation.plannedDate)}</span>;
   if (columnId === "end-date") return <span>{formatDate(operation.dueDate)}</span>;
   if (columnId === "delay") return <StatusPill tone={erpOperationDelayTone(operation.delayDays)}>{erpOperationDelayLabel(operation.delayDays)}</StatusPill>;

@@ -20,11 +20,19 @@ export interface SynchronizationResult {
 /** Centralise la fusion quotidienne ERP sans jamais modifier les décisions utilisateur. */
 export class SynchronizationService {
   synchronize(input: SynchronizationInput): SynchronizationResult {
-    const previousWorkOrderIds = new Set(input.previousWorkOrders.map((order) => order.id));
+    const previousWorkOrderById = new Map(input.previousWorkOrders.map((order) => [order.id, order]));
     const previousById = new Map(input.previousOperations.map((operation) => [operation.id, operation]));
     const incomingIds = new Set(input.incomingOperations.map((operation) => operation.id));
     let newOperations = 0;
     let updatedOperations = 0;
+
+    // Un OF déjà connu garde son firstSeenImportId d'origine (jamais réécrit) ; un OF nouveau reçoit
+    // l'id de l'import courant. Au tout premier import de l'app, previousWorkOrders est vide : tout
+    // est « nouveau », ce qui est correct et ne demande aucun cas particulier.
+    const workOrders = input.incomingWorkOrders.map((order) => ({
+      ...order,
+      firstSeenImportId: previousWorkOrderById.get(order.id)?.firstSeenImportId ?? input.importId,
+    }));
 
     const activeOperations = input.incomingOperations.map((operation) => {
       if (previousById.has(operation.id)) updatedOperations += 1;
@@ -39,14 +47,14 @@ export class SynchronizationService {
     );
 
     return {
-      workOrders: input.incomingWorkOrders,
+      workOrders,
       operations: [...activeOperations, ...removedOperations, ...alreadyRemoved],
       report: {
         importId: input.importId,
         startedAt: input.startedAt,
         completedAt: input.completedAt,
         durationMs: Math.max(0, Date.parse(input.completedAt) - Date.parse(input.startedAt)),
-        newWorkOrders: input.incomingWorkOrders.filter((order) => !previousWorkOrderIds.has(order.id)).length,
+        newWorkOrders: input.incomingWorkOrders.filter((order) => !previousWorkOrderById.has(order.id)).length,
         newOperations,
         updatedOperations,
         removedOperations: removedOperations.length,

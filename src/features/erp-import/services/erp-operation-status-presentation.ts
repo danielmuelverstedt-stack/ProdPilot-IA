@@ -11,6 +11,7 @@ export const ERP_OPERATION_STATUS_LABELS: Record<ErpOperationStatus, string> = {
   completed: "Terminée",
   blocked: "Bloquée",
   unknown: "À qualifier",
+  waiting: "En attente",
 };
 
 export type ErpOperationStatusTone = "neutral" | "success" | "warning" | "danger" | "info";
@@ -19,6 +20,7 @@ export function erpOperationStatusTone(status: ErpOperationStatus): ErpOperation
   if (status === "completed") return "success";
   if (status === "blocked") return "danger";
   if (status === "in-progress") return "info";
+  if (status === "waiting") return "warning";
   if (status === "unknown") return "neutral";
   return "neutral";
 }

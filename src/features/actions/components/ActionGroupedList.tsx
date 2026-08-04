@@ -5,16 +5,17 @@ import { EmptyState } from "@/components/ui/ModuleUi";
 import { ColumnSortButton } from "@/components/ui/SortableColumnHeader";
 import { ActionRow, getActionSortValue } from "@/features/actions/components/ActionRow";
 import { groupActions, type ActionGroupMode } from "@/features/actions/services/action-grouping";
-import type { ProductionAction } from "@/features/demo/types/demo";
+import type { ProductionAction, TeamMember } from "@/features/demo/types/demo";
 import type { ActionColumnSettings, ActionOriginSettings } from "@/features/settings/types/settings";
 import { sortRows } from "@/lib/table-columns";
 import { useTableColumns } from "@/lib/use-table-columns";
 
-export function ActionGroupedList({ actions, mode, columns, origins, variant = "current" }: {
+export function ActionGroupedList({ actions, mode, columns, origins, people, variant = "current" }: {
   actions: ProductionAction[];
   mode: ActionGroupMode;
   columns: ActionColumnSettings[];
   origins: ActionOriginSettings[];
+  people: TeamMember[];
   variant?: "current" | "backlog";
 }) {
   const groups = useMemo(() => groupActions(actions, mode), [actions, mode]);
@@ -35,7 +36,7 @@ export function ActionGroupedList({ actions, mode, columns, origins, variant = "
           <thead className="border-b border-[var(--app-border)] bg-slate-50 text-xs uppercase text-slate-500">
             <tr>{visibleColumns.map((column) => <th key={column.id} className="p-3">{column.label}<ColumnSortButton id={column.id} sort={sort} onSort={cycleSort} /></th>)}<th className="p-3">Actions rapides</th></tr>
           </thead>
-          <tbody>{sortedItems.map((action) => <ActionRow key={action.id} action={action} columns={visibleColumns} origins={origins} variant={variant} />)}</tbody>
+          <tbody>{sortedItems.map((action) => <ActionRow key={action.id} action={action} columns={visibleColumns} origins={origins} people={people} variant={variant} />)}</tbody>
         </table>
       </div>
     </section>;

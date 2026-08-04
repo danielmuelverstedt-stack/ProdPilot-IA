@@ -32,7 +32,7 @@ function nullableDate(value: unknown): string | null {
   return value;
 }
 function nullablePriority(value: unknown): number | null { if (value === null || value === "") return null; if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 999) throw new Error("La priorité doit être comprise entre 0 et 999."); return Math.round(value); }
-function nullableStatus(value: unknown): ErpOperationStatus | null { if (value === null || value === "") return null; if (!["not-started", "in-progress", "completed", "blocked", "unknown"].includes(String(value))) throw new Error("Le statut Planning est invalide."); return value as ErpOperationStatus; }
+function nullableStatus(value: unknown): ErpOperationStatus | null { if (value === null || value === "") return null; if (!["not-started", "in-progress", "completed", "blocked", "unknown", "waiting"].includes(String(value))) throw new Error("Le statut Planning est invalide."); return value as ErpOperationStatus; }
 function nullableShortString(value: unknown, max: number): string | null { if (value === null || value === "") return null; if (typeof value !== "string" || value.trim().length > max) throw new Error("La valeur Planning est invalide."); return value.trim(); }
 function nullableBoolean(value: unknown): boolean | null { if (value === null) return null; if (typeof value !== "boolean") throw new Error("La valeur Planning doit être booléenne."); return value; }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null && !Array.isArray(value); }

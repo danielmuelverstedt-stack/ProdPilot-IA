@@ -14,25 +14,25 @@ import { SORTABLE_COLUMN_IDS, type WorkshopColumnId, type WorkshopMachineGroup, 
 import { WORKSHOP_COLUMN_LABELS } from "@/features/planning/services/workshop-view-preferences";
 
 const COLUMN_DRAG_MIME_TYPE = "application/x-prodpilot-workshop-column";
-const ROW_HEIGHT_PX = 52;
-const HEADER_HEIGHT_PX = 40;
-const ACTIONS_COLUMN_WIDTH_PX = 220;
+const ROW_HEIGHT_PX = 24;
+const HEADER_HEIGHT_PX = 20;
+const ACTIONS_COLUMN_WIDTH_PX = 148;
 
 /** Largeur par défaut de chaque colonne tant qu'elle n'a pas été redimensionnée à la souris. */
 const DEFAULT_COLUMN_WIDTH_PX: Record<WorkshopColumnId, number> = {
-  priority: 90,
-  "work-order": 110,
-  operation: 150,
-  article: 220,
-  client: 180,
-  quantity: 100,
-  description: 220,
-  time: 110,
-  status: 130,
-  "start-date": 110,
-  "end-date": 110,
-  delay: 130,
-  machine: 220,
+  priority: 50,
+  "work-order": 64,
+  operation: 90,
+  article: 130,
+  client: 105,
+  quantity: 56,
+  description: 130,
+  time: 65,
+  status: 75,
+  "start-date": 64,
+  "end-date": 64,
+  delay: 75,
+  machine: 130,
 };
 
 const SORTABLE_COLUMNS = new Set<string>(SORTABLE_COLUMN_IDS);
@@ -63,6 +63,7 @@ interface WorkshopMachinePanelProps {
   onToggleCollapsed: (machineId: string) => void;
   onUpdatePriority: (operationId: string, priority: number) => void;
   onUpdateMachine: (operationId: string, machineId: string) => void;
+  onUpdateStatus: (operationId: string, status: OperationView["status"]) => void;
   onReorderOperations: (orderedOperationIds: string[]) => void;
   onRenumberOperations: (orderedOperationIds: string[]) => void;
   onMoveColumn: (sourceId: WorkshopColumnId, targetId: WorkshopColumnId) => void;
@@ -71,7 +72,7 @@ interface WorkshopMachinePanelProps {
   onPrint: (machine: MachineSettings | null, operations: OperationView[], totalOperationCount: number) => void;
 }
 
-export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, rowsPerMachine, sort, machines, capacities, defaultCapacityHours, columnWidths, busy, isDirectlyLinked, onToggleCollapsed, onUpdatePriority, onUpdateMachine, onReorderOperations, onRenumberOperations, onMoveColumn, onResizeColumn, onCycleSort, onPrint }: WorkshopMachinePanelProps) {
+export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, rowsPerMachine, sort, machines, capacities, defaultCapacityHours, columnWidths, busy, isDirectlyLinked, onToggleCollapsed, onUpdatePriority, onUpdateMachine, onUpdateStatus, onReorderOperations, onRenumberOperations, onMoveColumn, onResizeColumn, onCycleSort, onPrint }: WorkshopMachinePanelProps) {
   const { machine, operations, operationCount, workOrderCount } = group;
   const panelKey = machine?.id ?? "unassigned";
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
@@ -136,20 +137,20 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
     onRenumberOperations(operationsRef.current.map((operation) => operation.id));
   }, [onRenumberOperations]);
 
-  return <section className="overflow-hidden rounded-2xl border border-[var(--app-border)] bg-white">
-    <div className="flex w-full flex-wrap items-center gap-3 bg-slate-50 px-4 py-3">
-      <button type="button" aria-expanded={!isCollapsed} onClick={() => onToggleCollapsed(panelKey)} className="flex flex-1 flex-wrap items-center gap-3 text-left">
-        <span aria-hidden="true" className="text-slate-400">{isCollapsed ? "▶" : "▼"}</span>
-        <span className="font-semibold">{machine?.displayName ?? "Machine non définie"}</span>
+  return <section className="overflow-hidden rounded-lg border border-[var(--app-border)] bg-white">
+    <div className="flex w-full flex-wrap items-center gap-1.5 bg-slate-50 px-2 py-1">
+      <button type="button" aria-expanded={!isCollapsed} onClick={() => onToggleCollapsed(panelKey)} className="flex flex-1 flex-wrap items-center gap-1.5 text-left">
+        <span aria-hidden="true" className="text-[10px] text-slate-400">{isCollapsed ? "▶" : "▼"}</span>
+        <span className="text-xs font-semibold">{machine?.displayName ?? "Machine non définie"}</span>
         {machine ? <MachineStatusIcon machine={machine} /> : null}
         {isDirectlyLinked ? <StatusPill tone="info">Machine liée directement</StatusPill> : null}
-        <span className="text-xs text-slate-500">{operationCount.toLocaleString("fr-BE")} opération(s) · {workOrderCount.toLocaleString("fr-BE")} OF</span>
-        {todaysCapacity !== null ? <span className="text-xs text-slate-500">Capacité aujourd’hui : {todaysCapacity.toLocaleString("fr-BE")} h</span> : null}
-        <span className="text-xs italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Charge : non disponible</span>
+        <span className="text-[10px] text-slate-500">{operationCount.toLocaleString("fr-BE")} opération(s) · {workOrderCount.toLocaleString("fr-BE")} OF</span>
+        {todaysCapacity !== null ? <span className="text-[10px] text-slate-500">Capacité aujourd’hui : {todaysCapacity.toLocaleString("fr-BE")} h</span> : null}
+        <span className="text-[10px] italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Charge : non disponible</span>
       </button>
       <button
         type="button"
-        className="shrink-0 rounded-lg border border-[var(--app-border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className="shrink-0 rounded-md border border-[var(--app-border)] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={busy || operations.length < 2}
         title="Réattribue la priorité de 1 à la dernière opération de cette machine selon l’ordre actuellement affiché (recherche, tri et filtres compris), du haut vers le bas."
         onClick={handleRenumber}
@@ -158,7 +159,7 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
       </button>
       <button
         type="button"
-        className="shrink-0 rounded-lg border border-[var(--app-border)] bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className="shrink-0 rounded-md border border-[var(--app-border)] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={!operations.length}
         title="Imprimer une fiche pour cette machine, avec le nombre de lignes de votre choix."
         onClick={() => setIsPrintDialogOpen(true)}
@@ -167,14 +168,14 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
       </button>
     </div>
     {isPrintDialogOpen ? <WorkshopMachinePrintDialog machineLabel={machine?.displayName ?? "Machine non définie"} totalOperationCount={operations.length} onConfirm={handlePrintConfirm} onClose={() => setIsPrintDialogOpen(false)} /> : null}
-    {!isCollapsed ? (operations.length ? <div className="border-t border-[var(--app-border)] p-3">
-      <div className="overflow-auto rounded-xl border border-slate-200" style={{ maxHeight: frameMaxHeight }} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
-        <table className="w-full min-w-[760px] table-fixed text-left">
+    {!isCollapsed ? (operations.length ? <div className="border-t border-[var(--app-border)] p-1">
+      <div className="overflow-auto rounded-md border border-slate-200" style={{ maxHeight: frameMaxHeight }} onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}>
+        <table className="w-full min-w-[560px] table-fixed text-left">
           <colgroup>
             {visibleColumnIds.map((columnId) => <col key={columnId} ref={(element) => { if (element) colRefs.current[columnId] = element; }} style={{ width: `${columnWidths[columnId] ?? DEFAULT_COLUMN_WIDTH_PX[columnId]}px` }} />)}
             <col style={{ width: `${ACTIONS_COLUMN_WIDTH_PX}px` }} />
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase text-slate-500">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-[9px] uppercase text-slate-500">
             <tr>
               {visibleColumnIds.map((columnId) => <th
                 key={columnId}
@@ -182,7 +183,7 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
                 onDragStart={(event) => event.dataTransfer.setData(COLUMN_DRAG_MIME_TYPE, columnId)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => { const source = event.dataTransfer.getData(COLUMN_DRAG_MIME_TYPE) as WorkshopColumnId; if (source) onMoveColumn(source, columnId); }}
-                className="relative overflow-hidden p-3"
+                className="relative overflow-hidden p-1"
               >
                 <span className="cursor-grab select-none" title="Glisser pour déplacer la colonne">↔ {WORKSHOP_COLUMN_LABELS[columnId]}</span>
                 {SORTABLE_COLUMNS.has(columnId) ? <button type="button" className="ml-1 text-slate-500 hover:text-slate-800" title={sortTitle(sort, columnId as WorkshopSortColumn)} onClick={() => onCycleSort(columnId as WorkshopSortColumn)}>{sortIcon(sort, columnId as WorkshopSortColumn)}</button> : null}
@@ -196,7 +197,7 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
                   onDragStart={(event) => event.preventDefault()}
                 />
               </th>)}
-              <th className="p-3 text-right">Actions</th>
+              <th className="p-1 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -210,14 +211,15 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
               busy={busy}
               onUpdatePriority={onUpdatePriority}
               onUpdateMachine={onUpdateMachine}
+              onUpdateStatus={onUpdateStatus}
               onReorder={handleReorder}
             />)}
             {bottomSpacerPx > 0 ? <tr aria-hidden="true" style={{ height: bottomSpacerPx }}><td colSpan={visibleColumnIds.length + 1} /></tr> : null}
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-slate-500">Glissez une ligne sur une autre pour la réordonner : la priorité s’ajuste automatiquement. Cliquez ⇅ sur l’en-tête Priorité ou Retard pour trier. Glissez le bord droit d’une colonne pour l’élargir.</p>
-    </div> : <p className="px-4 py-6 text-sm text-slate-500">Aucune opération affectée à cette machine.</p>) : null}
+      <p className="mt-1 text-[10px] text-slate-500">Glissez une ligne sur une autre pour la réordonner : la priorité s’ajuste automatiquement. Cliquez ⇅ sur l’en-tête Priorité ou Retard pour trier. Glissez le bord droit d’une colonne pour l’élargir.</p>
+    </div> : <p className="px-2 py-3 text-[11px] text-slate-500">Aucune opération affectée à cette machine.</p>) : null}
   </section>;
 }
 

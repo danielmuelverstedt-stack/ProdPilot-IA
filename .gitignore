@@ -29,6 +29,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.codex-dev.*.log
+.next-dev.*.log
 
 # env files — tous les fichiers contenant des secrets restent hors du dépôt
 # Cela couvre notamment .env, .env.local, .env.development et .env.production.

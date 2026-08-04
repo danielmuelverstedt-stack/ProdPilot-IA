@@ -345,6 +345,31 @@ test("countDepartmentOperations compte les OF d'un département via ses machines
   assert.deepEqual([...resolveDepartmentMachineIds(index, departmentMachines, department)].sort(), ["cv5-500", "eba-01", "untagged-01"]);
 });
 
+test("buildDepartmentOperationIndex exclut les opérations terminées, pour que le compteur d'un onglet reste cohérent avec ce qui y est réellement affiché", async () => {
+  const { buildDepartmentOperationIndex, countDepartmentOperations } = await import("../src/features/planning/services/workshop-view-service.ts");
+  const rows = [
+    { machineId: "cv5-500", taskCode: "27", effectiveStatus: "in-progress" },
+    { machineId: "cv5-500", taskCode: "27", effectiveStatus: "completed" },
+    { machineId: null, taskCode: "27", effectiveStatus: "completed" },
+  ];
+  const index = buildDepartmentOperationIndex(rows);
+  const department = { id: "milling", value: "Fraisage", label: "Fraisage", color: "#000", textColor: "#fff", active: true, order: 0, linkedCategoryCodes: ["27"], linkedMachineIds: [] };
+  const machines = [{ id: "cv5-500", taskCategoryCode: "27" }];
+  assert.equal(countDepartmentOperations(index, machines, department), 1, "seule l'opération en cours compte, les deux terminées (assignée et sans machine) sont exclues");
+});
+
+test("groupOperationsByMachineId (Atelier) exclut les opérations terminées de l'affichage courant", async () => {
+  const { groupOperationsByMachineId } = await import("../src/features/planning/services/workshop-view-service.ts");
+  const rows = [
+    { ...opBase, id: "op-actif", workOrderId: "OF-500", articleCode: "A500", machine: "CV5-500", machineId: "cv5-500", effectiveStatus: "in-progress" },
+    { ...opBase, id: "op-fini", workOrderId: "OF-501", articleCode: "A501", machine: "CV5-500", machineId: "cv5-500", effectiveStatus: "completed" },
+    { ...opBase, id: "op-fini-sans-machine", workOrderId: "OF-502", articleCode: "A502", machine: "Non définie", machineId: null, isWithoutMachine: true, effectiveStatus: "completed" },
+  ];
+  const { byMachineId, unassigned } = groupOperationsByMachineId(rows, machines, createDefaultWorkshopFilters());
+  assert.deepEqual((byMachineId.get("cv5-500") ?? []).map((operation) => operation.id), ["op-actif"], "l'opération terminée assignée à cv5-500 disparaît du planning");
+  assert.deepEqual(unassigned.map((operation) => operation.id), [], "l'opération terminée sans machine disparaît aussi, plutôt que de rester visible en « Machine non définie »");
+});
+
 test("resolveDepartmentMachineIds/countDepartmentOperations en mode « physical » : uniquement le département physique de la fiche machine, jamais une catégorie/opération portée ponctuellement", async () => {
   const { buildDepartmentOperationIndex, countDepartmentOperations, resolveDepartmentMachineIds } = await import("../src/features/planning/services/workshop-view-service.ts");
   // Intègre-300 : machine tourno-fraiseuse, physiquement en Tournage, taguée catégorie 26 (Tournage/Fraisage), mais qui porte aussi des opérations codées Fraisage (27).
@@ -477,7 +502,7 @@ test("la colonne Article affiche un badge « N OF » réutilisant la même coule
   const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
   assert.match(row, /import { articleColor } from "@\/features\/erp-import\/services\/erp-planning-grouping"/);
   assert.match(row, /operation\.articleWorkOrderCount > 1 \? articleColor\(operation\.articleCode\) : null/);
-  assert.match(row, /\{operation\.articleWorkOrderCount\} OF/);
+  assert.match(row, /title="Cet article est présent dans plusieurs OF en cours">\{operation\.articleWorkOrderCount\}<\/span>/);
 });
 
 test("le filtre Articles de l'Atelier reprend les mêmes libellés que le Cockpit ERP", async () => {
@@ -506,7 +531,7 @@ test("les colonnes par défaut couvrent les colonnes demandées, toutes visibles
 
 test("les colonnes Client et Quantité affichent le nom du client et la quantité commandée (fichier Top de l'ERP), à l'écran comme à l'impression, sans tomber dans le sélecteur de machine par défaut", async () => {
   const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
-  assert.match(row, /if \(columnId === "client"\) return <span>\{operation\.workOrder\?\.customerName \|\| "—"\}<\/span>;/);
+  assert.match(row, /if \(columnId === "client"\) return <span className="block truncate">\{operation\.workOrder\?\.customerName \|\| "—"\}<\/span>;/);
   assert.match(row, /if \(columnId === "quantity"\) return <span>\{operation\.workOrder\?\.quantity != null \? operation\.workOrder\.quantity\.toLocaleString\("fr-BE"\) : "—"\}<\/span>;/);
 
   const printView = await readFile(new URL("../src/features/planning/components/WorkshopMachinePrintView.tsx", import.meta.url), "utf8");
@@ -515,10 +540,11 @@ test("les colonnes Client et Quantité affichent le nom du client et la quantit�
   assert.match(printView, /if \(columnId === "quantity"\) return operation\.workOrder\?\.quantity != null \? operation\.workOrder\.quantity\.toLocaleString\("fr-BE"\) : "—";/);
 
   const types = await readFile(new URL("../src/features/erp-import/types/erp-import.ts", import.meta.url), "utf8");
-  assert.match(types, /Pick<ErpWorkOrder, "id" \| "articleCode" \| "articleId" \| "articleGroupId" \| "customerName" \| "customerReference" \| "quantity">/, "la quantité doit survivre à la réduction du work order transmise à l'Atelier (toPlanningListRow)");
+  assert.match(types, /Pick<ErpWorkOrder, "id" \| "articleCode" \| "articleId" \| "articleGroupId" \| "customerName" \| "customerReference" \| "quantity" \| "firstSeenImportId">/, "la quantité et l'id du premier import doivent survivre à la réduction du work order transmise à l'Atelier (toPlanningListRow)");
 
   const service = await readFile(new URL("../src/features/erp-import/server/erp-planning-service.ts", import.meta.url), "utf8");
   assert.match(service, /quantity: row\.workOrder\.quantity,/, "toPlanningListRow doit reporter la quantité, sinon l'Atelier reçoit un work order tronqué sans elle");
+  assert.match(service, /firstSeenImportId: row\.workOrder\.firstSeenImportId,/, "toPlanningListRow doit aussi reporter firstSeenImportId, sinon le module OF ne peut plus repérer les OF nouvelles");
 });
 
 test("la colonne Retard reprend les mêmes seuils et libellés que le Cockpit ERP, via une table partagée unique", async () => {
@@ -651,7 +677,7 @@ test("l'entrée de priorité se remet à jour après une mutation groupée (Renu
 });
 
 test("clampColumnWidth borne une largeur de colonne à l'intervalle accepté", () => {
-  assert.equal(clampColumnWidth(10), 80, "une largeur trop petite retombe sur le minimum");
+  assert.equal(clampColumnWidth(10), 44, "une largeur trop petite retombe sur le minimum (abaissé à 44px pour permettre des colonnes très resserrées)");
   assert.equal(clampColumnWidth(5000), 640, "une largeur trop grande retombe sur le maximum");
   assert.equal(clampColumnWidth(200.4), 200, "arrondie à l'entier le plus proche");
 });
@@ -659,7 +685,7 @@ test("clampColumnWidth borne une largeur de colonne à l'intervalle accepté", (
 test("parseWorkshopViewState valide columnWidths : nombres uniquement, colonnes connues, valeurs bornées", () => {
   assert.deepEqual(createDefaultWorkshopViewState().columnWidths, {});
   assert.deepEqual(parseWorkshopViewState(null).columnWidths, {});
-  assert.deepEqual(parseWorkshopViewState({ version: 1, columnWidths: { priority: 260, delay: 10, "colonne-inconnue": 300, article: "200" } }).columnWidths, { priority: 260, delay: 80 }, "les colonnes inconnues et les valeurs non numériques sont ignorées, les valeurs hors bornes sont clampées");
+  assert.deepEqual(parseWorkshopViewState({ version: 1, columnWidths: { priority: 260, delay: 10, "colonne-inconnue": 300, article: "200" } }).columnWidths, { priority: 260, delay: 44 }, "les colonnes inconnues et les valeurs non numériques sont ignorées, les valeurs hors bornes sont clampées");
 });
 
 test("le glisser-déposer d'un bord de colonne redimensionne via colgroup, sans perturber le glisser-déposer de réordonnancement des colonnes", async () => {
@@ -721,6 +747,11 @@ test("buildPlanningView bascule entre OF de démonstration et opérations ERP se
 
   const withoutErp = buildPlanningView(data, settings, testOperations, false);
   assert.equal(withoutErp.blocks.length, 0, "sans import actif, les opérations ERP ne s'affichent pas et aucun OF de démonstration n'existe dans ce jeu de test");
+
+  // Demandé par l'utilisateur : une opération terminée dans un futur export ERP ne doit plus apparaître dans Planning capacité.
+  const completedOperation = { ...testOperations[0], id: "op-erp-2", effectiveStatus: "completed" };
+  const withCompleted = buildPlanningView(data, settings, [completedOperation], true);
+  assert.equal(withCompleted.blocks.length, 0, "une opération terminée ne doit plus générer de bloc dans le planning au jour le jour");
 });
 
 test("sumDurationHours ignore les durées inconnues sans les fabriquer à 0 mêlé silencieusement ; countUnknownDurationBlocks les recense", () => {
@@ -758,7 +789,7 @@ test("l'Atelier n'invente aucun temps de fabrication : Temps et Charge restent d
   const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
   const panel = await readFile(new URL("../src/features/planning/components/WorkshopMachinePanel.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(`${service}${row}${panel}`, /plannedDuration|durationHours|capacityHours/);
-  assert.match(row, /Non disponible/);
+  assert.match(row, /n’est pas encore disponible/);
   assert.match(panel, /non disponible/);
   assert.match(service, /hoursAvailable: false/);
 });
@@ -789,6 +820,25 @@ test("la réaffectation de machine passe par la même route PATCH que le Cockpit
   assert.match(hook, /patchOneOptimistically\(operationId, \{ machineId \}/);
   assert.match(row, /WorkshopMachinePicker/);
   assert.match(row, /onUpdateMachine/);
+});
+
+test("le statut d'une opération se modifie directement dans l'Atelier, via la même route PATCH que la machine et la priorité", async () => {
+  const hook = await readFile(new URL("../src/features/planning/hooks/useWorkshopOperations.ts", import.meta.url), "utf8");
+  assert.match(hook, /const updateStatus = useCallback\(async \(operationId: string, status: OperationView\["status"\]\)/);
+  assert.match(hook, /patchOneOptimistically\(operationId, \{ status \}/);
+  assert.match(hook, /return \{ rows, allRows, isLoading, isMutating, error, refresh: load, updatePriority, updateMachine, updateStatus, updatePlacement, reorderOperations, renumberOperations \};/);
+
+  // Propagation par props à travers les quatre couches, comme onUpdateMachine.
+  const view = await readFile(new URL("../src/features/planning/components/PlanningWorkshopView.tsx", import.meta.url), "utf8");
+  assert.match(view, /onUpdateStatus={updateStatus}/);
+  const section = await readFile(new URL("../src/features/planning/components/WorkshopDepartmentSection.tsx", import.meta.url), "utf8");
+  assert.match(section, /onUpdateStatus: \(operationId: string, status: OperationView\["status"\]\) => void;/);
+  const panel = await readFile(new URL("../src/features/planning/components/WorkshopMachinePanel.tsx", import.meta.url), "utf8");
+  assert.match(panel, /onUpdateStatus: \(operationId: string, status: OperationView\["status"\]\) => void;/);
+
+  const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
+  assert.match(row, /if \(columnId === "status"\) return <select className={`\$\{fieldClass\} min-h-0 h-5 py-0 text-\[10px\]`} value={operation\.effectiveStatus} disabled={busy} onChange={\(event\) => onUpdateStatus\(operation\.id, event\.target\.value as OperationView\["status"\]\)}>/, "la colonne Statut n'est plus un badge en lecture seule");
+  assert.doesNotMatch(row, /if \(columnId === "status"\) return <StatusPill/, "l'ancien affichage en lecture seule a bien disparu");
 });
 
 test("le sélecteur de machine propose une recherche par nom et une vignette photo issue du Parc Machines", async () => {

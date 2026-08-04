@@ -137,5 +137,5 @@ function toggleSetValue(current: Set<string>, value: string): Set<string> {
 
 const STATUS_OPTIONS: Array<{ value: ErpOperationStatus; label: string }> = [
   { value: "not-started", label: "À faire" }, { value: "in-progress", label: "En cours" },
-  { value: "completed", label: "Terminée" }, { value: "blocked", label: "Bloquée" }, { value: "unknown", label: "À qualifier" },
+  { value: "completed", label: "Terminée" }, { value: "blocked", label: "Bloquée" }, { value: "waiting", label: "En attente" }, { value: "unknown", label: "À qualifier" },
 ];

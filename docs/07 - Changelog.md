@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Correctif : remarque tronquée dans la liste des actions — 04/08/2026
+
+- Demandé par l'utilisateur : une remarque longue étirait toute la ligne dans la liste des actions ; il veut une liste compacte et lire le texte complet en ouvrant la fiche de l'action.
+- `ActionRow.tsx` : la cellule Remarque passe de l'affichage intégral à `line-clamp-2` (texte complet accessible au survol via l'attribut `title`), même convention que la colonne Description déjà tronquée dans l'Atelier et le Cockpit ERP (`WorkshopOperationRow.tsx`, `ErpPlanningOperations.tsx`). La fiche d'une action (`ActionDetail.tsx`) affichait déjà la remarque en entier ; le lien existant sur la colonne Description ouvre déjà cette fiche.
+- S'applique automatiquement à la revue des actions en réunion, qui réutilise `ActionRow`/`ActionGroupedList` sans dupliquer ce rendu.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (474/474), `npm run build` tous verts.
+
 ### Ajout : coordonnées Contacts et OF les plus prioritaires par machine dans l'assistant IA — 04/08/2026
 
 - Demandé par l'utilisateur, juste après le raccordement du planning par OF : « que tous les modules soient reliés à l'IA », avec deux exemples concrets — « quel est le numéro de téléphone de … » et « quels sont les 5 OF en priorité sur la VTC-200 »/« les OF sur la machine ».

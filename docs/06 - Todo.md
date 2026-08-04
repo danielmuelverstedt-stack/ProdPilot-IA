@@ -874,3 +874,11 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [x] `AssistantPanel.tsx` : les deux nouvelles capacités répondent directement (lecture seule, sans confirmation à demander), câblées avant le repli sur la recherche par OF existante pour ne pas lui faire absorber par erreur une question par machine.
 - [x] 16 nouveaux tests unitaires (10 pour la résolution/formatage machine, 8 pour les Contacts, purs et sans appel réseau). `npx tsc --noEmit`, `npm run lint`, `npm test` (474/474), `npm run build` tous verts.
 - [ ] Recetter manuellement dans le navigateur : demander le téléphone/e-mail d'un contact existant (cas unique, homonymes, contact introuvable) et les OF les plus prioritaires d'une machine réelle (cas trouvé, machine ambiguë, machine introuvable).
+
+## Remarque tronquée dans la liste des actions — 04/08/2026
+
+- [x] Demandé par l'utilisateur : la liste des actions devenait trop grande quand une remarque était longue (la ligne s'étirait sur plusieurs lignes) ; il veut une colonne compacte et ouvrir la fiche de l'action pour lire la remarque complète.
+- [x] `ActionRow.tsx` : la colonne Remarque est plafonnée à 2 lignes (`line-clamp-2`, texte complet disponible au survol via `title`), au lieu de s'afficher intégralement. La fiche d'une action (`ActionDetail.tsx`) affichait déjà la remarque en entier, sans changement nécessaire de ce côté. Le lien existant sur la colonne Description (`/actions/[id]`) permet déjà d'y accéder.
+- [x] S'applique aussi à la revue des actions en réunion (`MeetingActionReview.tsx` réutilise `ActionRow`/`ActionGroupedList` directement depuis leur uniformisation) : aucun code dupliqué à corriger séparément.
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm test` (474/474, aucun test cassé), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : créer/ouvrir une action avec une remarque longue et confirmer que la liste reste compacte (2 lignes) et que la fiche affiche le texte complet.

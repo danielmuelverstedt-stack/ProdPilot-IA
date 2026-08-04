@@ -61,7 +61,7 @@ function renderCell(columnId: string, action: ProductionAction, origins: ActionO
   </select>;
   if (columnId === "echeance") return action.statut === "À planifier" ? <span className="text-slate-400">—</span> : <span className={isActionOverdue(action) ? "font-semibold text-red-700" : undefined}>{formatEuropeanDate(action.echeance)}</span>;
   if (columnId === "statut") return <StatusPill tone={actionStatusTone(action.statut)}>{action.statut}</StatusPill>;
-  if (columnId === "remarque") return action.remarque ?? "—";
+  if (columnId === "remarque") return action.remarque ? <span className="line-clamp-2" title={action.remarque}>{action.remarque}</span> : "—";
   if (columnId === "lienContexte") return action.contextLink ? <Link href={action.contextLink.href} className="underline">{action.contextLink.label}</Link> : "—";
   return null;
 }

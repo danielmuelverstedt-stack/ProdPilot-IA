@@ -2,11 +2,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { contactFullName, createDefaultContactFilters, filterContacts, sortContactsByName } from "../src/features/contacts/services/contact-directory.ts";
+import { migrateDemoData } from "../src/features/demo/services/demo-data-migration.ts";
+import { TKMI_DIRECTORY_CONTACTS } from "../src/features/demo/mock/tkmi-directory-seed.ts";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 function contact(overrides) {
   return { id: "CT-900", type: "Interne", firstName: "Jean", lastName: "Dupont", company: null, role: null, categoryIds: [], phone: null, mobile: null, email: null, address: null, website: null, notes: null, ...overrides };
+}
+
+/** Payload v2 minimal valide pour migrateDemoData (tableaux requis vides sauf `contacts`, seul ce qu'on veut tester). */
+function v2Payload(contacts) {
+  return { version: 2, actions: [], workOrders: [], planning: [], machines: [], maintenance: [], meetings: [], requests: [], erpQuality: [], notifications: [], contacts };
 }
 
 const contacts = [
@@ -110,7 +117,7 @@ test("les Réglages migrent contacts.categories avec le même mécanisme génér
 
 test("les données de démonstration migrent le tableau contacts comme savContacts/consumables/people (repli sur [] pour les installations existantes), avec un repli par champ pour le N° interne ajouté depuis", async () => {
   const migration = await read("src/features/demo/services/demo-data-migration.ts");
-  assert.match(migration, /contacts: Array\.isArray\(value\.contacts\) \? value\.contacts\.map\(withContactDefaults\) : \[\],/);
+  assert.match(migration, /contacts: withTkmiDirectorySeed\(Array\.isArray\(value\.contacts\) \? value\.contacts\.map\(withContactDefaults\) : \[\]\),/);
   assert.match(migration, /internalNumber: contact\.internalNumber \?\? null/);
   const repository = await read("src/features/demo/services/demo-repository.ts");
   assert.match(repository, /item\.savContacts, item\.consumables, item\.people, item\.contacts\]/);
@@ -135,12 +142,34 @@ test("le N° interne (poste du standard téléphonique) est un champ à part ent
   assert.match(detail, /<Info label="N° interne" value={contact\.internalNumber \|\| "—"} \/>/);
 });
 
-test("l'annuaire interne TKMI fourni par l'utilisateur (photo du standard téléphonique) est saisi dans les données de démonstration, avec les entrées incertaines de la transcription explicitement signalées", async () => {
-  const seed = await read("src/features/demo/mock/demo-data.ts");
-  const contactEntries = seed.match(/\{ id: "CT-\d+",/g) ?? [];
-  assert.equal(contactEntries.length, 29, "2 contacts externes d'exemple + 27 personnes/services de l'annuaire TKMI");
+test("l'annuaire interne TKMI fourni par l'utilisateur (photo du standard téléphonique) est saisi dans un module dédié, séparé du reste du seed pour pouvoir être fusionné dans les installations existantes", async () => {
+  const directory = await read("src/features/demo/mock/tkmi-directory-seed.ts");
+  const contactEntries = directory.match(/\{ id: "CT-\d+",/g) ?? [];
+  assert.equal(contactEntries.length, 27, "27 personnes/services de l'annuaire TKMI");
   ["Alain", "Hamacher", "daniel.mulverstedt@tkmi.be", "Yves", "Peizer", "Comptabilité TKMI", "Salle Aquarium", "Transport TKMI"].forEach((needle) => {
-    assert.ok(seed.includes(needle), `entrée manquante dans l'annuaire TKMI : ${needle}`);
+    assert.ok(directory.includes(needle), `entrée manquante dans l'annuaire TKMI : ${needle}`);
   });
-  assert.match(seed, /notes: "Numéro fixe à vérifier \(longueur inhabituelle sur l'image source\)\."/, "les numéros à la longueur inhabituelle sur l'image source doivent rester signalés, pas silencieusement acceptés");
+  assert.match(directory, /notes: "Numéro fixe à vérifier \(longueur inhabituelle sur l'image source\)\."/, "les numéros à la longueur inhabituelle sur l'image source doivent rester signalés, pas silencieusement acceptés");
+
+  const seed = await read("src/features/demo/mock/demo-data.ts");
+  assert.match(seed, /import \{ TKMI_DIRECTORY_CONTACTS \} from "@\/features\/demo\/mock\/tkmi-directory-seed";/);
+  assert.match(seed, /\.\.\.TKMI_DIRECTORY_CONTACTS,/, "les 27 contacts sont inclus dans le seed d'une toute nouvelle installation");
+});
+
+test("une installation existante sans l'annuaire TKMI le reçoit au premier chargement, en plus de ses contacts déjà créés (jamais à leur place)", () => {
+  const ownContact = contact({ id: "CT-999", firstName: "Alice", lastName: "Testeuse" });
+  const migrated = migrateDemoData(v2Payload([ownContact]));
+  assert.equal(migrated.contacts.length, 1 + TKMI_DIRECTORY_CONTACTS.length, "le contact déjà créé par l'utilisateur, plus les 27 de l'annuaire TKMI");
+  assert.ok(migrated.contacts.some((item) => item.id === "CT-999"), "le contact déjà créé par l'utilisateur doit rester présent");
+  assert.ok(migrated.contacts.some((item) => item.id === "CT-003"), "l'annuaire TKMI doit être ajouté");
+});
+
+test("l'annuaire TKMI n'est jamais réinjecté une fois déjà présent, même si l'utilisateur a modifié ou supprimé certaines de ses fiches", () => {
+  const editedEntry = { ...TKMI_DIRECTORY_CONTACTS[0], role: "Modifié par l'utilisateur" };
+  const remainingTkmiEntries = TKMI_DIRECTORY_CONTACTS.slice(2); // simule la suppression volontaire d'une 2e fiche (CT-004)
+  const existing = [editedEntry, ...remainingTkmiEntries];
+  const migrated = migrateDemoData(v2Payload(existing));
+  assert.equal(migrated.contacts.length, existing.length, "aucun ajout : la présence de CT-003 suffit à marquer l'annuaire comme déjà installé");
+  assert.equal(migrated.contacts.find((item) => item.id === "CT-003")?.role, "Modifié par l'utilisateur", "une modification de l'utilisateur sur une fiche de l'annuaire n'est jamais écrasée");
+  assert.ok(!migrated.contacts.some((item) => item.id === "CT-004"), "une fiche de l'annuaire supprimée volontairement par l'utilisateur ne doit jamais être réinjectée");
 });

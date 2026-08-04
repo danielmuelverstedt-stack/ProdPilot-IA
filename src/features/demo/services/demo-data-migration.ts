@@ -1,3 +1,4 @@
+import { TKMI_DIRECTORY_CONTACTS } from "../mock/tkmi-directory-seed.ts";
 import type { ActionContextLink, ActionStatus, Contact, DemoData, ProductionAction } from "@/features/demo/types/demo";
 
 /** Complète une action déjà stockée (avant la planification équipe) avec les nouveaux champs, tous `null` par défaut — jamais `undefined`, pour rester conforme au type même sur des données anciennes. */
@@ -18,6 +19,22 @@ function withActionPlanningDefaults(value: unknown): ProductionAction {
 function withContactDefaults(value: unknown): Contact {
   const contact = value as Contact;
   return { ...contact, internalNumber: contact.internalNumber ?? null };
+}
+
+/**
+ * Ajoute une seule fois l'annuaire interne TKMI (fourni par l'utilisateur le 04/08/2026) aux
+ * installations existantes, sans jamais toucher aux contacts déjà créés par l'utilisateur. Le
+ * seed (`initialDemoData.contacts`) ne sert qu'à une toute nouvelle installation ; sans ce
+ * complément, une installation déjà en cours d'utilisation ne verrait jamais ces contacts.
+ * Marqueur d'exécution unique : la présence du premier contact de la liste (`CT-003`, quel que
+ * soit son id après une éventuelle modification manuelle par l'utilisateur — la recherche se fait
+ * par id fixe, donc par la présence de CET id précis dans le tableau, jamais réinjecté une fois
+ * supprimé volontairement).
+ */
+function withTkmiDirectorySeed(contacts: Contact[]): Contact[] {
+  const alreadySeeded = contacts.some((item) => item.id === TKMI_DIRECTORY_CONTACTS[0].id);
+  if (alreadySeeded) return contacts;
+  return [...contacts, ...TKMI_DIRECTORY_CONTACTS];
 }
 
 interface LegacyAction {
@@ -110,7 +127,7 @@ function withMachineSheetDefaults(value: Record<string, unknown>): Record<string
     savContacts: Array.isArray(value.savContacts) ? value.savContacts : [],
     consumables: Array.isArray(value.consumables) ? value.consumables : [],
     people: Array.isArray(value.people) ? value.people : [],
-    contacts: Array.isArray(value.contacts) ? value.contacts.map(withContactDefaults) : [],
+    contacts: withTkmiDirectorySeed(Array.isArray(value.contacts) ? value.contacts.map(withContactDefaults) : []),
     actions: Array.isArray(value.actions) ? value.actions.map(withActionPlanningDefaults) : [],
   };
 }

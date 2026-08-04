@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Correctif : l'annuaire TKMI n'apparaissait pas sur une installation déjà en cours d'utilisation — 04/08/2026
+
+- Signalé par l'utilisateur juste après la saisie de l'annuaire : « pourquoi je ne vois que la fiche que j'ai créée moi et pas la fiche que tu viens de faire ». Cause confirmée : les 27 contacts ajoutés au seed (`initialDemoData`) ne servent qu'à une toute nouvelle installation (`localStorage` vide) — une installation déjà utilisée (comme celle de l'utilisateur, avec son propre contact déjà créé) ne relit jamais le fichier de seed après son tout premier chargement.
+- L'annuaire TKMI est extrait dans un module dédié (`tkmi-directory-seed.ts`, `TKMI_DIRECTORY_CONTACTS`), réutilisé à la fois par le seed d'une nouvelle installation et par une nouvelle fusion à sens unique (`withTkmiDirectorySeed`, `demo-data-migration.ts`) : au premier chargement suivant la mise à jour, les 27 contacts sont ajoutés aux contacts déjà présents dans le navigateur, **sans jamais toucher, dupliquer ni remplacer** les contacts déjà créés par l'utilisateur. Marqueur d'exécution unique par id fixe (présence de `CT-003`) : une fiche de l'annuaire supprimée volontairement ensuite n'est jamais réinjectée.
+- 2 nouveaux tests comportementaux (pas seulement des gardes de texte source, `demo-data-migration.ts` étant redevenu directement testable) : fusion sur une installation existante sans dupliquer/écraser le contact déjà créé par l'utilisateur, et non-réinjection après modification/suppression volontaire d'une fiche de l'annuaire. `npx tsc --noEmit`, `npm run lint`, `npm test` (445/445), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire pour l'utilisateur (aucun accès à son `localStorage` depuis cet environnement) : recharger l'application et confirmer que les 27 contacts TKMI apparaissent bien à côté du contact déjà créé, sans perte.
+
 ### Ajout : annuaire interne TKMI saisi dans Contacts, nouveau champ N° interne — 04/08/2026
 
 - Demandé par l'utilisateur : saisir la fiche contact de toutes les personnes d'une photo du standard téléphonique interne fournie (27 lignes : personnes nommées et quelques boîtes de service/salles de réunion), en tant que contacts internes.

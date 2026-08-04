@@ -94,8 +94,9 @@ function migrateAction(value: unknown): ProductionAction | null {
 /**
  * Complète un DemoData v2 déjà stocké localement avec les champs ajoutés depuis (fiche machine :
  * contacts SAV, consommables ; planification équipe : personnes, champs de planification par
- * action) — sans backfill, ces payloads plus anciens échoueraient `isDemoData()` et seraient
- * réinitialisés au premier chargement, perdant les données locales de l'utilisateur.
+ * action ; annuaire : contacts) — sans backfill, ces payloads plus anciens échoueraient
+ * `isDemoData()` et seraient réinitialisés au premier chargement, perdant les données locales de
+ * l'utilisateur.
  */
 function withMachineSheetDefaults(value: Record<string, unknown>): Record<string, unknown> {
   return {
@@ -103,6 +104,7 @@ function withMachineSheetDefaults(value: Record<string, unknown>): Record<string
     savContacts: Array.isArray(value.savContacts) ? value.savContacts : [],
     consumables: Array.isArray(value.consumables) ? value.consumables : [],
     people: Array.isArray(value.people) ? value.people : [],
+    contacts: Array.isArray(value.contacts) ? value.contacts : [],
     actions: Array.isArray(value.actions) ? value.actions.map(withActionPlanningDefaults) : [],
   };
 }

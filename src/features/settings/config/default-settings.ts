@@ -4,6 +4,7 @@ import {
   type ActionOriginSettings,
   type AppSettings,
   type CapacitySettings,
+  type ContactCategorySettings,
   type MachineSettings,
   type MailTemplateSettings,
   type ModulePermission,
@@ -83,8 +84,9 @@ export const defaultNavigation: NavigationItemConfig[] = [
   { id: "tracking", label: "Suivi", icon: "tracking", href: "/suivi", visible: true, order: 7 },
   { id: "machines", label: "Parc Machines", icon: "factory", href: "/machines", visible: true, order: 8 },
   { id: "erp-quality", label: "Qualité ERP", icon: "quality", href: "/qualite-erp", visible: true, order: 9 },
-  { id: "analytics", label: "Analyses", icon: "chart", href: "/analyses", visible: true, order: 10 },
-  { id: "settings", label: "Réglages", icon: "settings", href: "/reglages", visible: true, order: 11 },
+  { id: "contacts", label: "Contacts", icon: "contacts", href: "/contacts", visible: true, order: 10 },
+  { id: "analytics", label: "Analyses", icon: "chart", href: "/analyses", visible: true, order: 11 },
+  { id: "settings", label: "Réglages", icon: "settings", href: "/reglages", visible: true, order: 12 },
 ];
 
 const fullPermission: ModulePermission = {
@@ -277,6 +279,26 @@ export const defaultSettings: AppSettings = {
       { id: "remarque", label: "Remarque" },
       { id: "lienContexte", label: "Lien contexte" },
     ].map(({ id, label }, order): ActionColumnSettings => ({ id, label, visible: true, order })),
+  },
+  contacts: {
+    categories: [
+      standard("contact-category-direction", "Direction", "Direction", "#1d4ed8", "#ffffff", 0),
+      standard("contact-category-production", "Production", "Production", "#0d9488", "#ffffff", 1),
+      standard("contact-category-methodes", "Méthodes", "Méthodes", "#7c3aed", "#ffffff", 2),
+      standard("contact-category-qualite", "Qualité", "Qualité", "#0891b2", "#ffffff", 3),
+      standard("contact-category-maintenance", "Maintenance", "Maintenance", "#dc2626", "#ffffff", 4),
+      standard("contact-category-achats", "Achats", "Achats", "#d97706", "#ffffff", 5),
+      standard("contact-category-rh", "RH", "RH", "#db2777", "#ffffff", 6),
+      standard("contact-category-informatique", "Informatique", "Informatique", "#4f46e5", "#ffffff", 7),
+      standard("contact-category-fournisseur", "Fournisseur", "Fournisseur", "#059669", "#ffffff", 8),
+      standard("contact-category-sous-traitance-usinage", "Sous-traitance usinage", "Sous-traitance usinage", "#9333ea", "#ffffff", 9),
+      standard("contact-category-sous-traitance-traitement-thermique", "Sous-traitance traitement thermique", "Sous-traitance traitement thermique", "#b45309", "#ffffff", 10),
+      standard("contact-category-sous-traitance-peinture", "Sous-traitance peinture", "Sous-traitance peinture", "#0369a1", "#ffffff", 11),
+      standard("contact-category-transport", "Transport", "Transport", "#65a30d", "#ffffff", 12),
+      standard("contact-category-commercial", "Commercial", "Commercial", "#c026d3", "#ffffff", 13),
+      standard("contact-category-client", "Client", "Client", "#2563eb", "#ffffff", 14),
+      standard("contact-category-autre", "Autre", "Autre", "#64748b", "#ffffff", 15),
+    ] satisfies ContactCategorySettings[],
   },
   mailTemplates: [
     { id: "mail-template-customer-delay", name: "Relance client — retard", subject: "Point sur l’OF {of}", body: "Bonjour {client},\n\nNous vous informons d’un ajustement de délai concernant l’OF {of} : nouvelle échéance prévue le {echeance}.\n\nNous restons à votre disposition pour toute question.\n\nCordialement,", active: true, order: 0 },

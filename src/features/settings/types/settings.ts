@@ -217,6 +217,7 @@ export interface SettingsJournalEntry {
 
 export type AiCategorySettings = OrderedStandardSettings;
 export type ActionOriginSettings = OrderedStandardSettings;
+export type ContactCategorySettings = OrderedStandardSettings;
 
 export interface ActionColumnSettings {
   id: string;
@@ -228,6 +229,10 @@ export interface ActionColumnSettings {
 export interface ActionsSettings {
   origins: ActionOriginSettings[];
   columns: ActionColumnSettings[];
+}
+
+export interface ContactsSettings {
+  categories: ContactCategorySettings[];
 }
 
 export interface MailTemplateSettings {
@@ -283,6 +288,7 @@ export interface AppSettings {
   theme: ThemeSettings;
   production: ProductionSettings;
   actions: ActionsSettings;
+  contacts: ContactsSettings;
   mailTemplates: MailTemplateSettings[];
   roles: RoleSettings[];
   users: UserSettings[];

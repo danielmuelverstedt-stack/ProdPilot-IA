@@ -10,7 +10,7 @@ import type { ErpPlanningOverview } from "@/features/erp-import/types/erp-import
 import { MachineConsumablesPanel } from "@/features/machines/components/MachineConsumablesPanel";
 import { MachineIdentityPanel } from "@/features/machines/components/MachineIdentityPanel";
 import { MachinePhotoStorageMigration } from "@/features/machines/components/MachinePhotoStorageMigration";
-import { MachinePhotoUploader } from "@/features/machines/components/MachinePhotoUploader";
+import { PhotoUploader } from "@/components/ui/PhotoUploader";
 import { MachinePrintView } from "@/features/machines/components/MachinePrintView";
 import { MachineSavContactsPanel } from "@/features/machines/components/MachineSavContactsPanel";
 import { MachineTechnicalPanel } from "@/features/machines/components/MachineTechnicalPanel";
@@ -80,7 +80,7 @@ export function MachineDetail({ id }: { id: string }) {
     {creatingAction ? <ActionFormDialog origine="Parc machines" contextLink={{ module: "machine", id: machine.id, label: machine.id, href: `/machines/${machine.id}` }} onClose={() => setCreatingAction(false)} /> : null}
     <MachinePhotoStorageMigration />
     <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-white p-4">
-      <MachinePhotoUploader photoDataUrl={photos[id] ?? ""} alt={machine.displayName} onChange={changePhoto} />
+      <PhotoUploader photoDataUrl={photos[id] ?? ""} alt={machine.displayName} onChange={changePhoto} />
       <div className="mt-4 flex flex-wrap items-center gap-5">
         <StatusPill tone={machine.deleted ? "danger" : machine.active ? "success" : "neutral"}>{operationalStatus}</StatusPill>
         <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" checked={machine.active} disabled={Boolean(machine.deleted)} onChange={(event) => changeActive(event.target.checked)} /> Active</label>

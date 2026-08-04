@@ -239,6 +239,34 @@ export interface TeamMember {
   order: number;
 }
 
+export type ContactType = "Interne" | "Externe";
+
+/**
+ * Annuaire d'entreprise centralisé (module Contacts) : toute personne avec qui l'entreprise
+ * travaille, interne ou externe. Distinct de `TeamMember` (équipe bureaux, planification de
+ * charge uniquement) et de `MachineSavContact` (contact SAV rattaché à une seule machine, avec
+ * ses propres références de contrat) — ces deux modèles existaient déjà avant Contacts et n'ont
+ * pas été unifiés avec lui dans ce chantier, volontairement, pour rester dans le périmètre
+ * demandé (voir Todo).
+ */
+export interface Contact {
+  id: string;
+  type: ContactType;
+  firstName: string;
+  lastName: string;
+  /** Pertinent surtout pour un contact externe ; laissé libre pour un contact interne (ex. filiale). */
+  company: string | null;
+  role: string | null;
+  /** Références vers `settings.contacts.categories` ; une fiche peut appartenir à plusieurs catégories. */
+  categoryIds: string[];
+  phone: string | null;
+  mobile: string | null;
+  email: string | null;
+  address: string | null;
+  website: string | null;
+  notes: string | null;
+}
+
 export interface DemoData {
   version: 2;
   actions: ProductionAction[];
@@ -253,4 +281,5 @@ export interface DemoData {
   savContacts: MachineSavContact[];
   consumables: MachineConsumable[];
   people: TeamMember[];
+  contacts: Contact[];
 }

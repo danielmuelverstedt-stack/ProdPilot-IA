@@ -7,7 +7,8 @@ import { AppIcon } from "@/components/ui/AppIcon";
 import { secondaryButton } from "@/components/ui/ModuleUi";
 import { readImageFileAsCompressedDataUrl } from "@/lib/image-file";
 
-export function MachinePhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: string; alt: string; onChange: (dataUrl: string) => Promise<void> }) {
+/** Champ photo générique (machine, contact…) : aperçu, agrandissement, remplacement. Réutilisé par toute fiche ayant une photo. */
+export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: string; alt: string; onChange: (dataUrl: string) => Promise<void> }) {
   const [zoomed, setZoomed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);

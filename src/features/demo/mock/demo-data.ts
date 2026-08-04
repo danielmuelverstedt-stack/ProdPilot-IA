@@ -99,6 +99,13 @@ export const initialDemoData: DemoData = {
     { id: "person-sophie-planification", name: "Sophie Planification", weeklyCapacityHours: 38, order: 1 },
     { id: "person-julie-qualite", name: "Julie Qualité", weeklyCapacityHours: 32, order: 2 },
   ],
+  contacts: [
+    { id: "CT-001", type: "Interne", firstName: "Marc", lastName: "Lambert", company: null, role: "Responsable maintenance", categoryIds: ["contact-category-maintenance"], phone: "+32 4 123 45 01", mobile: "+32 475 12 34 01", email: "marc.lambert@prodpilot.example", address: null, website: null, notes: null },
+    { id: "CT-002", type: "Interne", firstName: "Sophie", lastName: "Planification", company: null, role: "Planificatrice production", categoryIds: ["contact-category-production", "contact-category-methodes"], phone: "+32 4 123 45 02", mobile: "+32 475 12 34 02", email: "sophie.planification@prodpilot.example", address: null, website: null, notes: null },
+    { id: "CT-003", type: "Interne", firstName: "Julie", lastName: "Qualité", company: null, role: "Responsable qualité", categoryIds: ["contact-category-qualite"], phone: "+32 4 123 45 03", mobile: "+32 475 12 34 03", email: "julie.qualite@prodpilot.example", address: null, website: null, notes: null },
+    { id: "CT-004", type: "Externe", firstName: "Anke", lastName: "Verhoeven", company: "Mazak Europe", role: "Support technique", categoryIds: ["contact-category-fournisseur", "contact-category-maintenance"], phone: "+49 2151 5058 0", mobile: null, email: "support@mazak-europe.example", address: "Mazak-Allee 1, 41069 Mönchengladbach, Allemagne", website: "https://www.mazakeu.example", notes: "Contact pièces détachées et interventions Tournage." },
+    { id: "CT-005", type: "Externe", firstName: "Bruno", lastName: "Fontaine", company: "Thermitech SA", role: "Responsable clientèle", categoryIds: ["contact-category-sous-traitance-traitement-thermique"], phone: "+32 71 98 76 54", mobile: "+32 478 98 76 54", email: "b.fontaine@thermitech.example", address: "Rue de l’Industrie 12, 6000 Charleroi, Belgique", website: null, notes: "Traitement thermique — délai habituel 5 jours ouvrés." },
+  ],
 };
 
 function createWorkOrder(

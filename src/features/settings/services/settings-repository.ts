@@ -6,6 +6,7 @@ import {
   type ActionsSettings,
   type AppSettings,
   type CapacitySettings,
+  type ContactsSettings,
   type DepartmentSettings,
   type MachineSettings,
   type MailTemplateSettings,
@@ -133,6 +134,7 @@ function migrateSettings(value: unknown): AppSettings {
     mailAssistant: migrateMailAssistantSettings(saved.version, saved.mailAssistant, defaults.mailAssistant),
     production: migrateProductionSettings(saved.version, saved.production, defaults.production),
     actions: migrateActionsSettings(saved.actions, defaults.actions),
+    contacts: migrateContactsSettings(saved.contacts, defaults.contacts),
     mailTemplates: migrateMailTemplates(saved.mailTemplates, defaults.mailTemplates),
     print: {
       ...defaults.print,
@@ -274,6 +276,11 @@ function migrateActionsSettings(value: unknown, defaults: ActionsSettings): Acti
     origins: migrateStandards(saved.origins, defaults.origins),
     columns: migrateActionColumns(saved.columns, defaults.columns),
   };
+}
+
+function migrateContactsSettings(value: unknown, defaults: ContactsSettings): ContactsSettings {
+  const saved = isRecord(value) ? value : {};
+  return { categories: migrateStandards(saved.categories, defaults.categories) };
 }
 
 function migrateActionColumns(value: unknown, defaults: ActionColumnSettings[]): ActionColumnSettings[] {

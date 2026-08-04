@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
+  BookUser,
   Calendar,
   CheckCircle2,
   ChevronRight,
@@ -52,6 +53,7 @@ const icons: Record<string, LucideIcon> = {
   trend: TrendingUp,
   gauge: Gauge,
   clipboard: ClipboardList,
+  contacts: BookUser,
 };
 
 export const iconOptions = Object.keys(icons);
@@ -61,7 +63,7 @@ export const iconLabels: Record<string, string> = {
   tracking: "Suivi", chart: "Graphique", settings: "Réglages", mail: "Mail",
   inbox: "Boîte de réception", bell: "Cloche", search: "Recherche", menu: "Menu",
   close: "Fermer", chevron: "Chevron", arrow: "Flèche", wrench: "Clé", alert: "Alerte",
-  trend: "Tendance", gauge: "Jauge", clipboard: "Presse-papiers",
+  trend: "Tendance", gauge: "Jauge", clipboard: "Presse-papiers", contacts: "Contacts",
 };
 
 export function AppIcon({ name, ...props }: { name: string } & SVGProps<SVGSVGElement>) {

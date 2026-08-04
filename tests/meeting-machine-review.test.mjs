@@ -79,16 +79,16 @@ test("la revue OF par machine affiche le client, le code article et la quantité
 
 test("chaque carte machine affiche la photo enregistrée dans Parc Machines (repli explicite sans photo), comme la fiche machine", async () => {
   const source = await readFile(new URL("../src/features/meetings/components/MeetingMachineReview.tsx", import.meta.url), "utf8");
-  assert.match(source, /import \{ MachineThumbnail \} from "@\/features\/machines\/components\/MachineThumbnail"/);
+  assert.match(source, /import \{ PhotoThumbnail \} from "@\/components\/ui\/PhotoThumbnail"/);
   assert.match(source, /import \{ useMachinePhotos \} from "@\/features\/machines\/services\/machine-photo-store"/);
-  assert.match(source, /<MachineThumbnail photoDataUrl={photos\[group\.machineId\]} alt={group\.machineLabel} size="md" \/>/);
+  assert.match(source, /<PhotoThumbnail photoDataUrl={photos\[group\.machineId\]} alt={group\.machineLabel} size="md" \/>/);
 
-  const thumbnail = await readFile(new URL("../src/features/machines/components/MachineThumbnail.tsx", import.meta.url), "utf8");
-  assert.match(thumbnail, /export function MachineThumbnail/);
+  const thumbnail = await readFile(new URL("../src/components/ui/PhotoThumbnail.tsx", import.meta.url), "utf8");
+  assert.match(thumbnail, /export function PhotoThumbnail/);
 
   const picker = await readFile(new URL("../src/features/planning/components/WorkshopMachinePicker.tsx", import.meta.url), "utf8");
-  assert.match(picker, /import \{ MachineThumbnail \} from "@\/features\/machines\/components\/MachineThumbnail"/, "le sélecteur machine de l'Atelier doit réutiliser le même composant partagé, pas sa propre copie");
-  assert.doesNotMatch(picker, /function MachineThumbnail\(/, "l'ancienne définition locale doit disparaître");
+  assert.match(picker, /import \{ PhotoThumbnail \} from "@\/components\/ui\/PhotoThumbnail"/, "le sélecteur machine de l'Atelier doit réutiliser le même composant partagé, pas sa propre copie");
+  assert.doesNotMatch(picker, /function PhotoThumbnail\(/, "aucune définition locale : uniquement le composant partagé importé");
 });
 
 test("une action créée depuis la revue OF par machine reste liée à l'OF précis (module workOrder), pas seulement à la réunion", async () => {

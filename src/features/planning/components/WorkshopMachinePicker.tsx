@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MachineThumbnail } from "@/features/machines/components/MachineThumbnail";
+import { PhotoThumbnail } from "@/components/ui/PhotoThumbnail";
 import { useMachinePhotos } from "@/features/machines/services/machine-photo-store";
 import type { MachineSettings } from "@/features/settings/types/settings";
 
@@ -45,7 +45,7 @@ export function WorkshopMachinePicker({ machines, currentMachineId, busy, onSele
 
   return <div className="relative inline-block max-w-full">
     <button type="button" className={compactTriggerClass} disabled={busy} aria-expanded={isOpen} onClick={() => setIsOpen((current) => !current)}>
-      <MachineThumbnail photoDataUrl={currentMachine ? photos[currentMachine.id] : undefined} />
+      <PhotoThumbnail photoDataUrl={currentMachine ? photos[currentMachine.id] : undefined} />
       <span className="truncate">{currentMachine?.displayName ?? "Non définie"}</span>
     </button>
     {isOpen ? <div className="absolute z-40 mt-1 w-60 rounded-lg border border-[var(--app-border)] bg-white p-1.5 shadow-lg">
@@ -57,7 +57,7 @@ export function WorkshopMachinePicker({ machines, currentMachineId, busy, onSele
             className={`flex w-full items-center gap-1 rounded-md px-1 py-0.5 text-left text-[11px] hover:bg-slate-50 ${machine.id === currentMachineId ? "bg-slate-100 font-semibold" : ""}`}
             onClick={() => select(machine.id)}
           >
-            <MachineThumbnail photoDataUrl={photos[machine.id]} />
+            <PhotoThumbnail photoDataUrl={photos[machine.id]} />
             <span className="flex-1 truncate">{machine.displayName}</span>
             {!machine.active ? <span className="text-[9px] text-slate-400">Inactive</span> : null}
             {!machine.visible ? <span className="text-[9px] text-slate-400">Masquée</span> : null}

@@ -8,7 +8,7 @@ import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { useErpImportActive } from "@/features/planning/hooks/useErpImportActive";
 import { useWorkshopOperations } from "@/features/planning/hooks/useWorkshopOperations";
 import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog";
-import { MachineThumbnail } from "@/features/machines/components/MachineThumbnail";
+import { PhotoThumbnail } from "@/components/ui/PhotoThumbnail";
 import { useMachinePhotos } from "@/features/machines/services/machine-photo-store";
 import { buildDemoMachineReview, buildErpMachineReview, type MeetingMachineReviewGroup } from "@/features/meetings/services/meeting-machine-review";
 import type { ActionContextLink } from "@/features/demo/types/demo";
@@ -51,7 +51,7 @@ function MachineReviewList({ origine, groups }: { origine: string; groups: Meeti
     {actionTarget ? <ActionFormDialog origine={origine} contextLink={buildContextLink(actionTarget.workOrderId)} onClose={() => setActionTarget(null)} /> : null}
     {groups.map((group) => <article key={group.machineId} className="overflow-hidden rounded-xl border border-[var(--app-border)] bg-white">
       <div className="flex items-center gap-3 border-b border-[var(--app-border)] bg-slate-50 px-4 py-3">
-        <MachineThumbnail photoDataUrl={photos[group.machineId]} alt={group.machineLabel} size="md" />
+        <PhotoThumbnail photoDataUrl={photos[group.machineId]} alt={group.machineLabel} size="md" />
         <div className="min-w-0">
           <h3 className="truncate font-semibold">{group.machineLabel}</h3>
           <p className="text-xs text-slate-500">{group.rows.length} OF à revoir</p>

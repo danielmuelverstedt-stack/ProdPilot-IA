@@ -6,6 +6,7 @@ import { NavigationDesigner, WorkspaceDesigner } from "@/features/settings/compo
 import { CompanyIdentitySettings, TemplateSettings, ThemeSettingsPanel } from "@/features/settings/components/IdentityThemeSettings";
 import { ProductionSettingsPanel } from "@/features/settings/components/ProductionSettings";
 import { ActionsSettingsPanel } from "@/features/settings/components/ActionsSettingsPanel";
+import { ContactsSettingsPanel } from "@/features/settings/components/ContactsSettingsPanel";
 import { PrintSettingsPanel, UsersPermissionsSettings } from "@/features/settings/components/AccessPrintSettings";
 import { BackupSettings, JournalSettings } from "@/features/settings/components/BackupJournalSettings";
 import { EmptySettings, SettingsPanel, buttonClass } from "@/features/settings/components/SettingsUi";
@@ -13,7 +14,7 @@ import { AiSettingsPanel } from "@/features/settings/components/AiSettingsPanel"
 import { MailMemorySettingsPanel } from "@/features/settings/components/MailMemorySettingsPanel";
 import { MailTemplatesSettingsPanel } from "@/features/settings/components/MailTemplatesSettingsPanel";
 
-const categories = ["Général", "Personnalisation", "Connexions", "Mails", "ERP", "Production", "Actions", "Réunions", "IA", "Notifications", "Utilisateurs", "Sauvegardes", "Journal"] as const;
+const categories = ["Général", "Personnalisation", "Connexions", "Mails", "ERP", "Production", "Actions", "Contacts", "Réunions", "IA", "Notifications", "Utilisateurs", "Sauvegardes", "Journal"] as const;
 const personalization = ["Interface", "Mon Espace", "Menu principal", "Identité société", "Couleurs", "Templates mails", "Templates QRQC", "Templates Réunion", "Comptes rendus", "Impression", "IA"] as const;
 type Category = typeof categories[number];
 
@@ -31,6 +32,7 @@ function SettingsContent({ category, personalizationTab }: { category: Category;
   if (category === "Notifications") return <SettingsPanel title="Notifications" description="Préférences locales pour les alertes de démonstration."><div className="overflow-x-auto"><table className="w-full min-w-[540px] text-left text-sm"><thead><tr className="border-b"><th className="p-3">Événement</th><th className="p-3">Interface</th><th className="p-3">E-mail</th></tr></thead><tbody>{["Action en retard", "Panne machine", "Anomalie ERP", "Réunion imminente"].map((item) => <tr className="border-b" key={item}><td className="p-3">{item}</td><td className="p-3"><input type="checkbox" defaultChecked /></td><td className="p-3"><input type="checkbox" disabled aria-label={`E-mail ${item}`} /></td></tr>)}</tbody></table><p className="mt-3 text-xs text-slate-500">Les notifications e-mail sont désactivées : aucun envoi automatique.</p></div></SettingsPanel>;
   if (category === "Production") return <ProductionSettingsPanel />;
   if (category === "Actions") return <ActionsSettingsPanel />;
+  if (category === "Contacts") return <ContactsSettingsPanel />;
   if (category === "Utilisateurs") return <UsersPermissionsSettings />;
   if (category === "Sauvegardes") return <BackupSettings />;
   if (category === "Journal") return <JournalSettings />;

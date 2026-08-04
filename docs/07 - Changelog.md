@@ -4,6 +4,14 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Amélioration : présentation plus professionnelle de la revue OF par machine, avec la photo de la machine — 04/08/2026
+
+- Demandé par l'utilisateur : rendre la revue « OF planifiés par machine » plus professionnelle, avec la photo de la machine en petit format, comme sur sa fiche (Parc Machines).
+- Nouveau composant partagé `MachineThumbnail.tsx` (`src/features/machines/components/`) : vignette photo avec repli explicite « — » sans photo, en deux tailles (`xs`/`md`). Extrait de l'implémentation jusque-là dupliquée localement dans `WorkshopMachinePicker.tsx` (sélecteur de machine de l'Atelier), qui la réutilise désormais au lieu de sa propre copie — même photo que celle enregistrée depuis la fiche machine (`machine-photo-store.ts`, IndexedDB), aucune deuxième source.
+- `MeetingMachineReview.tsx` : chaque machine devient une carte avec un bandeau d'en-tête (photo en taille `md`, nom, nombre d'OF à revoir), sur le même principe visuel que les panneaux de l'Atelier (bandeau `bg-slate-50` + corps blanc). Chaque OF reçoit un numéro d'ordre (pastille ronde) en plus du client/article/quantité déjà présents.
+- Nouveaux tests (`tests/meeting-machine-review.test.mjs`) : présence de la vignette dans la revue, réutilisation du composant partagé par le sélecteur de l'Atelier, disparition de l'ancienne définition locale.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (400/400), `npm run build` tous verts.
+
 ### Correctif : suppression de l'étape « Vue planning », devenue redondante avec « OF planifiés par machine » — 04/08/2026
 
 - Signalé par l'utilisateur : l'ancienne étape « Vue planning » (liste brute `data.planning` de démonstration, jamais reliée aux données ERP réelles) faisait doublon avec la nouvelle étape « OF planifiés par machine », plus complète (désignation, client, article, quantité, bascule ERP réel/démonstration, création d'action).

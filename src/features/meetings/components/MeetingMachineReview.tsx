@@ -8,6 +8,8 @@ import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { useErpImportActive } from "@/features/planning/hooks/useErpImportActive";
 import { useWorkshopOperations } from "@/features/planning/hooks/useWorkshopOperations";
 import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog";
+import { MachineThumbnail } from "@/features/machines/components/MachineThumbnail";
+import { useMachinePhotos } from "@/features/machines/services/machine-photo-store";
 import { buildDemoMachineReview, buildErpMachineReview, type MeetingMachineReviewGroup } from "@/features/meetings/services/meeting-machine-review";
 import type { ActionContextLink } from "@/features/demo/types/demo";
 
@@ -42,15 +44,23 @@ function DemoMachineReview({ origine }: { origine: string }) {
 }
 
 function MachineReviewList({ origine, groups }: { origine: string; groups: MeetingMachineReviewGroup[] }) {
+  const photos = useMachinePhotos();
   const [actionTarget, setActionTarget] = useState<{ workOrderId: string } | null>(null);
   if (!groups.length) return <p className="mt-4 text-sm text-slate-600">Aucun OF planifié sur une machine active pour le moment.</p>;
   return <div className="mt-4 grid gap-4">
     {actionTarget ? <ActionFormDialog origine={origine} contextLink={buildContextLink(actionTarget.workOrderId)} onClose={() => setActionTarget(null)} /> : null}
-    {groups.map((group) => <article key={group.machineId} className="rounded-xl border border-[var(--app-border)] p-4">
-      <h3 className="font-semibold">{group.machineLabel}</h3>
-      <ul className="mt-2 grid gap-2">
-        {group.rows.map((row) => <li key={`${group.machineId}-${row.workOrderId}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 p-3 text-sm">
-          <span className="min-w-0">
+    {groups.map((group) => <article key={group.machineId} className="overflow-hidden rounded-xl border border-[var(--app-border)] bg-white">
+      <div className="flex items-center gap-3 border-b border-[var(--app-border)] bg-slate-50 px-4 py-3">
+        <MachineThumbnail photoDataUrl={photos[group.machineId]} alt={group.machineLabel} size="md" />
+        <div className="min-w-0">
+          <h3 className="truncate font-semibold">{group.machineLabel}</h3>
+          <p className="text-xs text-slate-500">{group.rows.length} OF à revoir</p>
+        </div>
+      </div>
+      <ul className="grid gap-2 p-3">
+        {group.rows.map((row, index) => <li key={`${group.machineId}-${row.workOrderId}`} className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-50 p-3 text-sm">
+          <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white text-xs font-semibold text-slate-500 ring-1 ring-inset ring-[var(--app-border)]" aria-hidden="true">{index + 1}</span>
+          <span className="min-w-0 flex-1">
             <span className="block"><Link href={`/of/${row.workOrderId}`} className="font-semibold text-[var(--app-primary)]">{row.workOrderId}</Link> · {row.description}</span>
             <span className="mt-0.5 block text-xs text-slate-500">{row.customerName} · Article {row.articleCode} · Qté {row.quantity != null ? row.quantity.toLocaleString("fr-BE") : "—"}</span>
           </span>

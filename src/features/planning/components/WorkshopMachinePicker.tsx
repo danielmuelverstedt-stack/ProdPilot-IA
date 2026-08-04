@@ -1,7 +1,7 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useMemo, useState } from "react";
+import { MachineThumbnail } from "@/features/machines/components/MachineThumbnail";
 import { useMachinePhotos } from "@/features/machines/services/machine-photo-store";
 import type { MachineSettings } from "@/features/settings/types/settings";
 
@@ -67,9 +67,4 @@ export function WorkshopMachinePicker({ machines, currentMachineId, busy, onSele
       </ul>
     </div> : null}
   </div>;
-}
-
-function MachineThumbnail({ photoDataUrl }: { photoDataUrl: string | undefined }) {
-  if (!photoDataUrl) return <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded bg-slate-100 text-[9px] text-slate-400" aria-hidden="true">—</span>;
-  return <img src={photoDataUrl} alt="" className="h-4 w-4 shrink-0 rounded object-cover" />;
 }

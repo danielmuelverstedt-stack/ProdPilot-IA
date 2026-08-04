@@ -7,6 +7,9 @@ import type { Machine, PlannedOperation, WorkOrder } from "@/features/demo/types
 export interface MeetingMachineReviewRow {
   workOrderId: string;
   description: string;
+  customerName: string;
+  articleCode: string;
+  quantity: number | null;
 }
 
 export interface MeetingMachineReviewGroup {
@@ -29,7 +32,7 @@ export function buildErpMachineReview(rows: OperationView[], machines: MachineSe
     .sort((a, b) => a.order - b.order)
     .map((machine) => {
       const operations = sortOperations(byMachineId.get(machine.id) ?? [], { column: "priority", direction: "asc" }).slice(0, limit);
-      return { machineId: machine.id, machineLabel: machine.displayName, rows: operations.map((operation) => ({ workOrderId: operation.workOrderId, description: operation.description || "Sans description" })) };
+      return { machineId: machine.id, machineLabel: machine.displayName, rows: operations.map((operation) => ({ workOrderId: operation.workOrderId, description: operation.description || "Sans description", customerName: operation.workOrder?.customerName || "Client inconnu", articleCode: operation.articleCode || "—", quantity: operation.workOrder?.quantity ?? null })) };
     })
     .filter((group) => group.rows.length > 0);
 }
@@ -49,7 +52,7 @@ export function buildDemoMachineReview(planning: PlannedOperation[], machines: M
       const rows = items.map((item) => {
         const order = workOrders.find((candidate) => candidate.id === item.workOrderId);
         const operation = order?.operations.find((candidate) => candidate.id === item.operationId);
-        return { workOrderId: item.workOrderId, description: operation?.description || order?.description || "Sans description" };
+        return { workOrderId: item.workOrderId, description: operation?.description || order?.description || "Sans description", customerName: order?.customer || "Client inconnu", articleCode: order?.article || "—", quantity: order?.quantity ?? null };
       });
       return { machineId: machine.id, machineLabel: machine.displayName, rows };
     })

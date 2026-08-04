@@ -12,7 +12,7 @@ const machines = [
   { ...machineBase, id: "masked-machine", displayName: "Masquée", order: 3, visible: false },
 ];
 
-const opBase = { isRemoved: false, isVisible: true, isWithoutMachine: false, articleWorkOrderCount: 1, department: null, resourceGroup: null, sourcePriority: 1, userPriority: null, sourceOperationStatusId: 1, sourceOrderStatus: "OUVERT", effectiveStatus: "not-started", plannedDate: null, dueDate: null, delayDays: null, comment: null, operationNumber: 10, taskCode: "T1", articleCode: "A100", workOrder: { customerName: "EXAIL" } };
+const opBase = { isRemoved: false, isVisible: true, isWithoutMachine: false, articleWorkOrderCount: 1, department: null, resourceGroup: null, sourcePriority: 1, userPriority: null, sourceOperationStatusId: 1, sourceOrderStatus: "OUVERT", effectiveStatus: "not-started", plannedDate: null, dueDate: null, delayDays: null, comment: null, operationNumber: 10, taskCode: "T1", articleCode: "A100", workOrder: { customerName: "EXAIL", quantity: 120 } };
 
 function op(overrides) { return { ...opBase, ...overrides }; }
 
@@ -29,16 +29,17 @@ test("buildErpMachineReview : les OF les plus prioritaires de chaque machine act
   assert.deepEqual(groups[0].rows.map((row) => row.workOrderId), ["OF-101", "OF-102"], "les 2 OF de plus haute priorité (numéro le plus bas), limité à N");
   assert.deepEqual(groups[0].rows.map((row) => row.description), ["Axe", "Support"]);
   assert.deepEqual(groups[1].rows.map((row) => row.workOrderId), ["OF-200"]);
+  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-101", description: "Axe", customerName: "EXAIL", articleCode: "A100", quantity: 120 }, "client, code article et quantité repris de l'opération/du work order ERP");
 });
 
-test("buildErpMachineReview : machine masquée exclue, machine sans opération absente du résultat, description manquante repliée sur « Sans description »", () => {
+test("buildErpMachineReview : machine masquée exclue, machine sans opération absente du résultat, désignation/client/quantité manquants repliés sur des valeurs explicites", () => {
   const operations = [
     op({ id: "op-1", workOrderId: "OF-100", machineId: "masked-machine", machine: "Masquée", description: "Ne doit pas apparaître", effectivePriority: 1 }),
-    op({ id: "op-2", workOrderId: "OF-101", machineId: "cv5-500", machine: "CV5-500", description: "", effectivePriority: 1 }),
+    op({ id: "op-2", workOrderId: "OF-101", machineId: "cv5-500", machine: "CV5-500", description: "", articleCode: "", workOrder: null, effectivePriority: 1 }),
   ];
   const groups = buildErpMachineReview(operations, machines, 5);
   assert.deepEqual(groups.map((group) => group.machineId), ["cv5-500"], "machine masquée exclue, DMU50 sans opération absente du résultat");
-  assert.equal(groups[0].rows[0].description, "Sans description");
+  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-101", description: "Sans description", customerName: "Client inconnu", articleCode: "—", quantity: null });
 });
 
 const demoMachines = [
@@ -48,10 +49,10 @@ const demoMachines = [
 
 function planned(overrides) { return { id: "po-1", workOrderId: "OF-1", operationId: "op-1", machineId: "m-1", startAt: "2026-08-01T08:00:00Z", endAt: "2026-08-01T10:00:00Z", status: "À faire", comments: "", ...overrides }; }
 
-test("buildDemoMachineReview : regroupe par machine dans l'ordre chronologique, limite à N, résout la désignation depuis l'opération de l'OF de démonstration", () => {
+test("buildDemoMachineReview : regroupe par machine dans l'ordre chronologique, limite à N, résout désignation/client/article/quantité depuis l'OF de démonstration", () => {
   const workOrders = [
-    { id: "OF-1", description: "OF description générale", operations: [{ id: "op-1", description: "Perçage" }, { id: "op-2", description: "Fraisage" }] },
-    { id: "OF-2", description: "Autre OF", operations: [] },
+    { id: "OF-1", description: "OF description générale", customer: "EXAIL", article: "A100", quantity: 50, operations: [{ id: "op-1", description: "Perçage" }, { id: "op-2", description: "Fraisage" }] },
+    { id: "OF-2", description: "Autre OF", customer: "SAB", article: "B200", quantity: 12, operations: [] },
   ];
   const planning = [
     planned({ id: "po-1", machineId: "m-1", operationId: "op-2", startAt: "2026-08-01T14:00:00Z" }),
@@ -61,14 +62,19 @@ test("buildDemoMachineReview : regroupe par machine dans l'ordre chronologique, 
   const groups = buildDemoMachineReview(planning, demoMachines, workOrders, 2);
   assert.deepEqual(groups.map((group) => group.machineId), ["m-1"], "Machine 2 sans planning absente du résultat");
   assert.deepEqual(groups[0].rows.map((row) => row.workOrderId), ["OF-1", "OF-2"], "ordre chronologique, limité à N");
-  assert.equal(groups[0].rows[0].description, "Perçage", "opération résolue par id dans l'OF");
-  assert.equal(groups[0].rows[1].description, "Autre OF", "repli sur la description de l'OF quand l'opération est introuvable");
+  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-1", description: "Perçage", customerName: "EXAIL", articleCode: "A100", quantity: 50 }, "opération résolue par id dans l'OF, client/article/quantité de l'OF");
+  assert.deepEqual(groups[0].rows[1], { workOrderId: "OF-2", description: "Autre OF", customerName: "SAB", articleCode: "B200", quantity: 12 }, "repli sur la description de l'OF quand l'opération est introuvable");
 });
 
 test("le nouveau composant de revue OF par machine bascule entre planning ERP réel et démonstration, comme la fiche OF", async () => {
   const source = await readFile(new URL("../src/features/meetings/components/MeetingMachineReview.tsx", import.meta.url), "utf8");
   assert.match(source, /useErpImportActive/, "doit réutiliser le même bascule ERP/démonstration que WorkOrderDetail.tsx");
   assert.match(source, /hasActiveImport \? <ErpMachineReview/);
+});
+
+test("la revue OF par machine affiche le client, le code article et la quantité de chaque OF", async () => {
+  const source = await readFile(new URL("../src/features/meetings/components/MeetingMachineReview.tsx", import.meta.url), "utf8");
+  assert.match(source, /\{row\.customerName\} · Article \{row\.articleCode\} · Qté \{row\.quantity/);
 });
 
 test("une action créée depuis la revue OF par machine reste liée à l'OF précis (module workOrder), pas seulement à la réunion", async () => {

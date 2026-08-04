@@ -4,6 +4,14 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Amélioration : client, code article et quantité dans la revue OF par machine de la réunion de production — 04/08/2026
+
+- Demandé par l'utilisateur juste après l'ajout de l'étape : compléter chaque ligne d'OF avec le client, le code article et la quantité commandée.
+- `MeetingMachineReviewRow` (`meeting-machine-review.ts`) gagne `customerName`/`articleCode`/`quantity`, repris en mode ERP réel depuis `operation.articleCode` et `operation.workOrder.customerName`/`.quantity` (mêmes champs que la colonne Client/Quantité de l'Atelier), et en mode démonstration depuis `WorkOrder.customer`/`.article`/`.quantity`. Replis explicites si absents (« Client inconnu », « — », `null` → « — » affiché).
+- `MeetingMachineReview.tsx` affiche cette ligne secondaire sous chaque OF.
+- Tests mis à jour et étendus (`tests/meeting-machine-review.test.mjs`) : valeurs correctement reprises en mode ERP et démonstration, replis vérifiés, affichage vérifié.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (399/399), `npm run build` tous verts.
+
 ### Ajout : étape « OF planifiés par machine » dans la réunion de production, avec création d'action liée à l'OF — 04/08/2026
 
 - Demandé par l'utilisateur : une étape de la réunion de production où revoir, machine par machine, les 5 OF planifiés avec leur désignation, et pouvoir créer une action directement liée à l'OF si un point le nécessite pendant la revue.

@@ -50,7 +50,10 @@ function MachineReviewList({ origine, groups }: { origine: string; groups: Meeti
       <h3 className="font-semibold">{group.machineLabel}</h3>
       <ul className="mt-2 grid gap-2">
         {group.rows.map((row) => <li key={`${group.machineId}-${row.workOrderId}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 p-3 text-sm">
-          <span><Link href={`/of/${row.workOrderId}`} className="font-semibold text-[var(--app-primary)]">{row.workOrderId}</Link> · {row.description}</span>
+          <span className="min-w-0">
+            <span className="block"><Link href={`/of/${row.workOrderId}`} className="font-semibold text-[var(--app-primary)]">{row.workOrderId}</Link> · {row.description}</span>
+            <span className="mt-0.5 block text-xs text-slate-500">{row.customerName} · Article {row.articleCode} · Qté {row.quantity != null ? row.quantity.toLocaleString("fr-BE") : "—"}</span>
+          </span>
           <button type="button" className={`${secondaryButton} shrink-0`} title="Créer une action liée à cet OF" onClick={() => setActionTarget({ workOrderId: row.workOrderId })}>+ Action</button>
         </li>)}
       </ul>

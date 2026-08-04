@@ -11,6 +11,8 @@ export interface NewActionInput {
   contextLink?: ActionContextLink | null;
   /** "À planifier" pour une idée mise de côté sans responsable/échéance réels ; par défaut "À faire" comme avant. */
   statut?: ActionStatus;
+  /** Action parente si celle-ci est une sous-action créée depuis la fiche d'une autre action ; `null`/absent pour une action de premier niveau. */
+  parentActionId?: string | null;
 }
 
 function nextActionId(existing: ProductionAction[]): string {
@@ -42,6 +44,7 @@ export function createAction(input: NewActionInput): string {
       estimatedHours: null,
       plannedWeek: null,
       planningOrder: null,
+      parentActionId: input.parentActionId ?? null,
     };
     draft.actions.unshift(action);
   });
@@ -124,11 +127,12 @@ export function reopenAction(id: string): boolean {
   return found;
 }
 
+/** Supprime aussi les sous-actions de `id` : une sous-action n'a pas de sens sans son action parente. */
 export function deleteAction(id: string): boolean {
   let found = false;
   updateDemoData((draft) => {
     found = draft.actions.some((item) => item.id === id);
-    draft.actions = draft.actions.filter((item) => item.id !== id);
+    draft.actions = draft.actions.filter((item) => item.id !== id && item.parentActionId !== id);
   });
   return found;
 }

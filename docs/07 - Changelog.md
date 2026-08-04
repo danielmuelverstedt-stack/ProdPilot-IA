@@ -4,6 +4,16 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Ajout : sous-actions dans la fiche d'une action — 04/08/2026
+
+- Demandé par l'utilisateur : développer le module Actions pour pouvoir ouvrir une action et y ajouter des sous-actions. La fiche d'une action (`/actions/[id]`) existait déjà (ouverture déjà possible depuis la colonne Description du registre) ; seule la notion de sous-action manquait.
+- Nouveau champ `ProductionAction.parentActionId: string | null` (`demo.ts`) : une sous-action est une `ProductionAction` normale (mêmes statuts, mêmes mutations Fait/Reporter/réassignation, sa propre fiche `/actions/[id]`), simplement rattachée à une action parente — aucun second modèle de données. Migration des données locales existantes (`demo-data-migration.ts`, `parentActionId: null` par défaut) et seed de démonstration mis à jour.
+- `action-service.ts` : `createAction` accepte un `parentActionId` optionnel (`null` par défaut, aucun appelant existant à changer) ; `deleteAction` supprime désormais aussi les sous-actions de l'action supprimée (confirmation explicite mentionnant leur nombre avant suppression).
+- `ActionFormDialog.tsx` accepte `parentActionId` (titre/texte adaptés : « Nouvelle sous-action »).
+- `ActionDetail.tsx` gagne une section « Sous-actions » : bouton « + Sous-action », liste des sous-actions existantes réutilisant `ActionGroupedList` (même tableau que le registre Actions et la revue de réunion, pas une présentation ad hoc), et un lien vers l'action parente si la fiche ouverte est elle-même une sous-action.
+- Une sous-action n'apparaît que dans la fiche de son parent : exclue du registre Actions, de la Planification équipe et de la revue des actions en réunion (nouvelle fonction partagée `isSubAction`, `action-status.ts`), pour ne jamais apparaître deux fois sous une forme détachée de son contexte.
+- 9 nouveaux tests (`tests/action-subactions.test.mjs`), 1 assertion existante mise à jour (`tests/team-planning.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (415/415), `npm run build` tous verts.
+
 ### Uniformisation : bouton « + Nouvelle action » de la réunion déplacé au même endroit que dans le module Actions — 04/08/2026
 
 - Demandé par l'utilisateur, en suite directe de l'uniformisation de la revue des actions : que « Créer une action » ait le même emplacement et le même style que dans son module parent (Actions).

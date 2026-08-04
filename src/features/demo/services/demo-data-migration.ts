@@ -10,6 +10,7 @@ function withActionPlanningDefaults(value: unknown): ProductionAction {
     estimatedHours: action.estimatedHours ?? null,
     plannedWeek: action.plannedWeek ?? null,
     planningOrder: action.planningOrder ?? null,
+    parentActionId: action.parentActionId ?? null,
   };
 }
 
@@ -86,6 +87,7 @@ function migrateAction(value: unknown): ProductionAction | null {
     estimatedHours: null,
     plannedWeek: null,
     planningOrder: null,
+    parentActionId: null,
   };
 }
 

@@ -803,3 +803,12 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [x] Demandé par l'utilisateur, en suite directe : déplacer le bouton « + Nouvelle action » de la réunion (jusqu'ici isolé au milieu de la page) dans le `ModuleHeader`, même emplacement/style que le module Actions. Fonctionnalité inchangée. Grille Note rapide/Parking lot passée de 3 à 2 colonnes. Test étendu (406/406).
 - [ ] Recetter manuellement dans le navigateur : confirmer que le bouton « + Nouvelle action » du `ModuleHeader` de la réunion ouvre bien la fenêtre avec l'origine et le lien vers la réunion pré-remplis, sur les deux types de réunion.
 - [ ] Étendre éventuellement cette étape à la réunion QRQC, si le besoin est confirmé (hors périmètre de cette demande).
+
+## Sous-actions dans la fiche d'une action — 04/08/2026
+
+- [x] Demandé par l'utilisateur : pouvoir ouvrir une action et y ajouter des sous-actions. Nouveau champ `ProductionAction.parentActionId` (aucun second modèle de données : une sous-action est une action normale, avec sa propre fiche et ses propres mutations), migration des données locales existantes.
+- [x] `ActionDetail.tsx` gagne une section « Sous-actions » (bouton « + Sous-action », liste réutilisant `ActionGroupedList` comme le reste du module, lien vers l'action parente si la fiche ouverte en est une). `deleteAction` supprime les sous-actions avec leur parent (confirmation explicite).
+- [x] Sous-actions exclues du registre Actions, de la Planification équipe et de la revue des actions en réunion (nouvelle fonction partagée `isSubAction`), pour ne jamais apparaître en double hors du contexte de leur parent.
+- [x] 9 nouveaux tests (`tests/action-subactions.test.mjs`), 1 assertion mise à jour (`tests/team-planning.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (415/415), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : ouvrir une action, créer plusieurs sous-actions, confirmer qu'elles n'apparaissent pas dans le registre Actions ni la Planification équipe, les marquer Fait/Reporter/réassigner depuis la fiche parente, ouvrir la fiche d'une sous-action et vérifier le lien vers son parent, puis supprimer une action ayant des sous-actions et confirmer qu'elles disparaissent avec elle.
+- [ ] Décision de portée non tranchée : profondeur illimitée non empêchée techniquement (une sous-action pourrait recevoir sa propre sous-action) — jamais testée ni recommandée ; à clarifier si le besoin apparaît.

@@ -167,7 +167,7 @@ test("ActionsModule expose un 3e onglet « Planification équipe » sans retirer
   assert.match(view, /type ActionsView = "current" \| "backlog" \| "team-planning";/);
   assert.match(view, /if \(item\.statut !== "À planifier"\) return false;/, "l'onglet backlog reste inchangé");
   assert.match(view, /if \(item\.statut === "À planifier"\) return false;/, "l'onglet Actions exclut toujours les idées, non-régression");
-  assert.match(view, /<TeamPlanningTab actions={data\.actions} people={data\.people} \/>/);
+  assert.match(view, /<TeamPlanningTab actions={topLevelActions} people={data\.people} \/>/);
 });
 
 test("le sélecteur Responsable d'ActionRow référence toujours une personne par id, jamais par nom", async () => {

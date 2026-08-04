@@ -5,6 +5,7 @@ import { useDemoData } from "@/features/demo/services/demo-repository";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { ActionGroupedList } from "@/features/actions/components/ActionGroupedList";
 import type { ActionGroupMode } from "@/features/actions/services/action-grouping";
+import { isSubAction } from "@/features/actions/services/action-status";
 
 const GROUP_OPTIONS: { mode: ActionGroupMode; label: string }[] = [
   { mode: "personne", label: "Par personne" },
@@ -17,13 +18,14 @@ const GROUP_OPTIONS: { mode: ActionGroupMode; label: string }[] = [
  * configurées dans Réglages → Actions, même `ActionRow`, mêmes actions rapides Fait/Reporter),
  * plutôt qu'une présentation ad hoc, pour que les deux écrans restent immédiatement
  * reconnaissables l'un de l'autre. Regroupement par origine non proposé ici : toutes les actions
- * affichées partagent déjà la même origine, celle de la réunion en cours.
+ * affichées partagent déjà la même origine, celle de la réunion en cours. Les sous-actions sont
+ * exclues (elles n'apparaissent que dans la fiche de leur action parente), comme partout ailleurs.
  */
 export function MeetingActionReview({ origine }: { origine: string }) {
   const data = useDemoData();
   const { settings } = useSettings();
   const [mode, setMode] = useState<ActionGroupMode>("personne");
-  const items = useMemo(() => data.actions.filter((item) => item.origine === origine && item.statut === "À faire"), [data.actions, origine]);
+  const items = useMemo(() => data.actions.filter((item) => item.origine === origine && item.statut === "À faire" && !isSubAction(item)), [data.actions, origine]);
 
   if (!items.length) return <p className="mt-4 text-sm text-slate-600">Aucune action « À faire » en attente pour cette origine. Vous pouvez passer aux nouveaux sujets.</p>;
 

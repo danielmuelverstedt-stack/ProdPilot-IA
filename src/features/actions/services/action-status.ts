@@ -16,3 +16,13 @@ export function actionStatusTone(statut: ActionStatus): "neutral" | "success" | 
   if (statut === "À planifier") return "info";
   return "neutral";
 }
+
+/**
+ * Une sous-action (créée depuis la fiche d'une autre action) n'apparaît que dans la fiche de son
+ * action parente — jamais dans les listes de premier niveau (registre Actions, Planification
+ * équipe, revue de réunion), pour ne pas y apparaître en double sous une forme détachée de son
+ * contexte. Source unique de cette règle d'exclusion.
+ */
+export function isSubAction(action: ProductionAction): boolean {
+  return action.parentActionId !== null;
+}

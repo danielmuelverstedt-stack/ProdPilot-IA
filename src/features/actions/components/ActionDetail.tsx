@@ -6,6 +6,8 @@ import { useState } from "react";
 import { EmptyState, fieldClass, formatEuropeanDate, ModuleHeader, primaryButton, secondaryButton, StatusPill } from "@/components/ui/ModuleUi";
 import { updateDemoData, useDemoData } from "@/features/demo/services/demo-repository";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
+import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog";
+import { ActionGroupedList } from "@/features/actions/components/ActionGroupedList";
 import { completeAction, deleteAction, planAction, postponeAction, reassignAction } from "@/features/actions/services/action-service";
 import { actionStatusTone } from "@/features/actions/services/action-status";
 
@@ -19,9 +21,12 @@ export function ActionDetail({ id }: { id: string }) {
   const [planning, setPlanning] = useState(false);
   const [planResponsable, setPlanResponsable] = useState("");
   const [planEcheance, setPlanEcheance] = useState("");
+  const [creatingSubAction, setCreatingSubAction] = useState(false);
   const router = useRouter();
   if (!action) return <EmptyState title="Action introuvable" description="Cette action n’existe plus dans les données de démonstration." />;
   const current = action;
+  const subActions = data.actions.filter((item) => item.parentActionId === action.id);
+  const parentAction = action.parentActionId ? data.actions.find((item) => item.id === action.parentActionId) : null;
 
   function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,7 +44,8 @@ export function ActionDetail({ id }: { id: string }) {
   }
 
   function remove() {
-    if (!window.confirm(`Supprimer l’action « ${current.description} » ? Cette opération est définitive dans la démonstration.`)) return;
+    const warning = subActions.length ? ` Ses ${subActions.length} sous-action(s) seront supprimées avec elle.` : "";
+    if (!window.confirm(`Supprimer l’action « ${current.description} » ?${warning} Cette opération est définitive dans la démonstration.`)) return;
     deleteAction(current.id);
     router.push("/actions");
   }
@@ -68,6 +74,7 @@ export function ActionDetail({ id }: { id: string }) {
           <Info label="Date d’encodage" value={formatEuropeanDate(action.dateEncodage)} />
           {action.dateCloture ? <Info label="Date de clôture" value={formatEuropeanDate(action.dateCloture, true)} /> : null}
           {action.contextLink ? <Info label="Lien contexte" value={<Link className="text-[var(--app-primary)] underline" href={action.contextLink.href}>{action.contextLink.label}</Link>} /> : null}
+          {parentAction ? <Info label="Action parente" value={<Link className="text-[var(--app-primary)] underline" href={`/actions/${parentAction.id}`}>{parentAction.id} · {parentAction.description}</Link>} /> : null}
         </dl>
         {action.remarque ? <><h3 className="mt-6 text-sm font-semibold">Remarque</h3><p className="mt-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{action.remarque}</p></> : null}
       </section>
@@ -96,6 +103,17 @@ export function ActionDetail({ id }: { id: string }) {
         </div>
       </section>
     </div>
+
+    <section className="mt-6 rounded-2xl border border-[var(--app-border)] bg-white p-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">Sous-actions</h2>
+        <button className={secondaryButton} onClick={() => setCreatingSubAction(true)}>+ Sous-action</button>
+      </div>
+      {creatingSubAction ? <ActionFormDialog origine={action.origine} parentActionId={action.id} onClose={() => setCreatingSubAction(false)} /> : null}
+      {subActions.length
+        ? <ActionGroupedList actions={subActions} mode="personne" columns={settings.actions.columns} origins={settings.actions.origins} people={data.people} variant="current" />
+        : <p className="mt-3 text-sm text-slate-500">Aucune sous-action pour l’instant. Utile pour décomposer cette action en étapes suivies séparément, avec leur propre responsable et échéance.</p>}
+    </section>
   </div>;
 }
 

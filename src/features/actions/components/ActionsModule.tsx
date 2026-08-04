@@ -8,6 +8,7 @@ import { ActionFormDialog } from "@/features/actions/components/ActionFormDialog
 import { ActionGroupedList } from "@/features/actions/components/ActionGroupedList";
 import { TeamPlanningTab } from "@/features/actions/components/TeamPlanningTab";
 import type { ActionGroupMode } from "@/features/actions/services/action-grouping";
+import { isSubAction } from "@/features/actions/services/action-status";
 
 const groupOptions: { mode: ActionGroupMode; label: string }[] = [
   { mode: "personne", label: "Par personne" },
@@ -31,27 +32,30 @@ export function ActionsModule() {
   const [planningIssueFilter, setPlanningIssueFilter] = useState<PlanningIssueFilter>("none");
 
   const origins = settings.actions.origins;
-  const responsibles = useMemo(() => [...new Set(data.actions.map((item) => item.responsable))].sort((a, b) => a.localeCompare(b, "fr")), [data.actions]);
-  const backlogCount = useMemo(() => data.actions.filter((item) => item.statut === "À planifier").length, [data.actions]);
+  // Une sous-action n'apparaît que dans la fiche de son action parente, jamais ici : sinon elle
+  // apparaîtrait deux fois (une fois nichée sous son parent, une fois détachée dans ces listes).
+  const topLevelActions = useMemo(() => data.actions.filter((item) => !isSubAction(item)), [data.actions]);
+  const responsibles = useMemo(() => [...new Set(topLevelActions.map((item) => item.responsable))].sort((a, b) => a.localeCompare(b, "fr")), [topLevelActions]);
+  const backlogCount = useMemo(() => topLevelActions.filter((item) => item.statut === "À planifier").length, [topLevelActions]);
 
   // Bandeau d'alerte : actions réelles (pas des idées « À planifier », pas déjà « Fait ») qu'il manque
   // de compléter pour qu'elles apparaissent dans la planification équipe. Compteur global sur le
   // même périmètre — une action sans charge n'entre jamais dans le total d'heures.
   const planningIssues = useMemo(() => {
-    const relevant = data.actions.filter((item) => item.statut !== "À planifier" && item.statut !== "Fait");
+    const relevant = topLevelActions.filter((item) => item.statut !== "À planifier" && item.statut !== "Fait");
     return {
       missingResponsable: relevant.filter((item) => !item.responsableId).length,
       missingHours: relevant.filter((item) => item.responsableId && item.estimatedHours === null).length,
       missingWeek: relevant.filter((item) => item.responsableId && item.estimatedHours !== null && !item.plannedWeek).length,
-      count: data.actions.filter((item) => item.statut !== "À planifier").length,
-      totalHours: data.actions.reduce((sum, item) => sum + (item.statut === "Fait" ? 0 : item.estimatedHours ?? 0), 0),
+      count: topLevelActions.filter((item) => item.statut !== "À planifier").length,
+      totalHours: topLevelActions.reduce((sum, item) => sum + (item.statut === "Fait" ? 0 : item.estimatedHours ?? 0), 0),
     };
-  }, [data.actions]);
+  }, [topLevelActions]);
 
   // « À planifier » vit dans son propre onglet, jamais mélangé aux actions actuelles : une fois
   // planifiée (responsable + échéance donnés via planAction), une idée rejoint l'onglet Actions
   // comme une action « À faire » normale, sans étape intermédiaire ni doublon entre les deux vues.
-  const filtered = useMemo(() => data.actions.filter((item) => {
+  const filtered = useMemo(() => topLevelActions.filter((item) => {
     if (view === "backlog") {
       if (item.statut !== "À planifier") return false;
       const text = `${item.id} ${item.description}`.toLocaleLowerCase("fr");
@@ -66,7 +70,7 @@ export function ActionsModule() {
       && (status === "Tous" || item.statut === status)
       && (origin === "Toutes" || item.origine === origin)
       && (responsible === "Tous" || item.responsable === responsible);
-  }), [data.actions, origin, planningIssueFilter, responsible, search, status, view]);
+  }), [topLevelActions, origin, planningIssueFilter, responsible, search, status, view]);
 
   return <div className="mx-auto max-w-7xl">
     <ModuleHeader
@@ -95,7 +99,7 @@ export function ActionsModule() {
       <p className="text-xs text-slate-500">{planningIssues.count.toLocaleString("fr-BE")} action{planningIssues.count > 1 ? "s" : ""} · {planningIssues.totalHours.toLocaleString("fr-BE")} h estimées</p>
     </section> : null}
 
-    {view === "team-planning" ? <TeamPlanningTab actions={data.actions} people={data.people} /> : <>
+    {view === "team-planning" ? <TeamPlanningTab actions={topLevelActions} people={data.people} /> : <>
       <section aria-label="Filtres des actions" className="mt-4 grid gap-2 rounded-2xl border border-[var(--app-border)] bg-white p-4 sm:grid-cols-2 xl:grid-cols-4">
         <input className={fieldClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher…" />
         {view === "current" ? <>

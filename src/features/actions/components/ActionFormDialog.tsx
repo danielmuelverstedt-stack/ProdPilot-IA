@@ -8,11 +8,13 @@ import { useSettings } from "@/features/settings/components/SettingsProvider";
 import { createAction } from "@/features/actions/services/action-service";
 import type { ActionContextLink } from "@/features/demo/types/demo";
 
-export function ActionFormDialog({ origine, contextLink = null, mode = "full", onClose, onCreated }: {
+export function ActionFormDialog({ origine, contextLink = null, mode = "full", parentActionId = null, onClose, onCreated }: {
   origine: string;
   contextLink?: ActionContextLink | null;
   /** "backlog" : idée d'amélioration à ne pas oublier, sans responsable ni échéance à saisir tout de suite — voir l'onglet « À planifier » d'Actions. */
   mode?: "full" | "backlog";
+  /** Renseigné depuis la fiche d'une action : la nouvelle action devient une sous-action de celle-ci. */
+  parentActionId?: string | null;
   onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
@@ -44,14 +46,15 @@ export function ActionFormDialog({ origine, contextLink = null, mode = "full", o
       remarque,
       contextLink,
       statut: isBacklog ? "À planifier" : "À faire",
+      parentActionId,
     });
     onCreated?.(id);
     onClose();
   }
 
   return <PlanningDialogShell
-    title={isBacklog ? "Nouvelle idée à planifier" : "Nouvelle action"}
-    description={isBacklog ? "Mettez de côté une idée ou une tâche d'amélioration pour ne pas l'oublier — vous lui donnerez un responsable et une échéance au moment de la planifier." : "Une seule fenêtre pour créer une action, quel que soit le module d’origine."}
+    title={isBacklog ? "Nouvelle idée à planifier" : parentActionId ? "Nouvelle sous-action" : "Nouvelle action"}
+    description={isBacklog ? "Mettez de côté une idée ou une tâche d'amélioration pour ne pas l'oublier — vous lui donnerez un responsable et une échéance au moment de la planifier." : parentActionId ? `Cette sous-action sera liée à ${parentActionId} et apparaîtra dans sa fiche.` : "Une seule fenêtre pour créer une action, quel que soit le module d’origine."}
     onClose={onClose}
     actions={<><button type="button" className={secondaryButton} onClick={onClose}>Annuler</button><button type="submit" form="action-form-dialog" className={primaryButton}>{isBacklog ? "Ajouter l’idée" : "Créer l’action"}</button></>}
   >

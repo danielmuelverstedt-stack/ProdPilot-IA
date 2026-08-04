@@ -44,6 +44,14 @@ export interface ProductionAction {
   plannedWeek: string | null;
   /** Ordre au sein de la case personne+semaine, croissant. `null` tant que jamais planifiée. */
   planningOrder: number | null;
+  /**
+   * Action parente, si celle-ci est une sous-action créée depuis la fiche d'une autre action.
+   * Une sous-action est une `ProductionAction` normale (mêmes statuts, mêmes mutations) — elle
+   * n'apparaît simplement pas dans les listes de premier niveau (registre Actions, Planification
+   * équipe, revue de réunion), uniquement dans la fiche de son action parente. `null` pour une
+   * action de premier niveau (l'immense majorité).
+   */
+  parentActionId: string | null;
 }
 
 export interface WorkOperation {

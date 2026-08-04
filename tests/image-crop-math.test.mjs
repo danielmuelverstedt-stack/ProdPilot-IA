@@ -55,6 +55,16 @@ test("cliquer directement sur la photo déjà enregistrée ouvre le recadrage (p
   assert.match(source, /setCropSource\(await readImageFileAsCompressedDataUrl\(file\)\);/, "une nouvelle sélection de fichier ouvre aussi le recadrage avant d'appeler onChange");
 });
 
+test("la fiche Contacts affiche une photo plus grande (carrée, 288px) que le gabarit historique de la fiche machine, via un prop size explicite plutôt qu'un second composant", async () => {
+  const uploader = await read("src/components/ui/PhotoUploader.tsx");
+  assert.match(uploader, /md: "h-40 w-64",/, "le gabarit historique (fiche machine) reste inchangé par défaut");
+  assert.match(uploader, /lg: "h-72 w-72",/, "nouveau gabarit carré agrandi, même taille que le cadre de recadrage (288px)");
+  const contactDetail = await read("src/features/contacts/components/ContactDetail.tsx");
+  assert.match(contactDetail, /<PhotoUploader photoDataUrl={photos\[id\] \?\? ""} alt={contactFullName\(contact\)} onChange={changePhoto} size="lg" \/>/);
+  const machineDetail = await read("src/features/machines/components/MachineDetail.tsx");
+  assert.doesNotMatch(machineDetail, /size="lg"/, "la fiche machine garde le gabarit par défaut, non demandé pour ce module");
+});
+
 test("la fiche récap Contacts affiche l'e-mail et le téléphone de chaque contact, pas seulement sur la fiche détaillée", async () => {
   const source = await read("src/features/contacts/components/ContactsModule.tsx");
   assert.match(source, /contact\.email \? <span className="flex items-center gap-1 truncate"><AppIcon name="mail"/);

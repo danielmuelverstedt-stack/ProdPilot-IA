@@ -46,7 +46,7 @@ export function ContactDetail({ id }: { id: string }) {
     <div className="mt-6 grid gap-5 lg:grid-cols-3">
       <section className="rounded-2xl border border-[var(--app-border)] bg-white p-5 lg:col-span-2">
         <h2 className="font-semibold">Photo</h2>
-        <div className="mt-3"><PhotoUploader photoDataUrl={photos[id] ?? ""} alt={contactFullName(contact)} onChange={changePhoto} /></div>
+        <div className="mt-3"><PhotoUploader photoDataUrl={photos[id] ?? ""} alt={contactFullName(contact)} onChange={changePhoto} size="lg" /></div>
 
         <h2 className="mt-6 font-semibold">Coordonnées</h2>
         <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">

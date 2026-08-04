@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Amélioration : photo plus grande et carrée sur la fiche Contacts — 04/08/2026
+
+- Demandé par l'utilisateur : la photo de la fiche Contacts n'était pas assez visible.
+- `PhotoUploader.tsx` (partagé Machines/Contacts) gagne un prop `size` optionnel (`"md"` par défaut, gabarit historique inchangé `h-40 w-64` ; `"lg"`, nouveau, carré `h-72 w-72` = 288px, la même taille que le cadre de recadrage) plutôt qu'un second composant dupliqué.
+- `ContactDetail.tsx` utilise désormais `size="lg"` : photo nettement plus grande et carrée, cohérente avec le format portrait d'une personne. `MachineDetail.tsx` inchangé (garde le gabarit par défaut, non demandé pour ce module).
+- Nouveau test (`tests/image-crop-math.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (440/440), `npm run build` tous verts. Classe `h-72 w-72` confirmée dans le HTML rendu de `/contacts/[id]`.
+
 ### Correctif : le recadrage de photo s'active en cliquant directement sur la photo — 04/08/2026
 
 - Demandé par l'utilisateur juste après l'ajout du recadrage : l'activer au clic sur la photo elle-même plutôt que via un bouton séparé dans la fiche, et confirmer qu'il permette bien de déplacer et recadrer (pas seulement zoomer).

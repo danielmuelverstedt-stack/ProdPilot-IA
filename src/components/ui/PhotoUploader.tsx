@@ -7,10 +7,17 @@ import { ImageCropperDialog } from "@/components/ui/ImageCropperDialog";
 import { secondaryButton } from "@/components/ui/ModuleUi";
 import { readImageFileAsCompressedDataUrl } from "@/lib/image-file";
 
+/** `md` : gabarit historique (fiche machine, format paysage). `lg` : aperçu carré agrandi (288px, la même taille que le cadre de recadrage), pour une photo de personne plus visible sur la fiche Contacts. */
+const SIZE_CLASSES: Record<"md" | "lg", string> = {
+  md: "h-40 w-64",
+  lg: "h-72 w-72",
+};
+
 /** Champ photo générique (machine, contact…) : aperçu, remplacement, recadrage (zoom + repositionnement) en cliquant directement sur la photo. Réutilisé par toute fiche ayant une photo. */
-export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: string; alt: string; onChange: (dataUrl: string) => Promise<void> }) {
+export function PhotoUploader({ photoDataUrl, alt, onChange, size = "md" }: { photoDataUrl: string; alt: string; onChange: (dataUrl: string) => Promise<void>; size?: "md" | "lg" }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const dimensionClass = SIZE_CLASSES[size];
   /** Image source à recadrer : soit fraîchement sélectionnée, soit la photo déjà enregistrée (clic direct sur la photo). */
   const [cropSource, setCropSource] = useState<string | null>(null);
 
@@ -41,11 +48,11 @@ export function PhotoUploader({ photoDataUrl, alt, onChange }: { photoDataUrl: s
     <div className="flex flex-wrap items-start gap-4">
       {photoDataUrl ? (
         <button type="button" onClick={() => setCropSource(photoDataUrl)} className="group relative overflow-hidden rounded-xl border border-[var(--app-border)]" aria-label="Recadrer la photo" title="Cliquer pour déplacer et zoomer la photo">
-          <img src={photoDataUrl} alt={alt} className="h-40 w-64 object-cover transition group-hover:opacity-90" />
+          <img src={photoDataUrl} alt={alt} className={`${dimensionClass} object-cover transition group-hover:opacity-90`} />
           <span className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-black/55 px-2 py-1 text-xs font-medium text-white opacity-0 transition group-hover:opacity-100">Recadrer</span>
         </button>
       ) : (
-        <div className="flex h-40 w-64 items-center justify-center rounded-xl border border-dashed border-[var(--app-border)] bg-slate-50 text-center text-xs text-slate-400">Aucune photo</div>
+        <div className={`flex ${dimensionClass} items-center justify-center rounded-xl border border-dashed border-[var(--app-border)] bg-slate-50 text-center text-xs text-slate-400`}>Aucune photo</div>
       )}
       <div className="flex flex-wrap gap-2">
         <label className={`${secondaryButton} cursor-pointer ${pending ? "pointer-events-none opacity-60" : ""}`}>

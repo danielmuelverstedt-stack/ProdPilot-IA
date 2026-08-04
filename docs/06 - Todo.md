@@ -787,4 +787,10 @@ Issu de la même analyse que le Volet A ci-dessus, mais chaque point représente
 - [x] Signalé par l'utilisateur : l'ancienne étape « Vue planning » faisait doublon avec cette nouvelle étape — supprimée, « OF planifiés par machine » prend directement sa place (les étapes suivantes de la réunion Production se décalent d'un cran).
 - [x] Demandé par l'utilisateur : présentation plus professionnelle, avec la photo de la machine en petit format comme sur sa fiche. Nouveau composant partagé `MachineThumbnail.tsx`, réutilisé par le sélecteur de machine de l'Atelier (qui avait sa propre copie locale jusque-là) ; carte machine avec bandeau photo/nom/nombre d'OF, lignes numérotées. Tests étendus (400/400).
 - [ ] Recetter manuellement dans le navigateur : parcourir la réunion de production jusqu'à l'étape « OF planifiés par machine », vérifier l'affichage par machine (photo, désignation, client, article, quantité) en mode ERP réel et en mode démonstration (sans import actif), confirmer que la photo affichée correspond bien à celle de la fiche machine, créer une action depuis un OF et confirmer qu'elle apparaît bien sur la fiche de cet OF puis dans la revue des actions d'une prochaine réunion.
+
+## Navigation par onglets entre les étapes de réunion — 04/08/2026
+
+- [x] Demandé par l'utilisateur : pouvoir revenir et sauter directement entre les étapes depuis le haut de l'écran, comme des onglets, au lieu de seulement Précédent/Suivant. Nouveau `StepTabs` (`MeetingWorkflow.tsx`), même style que les onglets de vue d'Actions, appliqué à QRQC et Production. Boutons Précédent/Suivant/Clôturer conservés en complément ; onglets désactivés une fois la réunion clôturée.
+- [x] `npx tsc --noEmit`, `npm run lint`, `npm test` (401/401), `npm run build` tous verts.
+- [ ] Recetter manuellement dans le navigateur : cliquer un onglet non adjacent (ex. de l'étape 1 à l'étape 6) et confirmer que le contenu affiché correspond bien, sur les deux types de réunion, et que les onglets se replient proprement sur petit écran.
 - [ ] Étendre éventuellement cette étape à la réunion QRQC, si le besoin est confirmé (hors périmètre de cette demande).

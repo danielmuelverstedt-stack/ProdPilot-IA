@@ -97,6 +97,14 @@ test("une action créée depuis la revue OF par machine reste liée à l'OF pré
   assert.match(source, /<ActionFormDialog origine={origine} contextLink={buildContextLink\(actionTarget\.workOrderId\)}/);
 });
 
+test("les étapes de la réunion se pilotent aussi depuis des onglets en haut de l'écran (revenir/sauter librement), pas seulement Précédent/Suivant", async () => {
+  const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
+  assert.match(workflow, /<StepTabs steps={steps} activeStep={step} disabled={closed} onSelect={setStep} \/>/, "la barre d'étapes doit permettre de sauter directement à n'importe quelle étape via setStep");
+  assert.match(workflow, /onClick={\(\) => onSelect\(index\)}/, "chaque onglet doit déclencher la navigation au clic");
+  assert.match(workflow, /disabled={disabled}/, "la navigation par onglet doit être désactivée une fois la réunion clôturée");
+  assert.match(workflow, /disabled={step === 0} onClick={\(\) => setStep\(\(value\) => value - 1\)}>Précédent/, "les boutons Précédent/Suivant restent disponibles en complément");
+});
+
 test("la réunion de production remplace l'étape « Vue planning » (redondante) par « OF planifiés par machine », sans décaler les étapes QRQC", async () => {
   const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
   assert.match(workflow, /"OF planifiés par machine"/);

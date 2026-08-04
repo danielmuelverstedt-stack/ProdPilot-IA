@@ -4,6 +4,13 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Amélioration : navigation par onglets entre les étapes de réunion (QRQC et Production) — 04/08/2026
+
+- Demandé par l'utilisateur : pouvoir revenir et sauter directement entre les étapes depuis le haut de l'écran, comme des onglets, plutôt que seulement pas à pas.
+- La barre de progression non interactive (« Étape X sur Y ») est remplacée par `StepTabs` (`MeetingWorkflow.tsx`) : un onglet cliquable par étape, même style de pilules que les onglets de vue d'Actions, numéroté et repliable sur plusieurs lignes sur petit écran (`flex-wrap`). Applicable aux deux types de réunion (QRQC et Production), sans dupliquer de logique entre les deux.
+- Les boutons Précédent/Suivant (et Clôturer la réunion en dernière étape) restent inchangés, en complément pour l'avancement linéaire habituel. Les onglets sont désactivés une fois la réunion clôturée (la section affiche alors le compte rendu, plus les étapes).
+- Nouveau test de câblage (`tests/meeting-machine-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (401/401), `npm run build` tous verts.
+
 ### Amélioration : présentation plus professionnelle de la revue OF par machine, avec la photo de la machine — 04/08/2026
 
 - Demandé par l'utilisateur : rendre la revue « OF planifiés par machine » plus professionnelle, avec la photo de la machine en petit format, comme sur sa fiche (Parc Machines).

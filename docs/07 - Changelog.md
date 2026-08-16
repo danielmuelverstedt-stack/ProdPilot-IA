@@ -4,6 +4,233 @@ Ce journal suit les changements significatifs du projet. Il n’annonce comme te
 
 ## [Non publié]
 
+### Développement de la catégorie « Suivi des actions » des réunions, comme vue spécialisée du module Actions — 08/08/2026
+
+- Demandé par l'utilisateur : revoir/mettre à jour/créer rapidement les actions ouvertes des réunions précédentes pendant une réunion, sans jamais créer un second système de gestion des actions — mêmes données, même service, mêmes statuts que le module Actions principal, une seule version de chaque action.
+- Étape « Revue des actions » renommée **« Suivi des actions »** (`meeting-steps.ts`) pour QRQC et Production ; ancien `MeetingActionReview.tsx` (simple filtre + tableau générique) remplacé par `MeetingActionsTracker.tsx` : résumé (actions ouvertes, en retard, échéance aujourd'hui, cette semaine — jamais de priorité, à la demande explicite), filtres (toutes ouvertes/en retard/aujourd'hui/cette semaine/mes actions/terminées), recherche (titre, responsable, machine, OF, projet), cartes triées retard-en-premier (`sortWithOverdueFirst`/`endOfWeekIso`, désormais exportées d'`action-grouping.ts` au lieu d'être réécrites). Corrige au passage un trou existant : une action « Reporté » disparaissait à tort de l'ancienne revue (limitée au seul statut « À faire »).
+- Trois capacités ajoutées au **modèle Actions lui-même** (partagées par le module Actions principal et par la réunion, jamais dupliquées) :
+  - `ProductionAction.contextLink` (un seul lien) devient `contextLinks: ActionContextLink[]` — une action peut désormais référencer plusieurs éléments à la fois (ex. une machine + sa maintenance + la réunion où elle a été décidée), toujours par référence, jamais par copie. Nouveau module de lien `"maintenance"` (pointe vers la fiche machine, qui reste le seul « chez elle » pour la maintenance, volontairement légère). Migration automatique de l'ancien champ.
+  - `comments: ActionComment[]` (auteur + date/heure + texte) et `history: HistoryEntry[]` (même type que `WorkOrder`/`InternalRequest`) : une action n'avait jusque-là qu'une simple remarque, sans fil de discussion ni traçabilité des changements (responsable, échéance, statut, clôture, commentaire).
+  - `responsableContactId: string | null` : rattache optionnellement le responsable à une fiche du module Contacts (photo affichée, jamais dupliquée), même précédent que `Meeting.responsableContactId`.
+- Nouveaux composants partagés (module Actions) réutilisés à la fois par la fiche action et par la réunion : `ActionActivity.tsx` (commentaires + historique), `ActionLinkPickers.tsx` (sélecteurs Machine/OF/Qualité, avec une case « Aussi comme Maintenance » plutôt qu'un second sélecteur machine), `ActionQuickEditPanel.tsx` (fenêtre d'édition rapide — échéance, statut, responsable, liens, activité — sans quitter la réunion, construite sur `PlanningDialogShell`, seul overlay réutilisable de l'app).
+- `ActionFormDialog.tsx` (déjà le seul formulaire de création) gagne un `allowLinkPicker` optionnel (actif uniquement depuis la réunion) : les 8 appelants existants (fiche machine, OF, qualité ERP, demande, étapes de réunion) restent inchangés. `action-service.ts` gagne `updateActionEcheance`, `updateActionDetails` (remplace une mutation jusque-là inline dans `ActionDetail.tsx`), `reassignActionToContact`, `addActionComment`, `addActionContextLink`/`removeActionContextLink` ; les fonctions existantes acceptent un auteur optionnel et tracent désormais leurs changements dans l'historique.
+- `ErpQualityDetail.tsx` affiche désormais ses « Actions liées » (même gabarit que `MachineDetail.tsx`/`WorkOrderDetail.tsx`), capacité qui n'existait pas encore pour ce module.
+- Tests mis à jour/ajoutés (renommage `contextLink`→`contextLinks`, nouvelles fonctions du service, nouveaux composants, libellé d'étape). Vérification manuelle complète dans le navigateur (suivi des actions, création avec liens multiples Machine+Maintenance+OF, panneau rapide — commentaire, responsable vers un contact avec photo, échéance, clôture —, mêmes données sur la fiche action, navigation vers la machine liée, « Actions liées » sur la fiche qualité ERP). `npx tsc --noEmit`, `npm run lint`, `npm test` (577/577), `npm run build` tous verts.
+
+### Refonte de l'architecture des réunions : cycle de vie Brouillon → Préparation → Envoyée → En cours → Terminée → Archivée — 08/08/2026
+
+- Demandé par l'utilisateur : distinguer clairement la préparation, le déroulement et la clôture d'une réunion, avec une logique commune à toutes les catégories (présentes et futures) — sans jamais dupliquer les données des autres modules (Contacts, Actions, OF, Machines…), toujours par référence.
+- `Meeting.status` (`demo.ts`) passe de 3 à 6 valeurs (`MeetingLifecycleStatus`) ; nouveaux champs de traçabilité (`createdByUserId`, `sharedAt`, `preparationSentAt`, `preparationSentVia`, `startedAt`, `closedAt`, `archivedAt`), tous horodatés à la transition réelle, jamais déduits. Migration automatique de l'ancien statut (`Planifiée→Préparation`, `En cours→En cours`, `Clôturée→Terminée`).
+- Décisions retenues avec l'utilisateur : une seule réunion active par type à la fois (comme avant) ; visibilité du Brouillon filtrée de façon cosmétique par utilisateur de démonstration actif (pas d'authentification réelle dans l'application, documenté comme tel) ; canaux d'envoi réels cette itération : e-mail (flux Gmail existant) et impression/PDF (impression navigateur), Microsoft Teams déclaré « prévu » dans le catalogue de canaux (`meeting-send-channel-catalog.ts`), comme Microsoft 365 l'est déjà pour les mails.
+- `MeetingWorkflow.tsx` : nouvelle barre de statut affichant les 6 étapes ; Brouillon et Préparation partagent le même écran (aucune des 5 catégories existantes — Participants, Actions, Projets critiques, OF par machine, Demandes — n'a été modifiée) ; chronomètre et note/décision/parking lot réservés à l'étape En cours ; nouveau document de préparation (`meeting-preparation-document.ts`, même style que le récap existant) envoyable via `MeetingSendPanel` ; l'écran Terminée (compte rendu détaillé, impression, envoi du récap, archivage) est désormais accessible à chaque visite tant que la réunion n'est pas archivée — corrige un défaut où cet écran redevenait injoignable après un rechargement de page.
+- `MailDraftSendPanel.tsx` (nouveau) extrait la logique d'envoi de brouillon Gmail, réutilisée par le récap de fin de réunion et par le nouvel envoi de la préparation.
+- Correctif connexe (repéré en testant le cycle complet dans le navigateur) : `buildMeetingRecapEmail` ajoutait un suffixe d'heure à `meeting.date`, déjà un horodatage ISO complet, ce qui faisait planter la composition du récap (`RangeError: Invalid time value`) pour toute réunion réelle — seul le champ `echeance` d'une action (une simple date) a besoin de ce suffixe.
+- Tests mis à jour/ajoutés (`meeting-lifecycle`, `meeting-recap`, `meeting-machine-review`, `meeting-critical-projects-review`, nouveaux `meeting-preparation-document`, `meeting-send-channel-catalog`, `current-user`). Vérification manuelle complète dans le navigateur (Brouillon → Partager → Préparation → Envoyer → Envoyée → Lancer → En cours → Clôturer → Terminée → Archiver, plus liste des réunions et historique). `npx tsc --noEmit`, `npm run lint`, `npm test` (552/552), `npm run build` tous verts.
+
+### Développement de la catégorie « Participants » des réunions — 08/08/2026
+
+- Demandé par l'utilisateur : les participants d'une réunion (responsable inclus) doivent être uniquement des références vers le module Contacts (photo, nom, fonction, service toujours lus en direct depuis la fiche), avec un statut Présent/Absent par participant — jamais de duplication des informations personnelles.
+- `Meeting` (`demo.ts`) : `participants` passe de `string[]` (noms en texte libre) à `MeetingParticipant[]` (`{ contactId, present }`) ; nouveau champ `responsableContactId` (contact interne menant la réunion, `null` par défaut).
+- `demo-data-migration.ts` : les réunions déjà enregistrées voient leurs participants convertis en références Contacts par correspondance de nom (perdus si aucun contact ne correspond, faute de fiche à rattacher) ; `responsableContactId` complété à `null`.
+- Nouveau composant réutilisable `ContactPickerDialog` (module Contacts) : fenêtre de sélection multiple dans l'annuaire, avec recherche et création de contact à la volée — le contact créé devient immédiatement sélectionnable.
+- `MeetingParticipantsPicker` (étape « Participants ») réécrit : sélection du responsable parmi les contacts internes, liste des participants avec photo/nom/fonction/service en lecture seule, case à cocher Présent/Absent, recherche, ajout via `ContactPickerDialog`, retrait.
+- Au démarrage d'une nouvelle réunion, le responsable et les participants de la précédente sont repris automatiquement (tous remis « Présent »), modifiables ensuite.
+- Quand une action est attribuée pendant la réunion à une personne correspondant à un contact non encore participant, confirmation proposée avant de l'ajouter (au lieu d'un ajout automatique silencieux).
+- Récap de réunion (`meeting-recap-email.ts`) : les destinataires et la ligne « Participants » sont désormais résolus par référence de contact et tiennent compte du statut Présent/Absent (un participant absent n'est plus destinataire du récap).
+- Correctif connexe : `useContactPhotos` (`contact-photo-store.ts`) retournait un nouvel objet vide à chaque rendu côté serveur, déclenchant un avertissement React (« getServerSnapshot should be cached ») désormais révélé par ce nouveau point d'appel — snapshot vide mis en cache.
+- Tests mis à jour/ajoutés (`meeting-lifecycle.test.mjs`, `meeting-recap-email.test.mjs`). Vérification manuelle dans le navigateur (choix du responsable, ajout/retrait/présence des participants, création de contact depuis la fenêtre de sélection). `npx tsc --noEmit`, `npm run lint`, `npm test` (537/537), `npm run build` tous verts.
+
+### Correctif : la recherche « Ajouter un projet/OF » porte aussi sur la description — 07/08/2026
+
+- Demandé par l'utilisateur : pouvoir rechercher un OF à ajouter à l'étape « Cinq projets critiques » par sa description, pas seulement son numéro/client/article — mêmes champs que la recherche du module OF (`WorkOrdersModule.tsx`), qui cherchait déjà dans `description` alors que celle-ci (dans `MeetingCriticalProjectsReview.tsx`) ne le faisait pas, malgré un usage identique.
+- `AddProjectControl` (dans `MeetingCriticalProjectsReview.tsx`) : le filtre inclut désormais `order.description` ; texte indicatif du champ mis à jour pour refléter fidèlement les champs réellement recherchés (numéro, client, article, description).
+- 1 test supplémentaire. `npx tsc --noEmit`, `npm run lint`, `npm test` (533/533), `npm run build` tous verts.
+
+### Correctif : les actions déjà liées à un OF suivi s'affichent directement sous sa carte — 07/08/2026
+
+- Signalé par l'utilisateur : une action créée depuis l'étape « Cinq projets critiques » (bouton de besoin ou « + Action libre ») était bien liée à l'OF (visible sur sa fiche `/of/{id}`), mais invisible dans la carte de l'étape elle-même — il fallait quitter la réunion pour la retrouver.
+- `MeetingCriticalProjectsReview.tsx` : sous chaque OF suivi, liste des actions déjà liées (même filtre que `WorkOrderDetail.tsx` — `contextLink.module === "workOrder" && contextLink.id === order.id` —, donc aussi bien celles créées ici que depuis la fiche OF elle-même), chacune avec son statut (`StatusPill`/`actionStatusTone`, déjà utilisés ailleurs dans l'app). Une action « Fait » est affichée barrée (`line-through`) plutôt que simplement listée comme les autres.
+- 2 tests supplémentaires (`meeting-critical-projects-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (532/532), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : créer une action depuis un bouton de besoin sur un OF suivi, vérifier qu'elle apparaît immédiatement sous la carte ; la marquer « Fait » depuis sa fiche, revenir à l'étape et vérifier qu'elle s'affiche barrée.
+
+### Ajout : suivi daté (statut + remarque) sur l'étape « Cinq projets critiques » — 07/08/2026
+
+- Demandé par l'utilisateur (patch chirurgical explicitement recadré : sans nouveau module, sans nouvelle route, sans fiche projet — après une annexe de spécification plus large proposant une entité « Projet » à part entière, jugée hors périmètre). Besoin : suivre l'évolution d'un OF critique réunion après réunion, pas juste sa photo instantanée du jour.
+- Sur chaque OF déjà suivi à l'étape (`meeting.criticalWorkOrderIds`, inchangé), deux nouveaux champs en ligne : un **Statut** (liste configurable, Réglages → Production → « Statuts de suivi de projet », 5 valeurs par défaut — En cours / À risque / En attente / Bloqué / Terminé) et une **Remarque** libre, propres à la réunion en cours. Réutilise le composant générique déjà en place pour toutes les autres listes configurables de Production (`StandardsEditor`), aucun nouvel éditeur écrit.
+- Nouveau journal persistant `DemoData.projetSuivi` (`Record<OF id, ProjetSuiviEntry[]>`), indépendant du fait que l'OF soit encore suivi ou non sur la réunion en cours. Le statut/la remarque saisis pendant la réunion restent un brouillon (état local à `MeetingWorkflow`, comme Note rapide/Décision) ; une entrée datée n'est figée dans le journal qu'à la clôture, pour chaque OF dont un statut a été explicitement choisi.
+- Bouton « Historique (N) » par OF : déplie les entrées passées triées par date, avec le libellé du statut (pas sa valeur brute), pour voir l'avancement réunion après réunion sans quitter l'étape.
+- Rien d'autre n'a changé sur cette étape : liste des OF suivis, boutons de besoin, « + Action libre » et actions déjà liées restent strictement identiques.
+- `demo-data-migration.ts` rattache `projetSuivi: {}` aux installations déjà enregistrées, sans perte.
+- 7 nouveaux tests (`tests/projet-suivi.test.mjs`) + 1 test existant ajusté (`meeting-critical-projects-review.test.mjs`, nouvelles props sur l'appel du composant). `npx tsc --noEmit`, `npm run lint`, `npm test` (530/530), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : poser un statut + une remarque sur un OF suivi, clôturer la réunion, démarrer une nouvelle réunion Production, rouvrir « Historique » sur ce même OF et vérifier l'entrée datée.
+
+### Ajout : 3 corrections sur le module Réunion de production (issues d'un prompt de spécification externe) — 07/08/2026
+
+- Demandé par l'utilisateur via un prompt d'implémentation détaillé du module « Rituel de réunion de production ». Après relecture, ce prompt décrivait fidèlement le module déjà en place, mais son modèle de données (un seul `quickNote`/`decision` par étape, `parkingLot` en texte unique, participants par id de contact) régressait sur des choix déjà validés (notes/décisions multiples par étape, listée récemment). Confirmé avec l'utilisateur : garder le modèle de données actuel et n'implémenter que les 3 corrections concrètes listées dans le prompt, isolées comme limites connues lors du récap précédent du module.
+- **Étape « OF planifiés par machine »** (`MeetingMachineReview.tsx`) : une action créée depuis cette étape est désormais liée à la réunion (`onActionCreated`, propagé à travers `ErpMachineReview`/`DemoMachineReview`/`MachineReviewList` jusqu'à `ActionFormDialog`) — son responsable rejoint les participants et elle apparaît au compte rendu, comme les étapes « Cinq projets critiques » et le bouton « + Nouvelle action » du header. Jusque-là ces actions restaient orphelines de la réunion.
+- **Étape « Demandes des départements »** : `MeetingRequestsReview.tsx` (nouveau) remplace la simple liste de textes jusque-là purement consultative — chaque demande active affiche désormais un bouton « + Action liée », ouvrant `ActionFormDialog` avec un `contextLink` vers la demande (`module: "request"`, `/suivi/{id}`) et remontant à la réunion comme les autres étapes.
+- **Étape « Cinq projets critiques »** : les boutons de besoin (Qualité, Planning, Matière…) renseignent désormais un champ structuré `besoinType` sur l'action créée (nouveau champ `ProductionAction.besoinType`, `null` par défaut), en plus de la description libre déjà pré-remplie — permettra un filtrage/des statistiques par type de besoin. La liste des types (`ACTION_NEED_TYPES`) est désormais définie une seule fois dans `ActionFormDialog.tsx` (elle était dupliquée). Le champ « Type de besoin » n'apparaît dans la fenêtre de création que lorsque `initialBesoinType` est explicitement fourni (undefined = masqué) : les autres créations d'action dans l'application n'en sont pas affectées.
+- `demo-data-migration.ts` complète les actions déjà enregistrées avec `besoinType: null`, sans perte de données pour une installation existante.
+- 3 nouveaux fichiers de tests (`tests/action-besoin-type.test.mjs`, `tests/meeting-requests-review.test.mjs`) et tests existants étendus/ajustés (`meeting-machine-review.test.mjs`, `meeting-critical-projects-review.test.mjs`, `action-subactions.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (523/523), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : créer une action depuis l'étape « OF planifiés par machine » et vérifier son responsable ajouté aux participants et sa présence au compte rendu ; créer une action liée depuis l'étape « Demandes des départements » ; cliquer un bouton de besoin à l'étape « Cinq projets critiques » et vérifier le type de besoin pré-rempli (modifiable) dans la fenêtre de création.
+
+### Correctif : le compte rendu détaillé va dans l'étape « Compte rendu », pas à la clôture — 07/08/2026
+
+- Corrigé sur retour immédiat de l'utilisateur après la livraison ci-dessous : le compte rendu détaillé (`MeetingRecap`) ne doit pas apparaître sur l'écran affiché juste après avoir cliqué « Clôturer la réunion », mais dans l'étape du déroulé nommée « Compte rendu » (dernière étape de la réunion Production, avant la clôture) — pour pouvoir le consulter en le préparant, pas seulement après coup.
+- `MeetingWorkflow.tsx` : écran de clôture revenu au résumé compact d'origine (compteurs + impression + préparation du récap e-mail). L'étape « Compte rendu » (Production, étape 6/6) affiche désormais `<MeetingRecap>` à la place de l'ancien texte générique (« X actions ouvertes, Y demandes actives... », sans rapport avec cette réunion précise). QRQC inchangée (pas d'étape « Compte rendu » dans son déroulé).
+- Tests de `tests/meeting-recap.test.mjs` ajustés en conséquence (2 tests réécrits). `npx tsc --noEmit`, `npm run lint`, `npm test` (513/513), `npm run build` tous verts.
+
+### Ajout : compte rendu détaillé dès la clôture de la réunion — 07/08/2026
+
+- Demandé par l'utilisateur, en retour sur le lot précédent : le compte rendu affiché à l'écran juste après avoir clôturé une réunion (et donc son impression, via `window.print()`) ne montrait qu'un résumé chiffré (« X notes, Y décisions, Z actions... ») — le vrai déroulé étape par étape n'existait que dans le brouillon e-mail (qui suppose un compte Gmail connecté) ou dans `/reunions/historique` (qui suppose d'y retourner après coup).
+- `MeetingRecap.tsx` (nouveau composant partagé) : actions liées (lien vers la fiche, responsable, échéance, statut) et déroulé étape par étape (notes/décisions, dans l'ordre du rituel, comme le récap e-mail) — remplace la logique jusque-là dupliquée dans `MeetingHistory.tsx`, et affiché directement dans l'écran de clôture de `MeetingWorkflow.tsx`. Un seul et même contenu aux trois endroits (clôture, impression, historique).
+- Boutons « Imprimer »/préparation du récap e-mail masqués à l'impression (`print:hidden`, convention déjà utilisée ailleurs dans l'app) : seul le compte rendu sort sur le papier, pas les contrôles.
+- 5 tests supplémentaires (`tests/meeting-recap.test.mjs`), `tests/meeting-history.test.mjs` simplifié en conséquence. `npx tsc --noEmit`, `npm run lint`, `npm test` (513/513), `npm run build` tous verts.
+- [ ] Recette manuelle nécessaire : clôturer une réunion Production avec notes/décisions à plusieurs étapes et au moins une action liée, vérifier le déroulé complet à l'écran de clôture et à l'impression (sans les boutons).
+
+### Ajout : base mobile — viewport, PWA installable, grilles denses lisibles sur téléphone — 07/08/2026
+
+- Demandé par l'utilisateur : pouvoir consulter l'application depuis son téléphone dans les prochains jours. Après audit, deux besoins distincts identifiés et clarifiés avec l'utilisateur : (1) rendre l'app réellement utilisable sur petit écran, et (2) pouvoir y accéder depuis n'importe où (hébergement public). Le (2) implique un chantier bien plus lourd (aucune authentification applicative aujourd'hui, stockage serveur `.local-data` en fichiers plats incompatible avec un hébergement sans système de fichiers persistant, connexion Gmail explicitement bloquée en production et figée sur une URL de redirection `localhost`) — reporté à la demande de l'utilisateur. Ce lot couvre uniquement le (1), utile dès maintenant en réseau local (Wi-Fi) et nécessaire de toute façon quel que soit l'hébergement retenu plus tard.
+- Écart bloquant repéré à l'audit : `src/app/layout.tsx` ne déclarait aucun `viewport` — un téléphone affichait donc la page dézoomée à largeur desktop (~980px), rendant tout minuscule indépendamment du CSS responsive déjà en place. Ajout d'un `export const viewport` (largeur = largeur d'écran, zoom utilisateur jusqu'à ×5 conservé pour l'accessibilité) et d'un `theme-color` (#4f46e5).
+- Manifest PWA ajouté (`public/manifest.json`, icônes `icon-192.png`/`icon-512.png`/`icon-maskable-512.png`/`apple-touch-icon.png` générées localement en PNG) : l'app peut être ajoutée à l'écran d'accueil du téléphone et s'ouvrir en plein écran.
+- Audit confirmé : `AppShell.tsx` avait déjà un vrai menu mobile (tiroir coulissant, hamburger, recherche/nom masqués sur petit écran) — aucune refonte nécessaire. Correctif ponctuel : le panneau de notifications (largeur fixe `w-80`) pouvait déborder sur les téléphones les plus étroits, désormais plafonné à la largeur d'écran disponible.
+- Plus gros écart : les grilles denses (Planning capacité et Planification équipe du module Actions) imposaient une largeur minimale desktop (1650px / 1200px), laissant à peine un jour visible à la fois sur un écran de téléphone. Colonnes resserrées sous 640px (`Planning.module.css`, `TeamPlanning.module.css`) pour en faire tenir plusieurs à l'écran ; le défilement horizontal déjà en place reste nécessaire au-delà.
+- Vérifié à l'audit : tous les autres tableaux larges (revue d'actions, ateliers machines, réglages, mappings machine ERP) étaient déjà encapsulés dans un conteneur à défilement horizontal — laissés tels quels. Les vues d'impression (Planning, étiquette palette, fiche machine atelier) restent volontairement au gabarit A4, hors périmètre de la consultation mobile.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (510/510), `npm run build` tous verts.
+- [ ] Recette manuelle sur un vrai téléphone nécessaire (pas un navigateur redimensionné) : ouvrir l'app via l'IP locale du PC pendant que `npm run dev` tourne, vérifier zoom initial, menu tiroir, réunions, grilles Planning/Planification équipe en portrait et paysage.
+
+### Ajout : compte rendu de réunion détaillé, étape par étape — 07/08/2026
+
+- Demandé par l'utilisateur : un compte rendu de réunion détaillé, avec les actions (qui est responsable) et ce qui a été dit, étape par étape — jusqu'ici, notes et décisions n'étaient que deux listes plates sans lien avec le moment où chaque point avait été abordé pendant la réunion.
+- Écart comblé au passage (confirmé avec l'utilisateur avant de le corriger) : le champ « Décisions » n'avait quasiment aucune saisie possible — seule la clôture de la réunion y écrivait une ligne automatique (« Réunion clôturée après X minute(s). »). Un vrai champ de saisie « Décision », rattaché à l'étape en cours comme « Note rapide » l'est déjà, a été ajouté à chaque étape de `MeetingWorkflow.tsx` (grille de saisie passée de 2 à 3 colonnes).
+- `Meeting.notes` et `Meeting.decisions` (`demo.ts`) passent d'un tableau de textes à un tableau d'entrées `MeetingStepEntry` (`{ step, text }`), rattachées à l'étape de la réunion pendant laquelle elles ont été saisies. `meeting-steps.ts` (nouveau) centralise la liste des étapes QRQC/Production, jusque-là dupliquée dans `MeetingWorkflow.tsx`.
+- `demo-data-migration.ts` (`withMeetingDefaults`) rattache automatiquement les notes/décisions déjà enregistrées (simples textes) à une étape générique (« Réunion »), sans perte de données pour une installation existante ; une entrée déjà migrée passe inchangée.
+- `meeting-recap-email.ts` (impression et brouillon e-mail du récap) et `MeetingHistory.tsx` (`/reunions/historique`) reconstituent désormais le déroulé de la réunion étape par étape (ce qui a été noté et décidé à chacune, dans l'ordre du rituel plutôt que dans l'ordre de saisie), une étape sans contenu n'apparaissant pas ; une entrée rattachée à une étape inconnue (réunion migrée depuis l'ancien format) reste affichée à la suite, jamais silencieusement perdue. Chaque action listée affiche en plus son statut.
+- 6 tests supplémentaires (migration des anciennes réunions, regroupement par étape, ordre du déroulé indépendant de l'ordre de saisie). `npx tsc --noEmit`, `npm run lint`, `npm test` (510/510), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : dérouler une réunion QRQC ou Production sur plusieurs étapes en ajoutant notes et décisions à chacune, la clôturer, puis vérifier le déroulé étape par étape dans l'impression, le brouillon e-mail du récap et `/reunions/historique`.
+
+### Ajout : participants de réunion depuis le personnel et récap par e-mail — 06/08/2026
+
+- Demandé par l'utilisateur : dans les réunions QRQC et Production, choisir les participants dès la première étape à partir du personnel, pour pouvoir leur envoyer le compte rendu en fin de réunion — avec ajout automatique d'une personne dès qu'une action lui est assignée pendant la réunion.
+- `MeetingParticipantsPicker.tsx` (nouveau) : participants choisis exclusivement dans le personnel actif (`settings.users`), la même liste que Réglages → Accès → Utilisateurs — jamais une liste dupliquée. Puces retirables pour les participants déjà choisis, boutons d'ajout pour le reste du personnel actif, dans la première étape de `MeetingWorkflow`.
+- `MeetingWorkflow.linkActionToMeeting` ajoute désormais automatiquement le responsable d'une action créée pendant la réunion aux participants, en fin de liste, s'il n'y figure pas déjà — `ActionFormDialog.onCreated` transmet maintenant le nom du responsable en plus de l'id créé (changement de signature rétrocompatible : les autres appelants, qui l'ignorent, continuent de fonctionner sans modification).
+- `MeetingRecapEmailSender.tsx` (nouveau), affiché une fois la réunion clôturée : compose un récap déterministe (participants, notes, décisions, actions liées, parking lot — `meeting-recap-email.ts`, aucun appel IA), retrouve l'adresse de chaque participant dans le personnel actif (silencieusement exclu du récap si aucune correspondance, jamais d'adresse inventée), puis réutilise le circuit Gmail existant (`POST /api/mail/drafts` + `MailDraftReviewCard`) : relecture visible du destinataire/objet/corps avant tout envoi, disponible uniquement pour un compte Google Workspace connecté avec l'envoi activé — mêmes garde-fous que le reste de l'application, aucune nouvelle voie d'envoi créée.
+- 6 nouveaux tests unitaires purs (`tests/meeting-recap-email.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (488/488), `npm run build` tous verts.
+- Écart préexistant repéré au passage, non corrigé (hors demande) : `MeetingMachineReview.tsx` (étape « OF planifiés par machine » de la réunion Production) crée aussi des actions via `ActionFormDialog` mais sans les lier à la réunion ni donc à l'ajout automatique de participant.
+
+### Correctif : participants de réunion depuis l'annuaire des contacts internes, pas les comptes Réglages — 06/08/2026
+
+- Corrigé sur retour immédiat de l'utilisateur après la livraison ci-dessus : « les personnes internes » ne désignait pas les comptes applicatifs (`settings.users`, Réglages → Accès), mais l'annuaire complet des contacts internes du module Contacts (`data.contacts`, `type === "Interne"` — celui qui a reçu l'annuaire TKMI fusionné), avec sélection multiple sous forme de liste plutôt que de puces ajoutées une à une.
+- `MeetingParticipantsPicker.tsx` réécrit : liste complète des contacts internes (recherche incluse, pratique vu la taille réelle de l'annuaire), cases à cocher pour une sélection multiple explicite, au lieu des boutons d'ajout individuels précédents. Réutilise `contactFullName`/`sortContactsByName` du module Contacts (`contact-directory.ts`), sans dupliquer cette logique.
+- `meeting-recap-email.ts` : `resolveParticipantEmails` fait désormais correspondre les participants aux contacts internes avec adresse renseignée, plus aux comptes `settings.users`.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (488/488), `npm run build` tous verts.
+
+### Ajout : les participants d'une nouvelle réunion reprennent ceux de la précédente — 06/08/2026
+
+- Demandé par l'utilisateur : ne plus avoir à ressaisir tout le monde à chaque réunion QRQC/Production.
+- En creusant la demande, un écart est apparu : les données de démonstration ne contiennent qu'une seule réunion fixe par type (jamais renouvelée), alors que `MeetingHistory.tsx` est déjà conçu pour en afficher plusieurs dans le temps — il manquait simplement un moyen d'en démarrer une nouvelle une fois la précédente clôturée.
+- Nouveau service `meeting-lifecycle.ts` : `previousMeetingParticipants` retrouve les participants de la réunion la plus récente du même type (clôturée ou non) ; `buildNewMeeting` construit une nouvelle occurrence avec ces participants déjà repris (copie, jamais la même référence), un id incrémental propre au type (`MEET-QRQC-13`, `MEET-PROD-08`…) et le reste vide (notes, décisions, actions, parking lot).
+- `MeetingWorkflow.tsx` : quand aucune réunion de ce type n'est en cours, un écran « Démarrer une nouvelle réunion » apparaît (au lieu d'afficher silencieusement l'ancien compte rendu clôturé, comme c'était le cas avant), annonce les participants qui seront repris, et crée la nouvelle réunion au clic — la boucle « clôturer → redémarrer avec la même équipe » est maintenant complète.
+- 5 nouveaux tests unitaires purs (`tests/meeting-lifecycle.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (493/493), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : clôturer une réunion, revenir sur `/reunions/qrqc` ou `/reunions/production`, démarrer la nouvelle réunion proposée et vérifier que les participants précédents sont bien repris (et ajustables).
+
+### Ajout : historique des réunions détaillé (date, participants, actions, notes, décisions) — 06/08/2026
+
+- Demandé par l'utilisateur : un historique des réunions avec la date, qui était présent, quelles actions ont été ajoutées, etc.
+- `MeetingHistory.tsx` (`/reunions/historique`) affichait déjà la date et les participants, mais réduisait notes/actions/parking lot à de simples compteurs. Chaque réunion propose maintenant une section dépliable (« Voir le détail ») listant les actions réellement créées ou suivies (avec lien vers leur fiche, responsable, échéance, statut coloré — réutilise `actionStatusTone` du module Actions, sans redéfinir le mappage), ainsi que les notes, décisions et sujets du parking lot en toutes lettres.
+- La liste est désormais triée de la réunion la plus récente à la plus ancienne, plus utile maintenant que plusieurs réunions par type peuvent exister (voir l'ajout précédent).
+- 3 nouveaux tests (`tests/meeting-history.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (496/496), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : ouvrir `/reunions/historique` après avoir clôturé au moins une réunion avec des actions/notes/décisions, déplier le détail et vérifier les liens vers les fiches d'action.
+
+### Correctif : les participants ont leur propre étape, séparée de la revue des actions — 06/08/2026
+
+- Demandé par l'utilisateur : les participants n'ont rien à voir avec la revue des actions, ils ne doivent pas partager la même étape.
+- `MeetingWorkflow.tsx` : nouvelle étape « Participants » ajoutée en tête (QRQC et Production), avant « Revue des actions » — toutes les étapes suivantes se décalent d'un cran en conséquence, sans changer d'ordre relatif entre elles.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (496/496), `npm run build` tous verts.
+
+### Ajout : actions créées directement depuis un projet critique (réunion Production, étape « Cinq projets critiques ») — 06/08/2026
+
+- Demandé par l'utilisateur : pouvoir sélectionner un projet/OF en cours à cette étape et y ajouter des actions, qui doivent apparaître dans les autres modules (fiche de l'OF) et dans le récap de fin de réunion.
+- `MeetingCriticalProjectsReview.tsx` (nouveau), utilisé uniquement pour cette étape précise (Production, étape 3) : les boutons de besoin par OF, jusque-là purement décoratifs (aucun `onClick`), ouvrent désormais la fenêtre de création d'action existante (`ActionFormDialog`) avec une description pré-remplie (« Besoin Qualité — OF-… ») ; un bouton « + Action libre » couvre le cas où aucun besoin prédéfini ne convient.
+- L'action créée est liée à l'OF via `contextLink` (visible dans ses « Actions liées », comme depuis sa propre fiche) et à la réunion via `onActionCreated` (remonte jusqu'à `MeetingWorkflow.linkActionToMeeting`, déjà en place) : elle apparaît donc dans le récap de fin de réunion et son responsable devient participant s'il ne l'était pas déjà.
+- `ActionFormDialog.tsx` gagne une prop optionnelle `initialDescription` (repli sur une chaîne vide, aucun appelant existant à modifier).
+- Les autres étapes qui réutilisaient la même liste générique (les quatre étapes de revue OF du QRQC, et « OF urgents » en Production) ne sont pas concernées : seule l'étape « Cinq projets critiques » explicitement demandée a été développée, pour ne pas mélanger un changement non demandé.
+- 5 nouveaux tests (`tests/meeting-critical-projects-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (501/501), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : depuis l'étape « Cinq projets critiques » d'une réunion Production, créer une action via un bouton de besoin puis via « + Action libre », vérifier qu'elle apparaît sur la fiche de l'OF concerné et dans le récap de fin de réunion.
+
+### Ajout : ajouter/retirer un projet critique à la volée (réunion Production, étape « Cinq projets critiques ») — 06/08/2026
+
+- Demandé par l'utilisateur, juste après la livraison ci-dessus : la liste des 5 projets critiques était recalculée automatiquement à chaque affichage (les plus urgents/bloqués), sans aucun moyen d'en ajouter ou d'en retirer un manuellement.
+- `Meeting` (`demo.ts`) gagne un nouveau champ persistant `criticalWorkOrderIds: string[]` : la liste suivie à cette étape appartient désormais à la réunion elle-même, plus à un calcul recommencé à chaque rendu.
+- `buildNewMeeting` (`meeting-lifecycle.ts`) préremplit ce champ avec les projets critiques suggérés automatiquement à la création d'une nouvelle réunion (comme avant), mais devient ensuite librement modifiable pendant la réunion.
+- `MeetingCriticalProjectsReview.tsx` : ajout d'un champ de recherche (numéro d'OF, client, article) pour ajouter n'importe quel OF du catalogue, pas seulement les 5 suggérés ; chaque carte gagne un bouton « × » pour retirer l'OF de la liste suivie. `MeetingWorkflow.tsx` persiste ces changements sur la réunion via `updateDemoData`.
+- Réglages/données déjà enregistrées : `migrateDemoData` complète les réunions existantes avec `criticalWorkOrderIds: []` par défaut (même convention que les autres champs ajoutés depuis), pour ne jamais faire échouer le chargement d'une installation déjà en cours d'utilisation.
+- 3 tests supplémentaires (`meeting-lifecycle.test.mjs`, `meeting-critical-projects-review.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (505/505), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire : ajouter un OF par recherche, retirer un OF suivi, clôturer puis redémarrer une réunion et vérifier que la liste suggérée reprend automatiquement les projets critiques du moment.
+
+### Correctif : trois étapes retirées de la réunion Production (OF urgents, Décisions, Synthèse) — 06/08/2026
+
+- Demandé par l'utilisateur : retirer ces trois étapes de la réunion Production.
+- `MeetingWorkflow.tsx` : ces trois étapes affichaient un contenu générique de démonstration (la même liste d'OF critiques que « Cinq projets critiques » pour « OF urgents », le même résumé chiffré que « Compte rendu » pour « Décisions »/« Synthèse ») — leur retrait ne fait disparaître aucune fonctionnalité propre, seulement de la redite. La réunion Production passe de 9 à 6 étapes ; les étapes QRQC, qui ne partagent ni les mêmes libellés ni les mêmes indices, restent inchangées.
+- 1 test mis à jour, `tests/meeting-critical-projects-review.test.mjs`. `npx tsc --noEmit`, `npm run lint`, `npm test` (505/505), `npm run build` tous verts.
+
+### Ajout : affiche palette imprimable (module OF) — 05/08/2026
+
+- Demandé par l'utilisateur : une affiche A4 paysage à imprimer et poser sur les palettes en étagère, avec n° d'OF énorme et lisible à plusieurs mètres, identité article/client, code-barres et position dans le lot de palettes.
+- Nouveau module `src/features/pallet-label/` : bouton « Imprimer l'affiche » depuis la liste des OF et la fiche d'un OF, fenêtre de recherche/édition avec aperçu fidèle (démonstration ou projection ERP active, même exclusivité que la fiche OF existante), puis bascule plein page pour l'impression — seule l'affiche est imprimée, grâce aux règles `@media print` globales déjà en place (comme la fiche machine de l'Atelier).
+- L'aperçu et la vue d'impression partagent le même composant `PalletLabelPoster` (mis en page en millimètres, réduit visuellement via `transform: scale` pour l'aperçu) : aucune duplication de la mise en page entre les deux usages. Le texte (n° d'OF, client, description, n° de plan) se réduit automatiquement pour ne jamais déborder (`FitText`, nouveau composant transversal réutilisable).
+- Code-barres Code 128 du n° d'OF via JsBarcode, chargé depuis le CDN cdnjs au premier usage (`loadExternalScript`, nouveau chargeur de script externe mutualisé et mis en cache) ; masqué sans erreur si le CDN est indisponible.
+- Le n° de plan n'existe dans aucune source de données actuelle : toujours laissé vide par la recherche automatique, jamais deviné.
+- 8 nouveaux tests unitaires purs (`tests/pallet-label.test.mjs`). `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+- [ ] Recette manuelle dans le navigateur nécessaire pour l'utilisateur : aucun outil d'automatisation navigateur n'était disponible dans cet environnement pour valider visuellement la fenêtre, l'aperçu à l'échelle et le rendu imprimé (mise en page, code-barres).
+
+### Correctif : recherche automatique de l'affiche palette renvoyait des champs vides sur un OF réel — 05/08/2026
+
+- Signalé par l'utilisateur juste après la mise en place ci-dessus : tous les champs de la fenêtre « Affiche palette » restaient vides alors que l'OF existe bel et bien dans la projection ERP active.
+- Cause : `useErpImportActive()` démarre avec `hasActiveImport: false` et ne se met à jour qu'après sa propre requête asynchrone. `usePalletLabelLookup` traitait cette fenêtre de démarrage comme « pas d'import actif » et retournait immédiatement un résultat vide (`isLoading: false`) depuis les données de démonstration, avant même que le vrai statut ERP soit connu. `PalletLabelDialog` n'appliquant la recherche qu'une seule fois par n° d'OF, ce résultat vide restait figé même une fois le vrai résultat ERP arrivé.
+- `usePalletLabelLookup` attend désormais explicitement la fin de `useErpImportActive().isLoading` avant de trancher entre démonstration et ERP, comme le fait déjà `WorkOrderDetail` de façon implicite (branchement effectué après résolution).
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+
+### Ajustement : proportions de l'affiche palette plus fidèles à la maquette fournie — 05/08/2026
+
+- Demandé par l'utilisateur : rendre l'affiche visuellement identique à la photo de maquette fournie au départ.
+- `PalletLabelPoster.tsx` : lignes du tableau agrandies (13 → 16 mm), zone du n° d'OF recalculée en `flex: 1` (au lieu d'une hauteur fixe) pour absorber exactement l'espace restant une fois l'en-tête, le tableau et le pied de page dimensionnés — garantit un total de 210 mm sans recalcul manuel. Pied de page passé en grille à 3 colonnes égales pour que « FOR-LOG-001 · Ind. A » soit réellement centré, comme sur la maquette. Tailles de police Client et Quantité augmentées pour mieux correspondre à leur proéminence sur la photo.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+- [ ] Recette manuelle nécessaire : aucun outil de capture d'écran navigateur n'était disponible pour comparer pixel à pixel avec la photo ; à valider visuellement par l'utilisateur.
+
+### Correctif : code-barres absent de l'affiche (mauvaise URL CDN) — 05/08/2026
+
+- Signalé par l'utilisateur : le code-barres n'apparaissait jamais dans l'aperçu ni à l'impression.
+- Cause : l'URL cdnjs utilisait la casse `JsBarcode` dans le chemin du dossier (`/ajax/libs/JsBarcode/…`), alors que cdnjs référence la bibliothèque en minuscules (`/ajax/libs/jsbarcode/…`) ; la requête renvoyait 404, et le repli silencieux prévu pour un CDN indisponible masquait donc le code-barres sans jamais signaler d'erreur — comportement correct pour un vrai CDN indisponible, mais ici déclenché par une URL erronée.
+- `PalletLabelBarcode.tsx` : URL corrigée vers `jsbarcode/3.12.3/JsBarcode.all.min.js` (dernière version publiée sur cdnjs), vérifiée manuellement (script atteignable, expose bien `window.JsBarcode`).
+- Au passage, taille de police légèrement réduite sur les valeurs en gras du tableau (client, quantité, code article, description, n° de plan), à la demande de l'utilisateur.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+
+### Correctif : identité société par défaut « TKMi » et logo sur l'affiche palette — 05/08/2026
+
+- Demandé par l'utilisateur : remplacer « ProdPilot IA » par « TKMi » dans l'en-tête de l'affiche, et afficher le logo s'il est disponible.
+- `default-settings.ts` : nom d'entreprise par défaut changé de « ProdPilot IA » (qui n'était qu'un texte de démonstration réutilisant par coïncidence le nom du produit) à « TKMi ». Uniquement le champ Identité société (Réglages), aucune autre occurrence de « ProdPilot IA » touchée (nom du produit lui-même, prompts IA, etc., hors sujet).
+- `PalletLabelPoster.tsx` affiche désormais le logo (`settings.company.logoDataUrl`) à côté du nom, comme le fait déjà la fiche machine imprimable de l'Atelier — mais aucun fichier logo TKMi n'existe dans le dépôt : à téléverser par l'utilisateur dans Réglages → Identité société pour qu'il apparaisse.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+
+### Correctif : le nom « ProdPilot IA » persistait malgré le changement de valeur par défaut — 05/08/2026
+
+- Signalé par l'utilisateur : après le changement ci-dessus, « ProdPilot IA » restait affiché sur l'affiche.
+- Cause : `migrateSettings` (`settings-repository.ts`) fusionne toujours l'entreprise déjà enregistrée en `localStorage` par-dessus les nouvelles valeurs par défaut (comportement volontaire, pour ne jamais écraser une personnalisation réelle) — un simple changement de `default-settings.ts` ne peut donc jamais corriger une installation déjà initialisée, seulement les toutes nouvelles.
+- `SETTINGS_VERSION` passé à 18 et nouvelle fonction `migrateCompanySettings` (même convention que `migrateMailAssistantSettings`, avec un correctif borné par version) : les réglages enregistrés avant la version 18 dont le nom d'entreprise valait encore exactement « ProdPilot IA » sont corrigés une seule fois vers la nouvelle valeur par défaut, sans jamais toucher un nom réellement personnalisé par l'utilisateur.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+- Aucun fichier logo TKMi n'existe dans le dépôt ni n'a été fourni : à téléverser par l'utilisateur dans Réglages → Identité société pour qu'il apparaisse sur l'affiche (le code l'affiche déjà automatiquement dès qu'il est présent).
+
+### Modification : affiche palette en lecture seule, plusieurs affiches générées depuis le nombre de palettes — 05/08/2026
+
+- Demandé par l'utilisateur, une fois le logo fonctionnel : retirer le texte du nom d'entreprise (le logo suffit désormais), rendre les champs venant de l'OF non modifiables, et pouvoir indiquer simplement un nombre de palettes pour que l'application génère plusieurs affiches automatiquement.
+- `PalletLabelPoster.tsx` : le nom d'entreprise en toutes lettres est retiré de l'en-tête, seul le logo reste affiché (conservé comme texte alternatif de l'image, pour l'accessibilité).
+- `PalletLabelDialog.tsx` : client, quantité, code article et description — tous retrouvés depuis l'OF — passent de champs de saisie à un affichage en lecture seule ; impossible désormais de les modifier. Le champ « Palette n° » disparaît (il n'a plus de sens à saisir à la main) ; seuls le n° de plan (absent de toute source, donc toujours saisi à la main) et le nombre de palettes restent éditables.
+- Nouveau type `PalletLabelPrintRequest` (champs de l'OF + nombre de palettes, sans numéro de palette) séparé de `PalletLabelFormData` (une affiche précise, avec son numéro) : la demande de l'utilisateur ne porte plus qu'un seul numéro par affiche générée, pas par la demande entière.
+- `PalletLabelPrintView.tsx` génère désormais une affiche par palette (numérotées automatiquement de 1 à N), chacune sur sa propre page imprimée (`break-after: page`), dans le même envoi d'impression.
+- `npx tsc --noEmit`, `npm run lint`, `npm test` (482/482), `npm run build` tous verts.
+- [ ] Recette manuelle nécessaire : imprimer un lot de plusieurs palettes et vérifier que chaque page est correctement numérotée et se détache proprement (pas de saut de page manquant ni de page blanche superflue).
+
 ### Correctif : remarque tronquée dans la liste des actions — 04/08/2026
 
 - Demandé par l'utilisateur : une remarque longue étirait toute la ligne dans la liste des actions ; il veut une liste compacte et lire le texte complet en ouvrant la fiche de l'action.
@@ -1146,3 +1373,310 @@ Audit préalable en lecture seule (agent de recherche) puis validation du design
 - Le code machine ERP et sa description sont projetés sans doublon dans `ErpOperation`, puis exposés par `OperationView` ; les cellules vides deviennent `null`.
 - Les en-têtes sont comparés après normalisation sûre de la casse, des espaces, du BOM et des caractères invisibles, tandis que toute colonne réellement inconnue reste refusée.
 - L'import réel du 22/07/2026 a été accepté en HTTP 201 avec 3 037 OF et 23 935 opérations.
+
+## [Réunions — Dossiers prioritaires] — 08/08/2026
+
+### Ajouté
+
+- La troisième catégorie de la réunion Production devient « Dossiers prioritaires » et accepte au maximum cinq sujets réordonnables dans une interface maître-détail responsive.
+- Un dossier référence un OF, un projet, un client ou une machine existants, ou reste libre ; les données métier liées sont lues depuis leur source et jamais recopiées.
+- Chaque dossier conserve les seuls éléments propres à la réunion : titre, description, commentaires de préparation et de réunion, décision, statut et références d'actions.
+- Les actions utilisent le module Actions existant et sont reliées au dossier, à la réunion et à l'OF/la machine disponible.
+- Ordres du jour, comptes rendus, impressions, e-mails et historique reprennent les dossiers, échanges, décisions et actions.
+- La migration convertit les anciens OF critiques en cinq dossiers maximum. Types, lint, 566 tests et build validés.
+
+## [Architecture, interface et e-mails de réunion] — 08/08/2026
+
+### Amélioré
+
+- Audit transversal documenté dans `docs/44 - Interface and Architecture Audit.md` : socle partagé confirmé, dette structurante identifiée sans refactorisation cosmétique risquée.
+- Nouveau fil d'Ariane partagé dans `ModuleUi`, affiché dans le workflow et l'historique des réunions pour conserver le contexte réunion/occurrence/étape.
+- Le composant commun aux e-mails de préparation et de compte rendu génère désormais toujours un aperçu complet, même sans connecteur externe.
+- L'e-mail local peut être copié ou ouvert dans la messagerie de l'utilisateur ; aucun message n'est envoyé automatiquement.
+- La détection d'un compte indisponible ne reste plus bloquée sur un chargement permanent. Gmail demeure un canal facultatif avec brouillon et confirmation séparée.
+- Types, lint, 571 tests, build et contrôle du diff validés. Recette visuelle reportée faute de navigateur connecté dans la session.
+
+## [Préparation — planning machines compact] — 08/08/2026
+
+### Ajouté
+
+- L'e-mail de préparation d'une réunion Production contient désormais un résumé compact du planning : chaque machine active affiche au maximum ses 3 premiers OF.
+- Chaque OF tient sur une ligne courte (`OF · client · article`) afin de ne pas alourdir le message.
+- Les données et leur ordre proviennent du service déjà utilisé par la revue machine, depuis l'import ERP actif ou le repli de démonstration ; aucune copie de planning n'est créée.
+- Le bloc est absent du QRQC et du compte rendu final afin de ne pas répéter le planning après la réunion.
+- Types, lint, 573 tests, build et contrôle du diff validés.
+
+## [Réunions — date du vendredi] — 08/08/2026
+
+### Modifié
+
+- Toute nouvelle réunion QRQC ou Production reçoit désormais la date du vendredi appartenant à la même semaine civile que sa création.
+- Une création le week-end conserve la semaine courante et revient donc au vendredi précédent ; aucune réunion historique n'est redatée.
+- Le calcul est centralisé et couvert pour lundi, vendredi et dimanche.
+- Types, lint, 575 tests, build et contrôle du diff validés.
+
+## [Préparation — e-mail professionnel du planning machines] — 08/08/2026
+
+### Amélioré
+
+- La préparation Production utilise désormais un e-mail professionnel et compact accompagné d'un PDF : une carte par machine avec sa photo et un tableau limité à trois OF.
+- Chaque ligne indique l'OF, le client, l'article, sa description, la quantité et sa période planifiée.
+- Le planning est annoncé en dernier dans le message et détaillé une seule fois dans le PDF pour garder le corps du mail court.
+- Les photos du Parc Machines sont intégrées au PDF, avec un emplacement de remplacement lorsqu'aucune photo n'est disponible.
+- Une version texte reste disponible pour la compatibilité, et l'envoi demeure soumis à la validation explicite de l'utilisateur.
+- Le PDF est maintenant utilisé pour garantir une présentation identique dans toutes les messageries.
+- Après constat que certaines messageries transforment le HTML en texte et retirent les photos, le planning est désormais généré dans un PDF paysage joint au brouillon Gmail.
+- Le PDF reprend pour chaque machine sa photo et jusqu'à trois OF avec client, article, description, quantité et dates ; le corps du mail reste court et renvoie vers la pièce jointe.
+- Sans Gmail connecté, le PDF reste téléchargeable séparément depuis l'aperçu.
+- Le parcours local fournit aussi un fichier `.eml` non envoyé : son ouverture dans Outlook ou une messagerie compatible conserve directement le PDF joint, contrairement à `mailto:`.
+- Le mail commence désormais par « Bonjour » et une demande de prise de connaissance, puis présente date, responsable et participants dans un encadré avant les sections numérotées : ordre du jour, actions, dossiers prioritaires et sujets préparés.
+- À la demande de l'utilisateur, tout l'en-tête situé au-dessus de « Bonjour » a été retiré : aucun bandeau, titre, date ou logo avant le début du message. La conclusion reste sobre, sans signature ni aucune mention « ProdPilot » dans le mail ou le PDF.
+- La génération repose sur `pdf-lib`, validée comme nouvelle dépendance par l'utilisateur.
+- Types, lint, 579 tests, build et contrôle du diff validés.
+
+## [Réunions — dossiers prioritaires connectés aux OF] — 08/08/2026
+
+### Corrigé
+
+- Le sélecteur des dossiers prioritaires lit désormais la même source OF que le module Ordres de fabrication : import ERP actif ou données de démonstration en repli.
+- La recherche accepte une partie du numéro d'OF, de la commande client, du client, de l'article ou de la désignation, avec temporisation, états de chargement, erreur et absence de résultat.
+- L'ajout passe par un panneau latéral et un aperçu avant confirmation ; un motif de suivi facultatif peut être enregistré avec la réunion.
+- Les cartes et le détail relisent client, article, désignation, quantité, livraison, statut, opération et machine depuis l'OF d'origine, sans dupliquer ces données dans la réunion.
+- La limite de cinq, les doublons, l'ordre, le retrait confirmé, les actions existantes, les notes, la décision et la navigation rapide ont été sécurisés.
+- Types, lint, 580 tests, build et contrôle du diff validés.
+
+## [Réunions — catégorie Maintenance] — 08/08/2026
+
+### Ajouté
+
+- Une source durable de problèmes maintenance complète désormais les interventions planifiées existantes, sans créer de copie du Parc Machines ni du registre Actions.
+- La réunion Production dispose d'une étape Maintenance : quatre indicateurs, recherche, filtres, sélection pour la réunion, liste compacte et détail du problème.
+- Le même formulaire de signalement est utilisé depuis la réunion et la fiche machine ; la photo, le nom, le département et le type restent lus depuis le Parc Machines.
+- Chaque problème conserve ses commentaires horodatés, son historique, son impact, son statut et sa résolution, et reste visible sur la machine après la réunion.
+- Une action créée depuis un problème utilise le formulaire Actions existant et porte les liens vers le problème, la machine et, le cas échéant, la réunion.
+- La préparation ne reprend que les problèmes cochés pour la réunion ; le compte rendu affiche leur statut final, leur dernière mise à jour et leurs actions liées.
+- Types, lint, 586 tests, build et contrôle du diff validés.
+
+## [Réunions — module Compte rendu] — 08/08/2026
+
+### Ajouté
+
+- La clôture ouvre désormais un espace complet de compte rendu : informations générales, comparaison avec la préparation, aperçu professionnel, vue synthétique et actions d'archivage.
+- Le document est généré depuis les sources métier existantes puis peut recevoir des corrections éditoriales qui ne modifient jamais la réunion, les actions ou la maintenance.
+- L'aperçu et le PDF utilisent exactement le même contenu `documentBody` afin d'éviter deux modèles divergents.
+- La fenêtre d'envoi sélectionne les participants présents par défaut, permet d'ajouter des Contacts, et rend l'objet ainsi que le corps du mail modifiables.
+- Les pièces jointes « Compte rendu PDF », « Liste des actions » et « Préparation » sont générées à la demande et transmises au brouillon Gmail ou au fichier `.eml` local.
+- Chaque envoi réellement confirmé conserve un instantané du document, des destinataires, de l'objet, du mail et des pièces jointes pour consultation ultérieure.
+- L'onglet Compte rendu reste désactivé avant la fin de la réunion avec le message explicatif demandé.
+- Types, lint, 591 tests, build et contrôle du diff validés.
+
+## [Réunions — lancement sans préparation envoyée] — 08/08/2026
+
+### Modifié
+
+- Le bouton « Lancer la réunion » est désormais disponible en Brouillon, en Préparation et après envoi.
+- Si la préparation n'a pas été envoyée, une confirmation informe l'utilisateur mais lui permet de poursuivre immédiatement ; l'envoi n'est plus une étape obligatoire.
+- Types, lint, 592 tests, build et contrôle du diff validés.
+
+## [Réunions — commandes directes] — 09/08/2026
+
+### Simplifié
+
+- La barre de succession des statuts a été retirée : l'utilisateur n'a plus à comprendre ni suivre plusieurs étapes administratives avant d'agir.
+- « Envoyer la préparation » et « Lancer la réunion » sont visibles immédiatement dans l'en-tête ; « Clôturer la réunion » les remplace lorsque la réunion est en cours.
+- Les onglets restent une navigation libre entre les contenus, tandis que l'envoi du compte rendu demeure directement accessible dans son espace après clôture.
+- Types, lint, 593 tests, build et contrôle du diff validés.
+
+## [Actions — sous-actions groupées] — 09/08/2026
+
+### Ajouté
+
+- La fiche d'une action propose désormais « + Plusieurs sous-actions » et ouvre une grille de saisie rapide.
+- Trois lignes sont disponibles immédiatement ; l'utilisateur peut en ajouter ou en retirer avant une validation unique.
+- Chaque ligne contient la description, le responsable avec suggestions existantes et l'échéance.
+- Toutes les lignes valides deviennent de vraies sous-actions du même registre Actions en une seule mise à jour, sans système parallèle.
+- Types, lint, 594 tests, build et contrôle du diff validés.
+
+## [Dossiers prioritaires — liaison d'actions existantes] — 09/08/2026
+
+### Ajouté
+
+- Un dossier prioritaire permet désormais de rechercher et sélectionner plusieurs actions déjà enregistrées.
+- Une seule validation rattache les actions au dossier et à la réunion, sans duplication du registre Actions.
+- Les actions déjà liées sont automatiquement écartées de la sélection.
+- Types, lint, 595 tests, build et contrôle du diff validés.
+- La fenêtre « Ajouter un dossier » recherche maintenant simultanément les OF et les actions existantes ; une action sélectionnée devient directement un dossier prioritaire relié à sa source.
+- Types, lint, 596 tests, build et contrôle du diff validés après cette amélioration.
+
+## [Réunions — Remontées terrain] — 09/08/2026
+
+### Ajouté
+
+- La réunion Production propose un tour de table guidé après Maintenance, avec progression participant par participant et raccourci « Rien à signaler ».
+- Chaque point peut être conservé comme information, transformé en action via le formulaire existant ou relié aux Machines, OF et dossiers prioritaires.
+- Les remontées restent modifiables et supprimables, puis apparaissent automatiquement dans le compte rendu, l'historique de réunion et les fiches Machine/OF concernées.
+- Les participants, actions, machines et OF restent lus dans leurs sources respectives ; seules leurs références sont enregistrées dans la réunion.
+- Types, lint, 602 tests, build et contrôle du diff validés.
+
+## [Compte rendu — PDF et e-mail professionnels] — 09/08/2026
+
+### Amélioré
+
+- Le PDF du compte rendu adopte une véritable composition éditoriale : bandeau de marque, quatre indicateurs, sections thématiques, décisions mises en évidence, en-têtes de continuation et pagination.
+- L'e-mail HTML présente une synthèse opérationnelle structurée en cartes compactes, avec une hiérarchie et des couleurs adaptées aux principaux clients de messagerie.
+- Le logo configuré est désormais embarqué en CID afin de rester visible après ouverture dans Gmail ou Outlook ; le texte brut reste disponible comme repli.
+- PDF d'essai généré et structure A4 validée ; TypeScript, lint, 604 tests, build et contrôle du diff validés.
+
+## [Réunions — comptes rendus visuels] — 09/08/2026
+
+### Amélioré
+
+- Les PDF de compte rendu disposent désormais d'un en-tête professionnel, d'indicateurs synthétiques, de sections hiérarchisées et d'une mise en évidence des décisions.
+- Le nom, le logo et le pied de page configurés dans l'identité société sont repris dans le PDF et l'e-mail.
+- L'e-mail envoyé utilise une version HTML responsive en cartes, compatible Gmail et Outlook, tout en conservant sa version texte.
+- Le contenu reste issu du document éditable et l'envoi exige toujours la confirmation explicite de l'utilisateur.
+- TypeScript, lint, tests ciblés, suite complète et build validés.
+
+## [Compte rendu — hiérarchie visuelle corrigée] — 09/08/2026
+
+### Amélioré
+
+- Les informations d'un même dossier, problème maintenance, point terrain ou étape sont maintenant regroupées dans une carte cohérente au lieu d'être dispersées ligne par ligne.
+- Les décisions restent rattachées visuellement à leur sujet et bénéficient d'un encadré dédié dans le PDF comme dans l'e-mail.
+- Le déroulé conserve correctement ses sous-étapes, même lorsque leur nom correspond à une autre rubrique du compte rendu.
+- Les pages suivantes du PDF disposent d'un espacement corrigé sous leur bandeau et les cartes ne sont plus coupées entre deux pages.
+- Le PDF d'exemple de deux pages a été rendu en images et contrôlé visuellement page par page.
+
+## [Compte rendu — nouvel export PDF professionnel] — 09/08/2026
+
+### Amélioré
+
+- L'export adopte désormais la composition d'un rapport de direction : page d'ouverture maîtrisée, bandeau de marque, participants, indicateurs et synthèse opérationnelle.
+- Les rubriques sont numérotées et alignées sur une grille constante ; leur couleur sert de repère sans surcharger la lecture.
+- Les actions sont présentées dans des fiches compactes avec responsable, échéance et statut dans des colonnes distinctes.
+- Les décisions disposent d'un traitement visuel dédié et restent attachées au dossier ou à l'étape concernée.
+- Trois contrôles visuels successifs ont permis de supprimer les chevauchements, les lignes trop longues et la troisième page presque vide.
+
+## [Planning ERP — modifications manuelles protégées] — 09/08/2026
+
+### Sécurisé
+
+- La machine provenant du dernier import et la machine réellement planifiée sont désormais exposées comme deux valeurs distinctes dans la vue métier commune.
+- Une affectation manuelle reste prioritaire lors des imports suivants ; seule la source ERP est actualisée.
+- La fiche d'un OF signale discrètement l'écart, compare les deux machines et permet de reprendre volontairement la valeur ERP après confirmation.
+- La vue Imports affiche le nombre d'OF concernés et un tableau détaillé des opérations, machines ERP et machines planifiées conservées.
+- La réinitialisation supprime la décision machine et reprend immédiatement la source du dernier import ; elle ne crée pas une nouvelle copie de la valeur ERP.
+- Le registre de décisions existant continue de conserver l'ancienne valeur, la nouvelle valeur, l'utilisateur et l'horodatage.
+
+## [Atelier — photos machines restaurées] — 09/08/2026
+
+### Corrigé
+
+- Chaque bandeau machine de l'Atelier affiche de nouveau la photo enregistrée dans le Parc Machines.
+- Une vignette compacte de 32 px a été ajoutée au composant photo partagé afin de conserver la densité et les performances de la grille actuelle.
+- Sans photo, un emplacement neutre de même taille maintient l'alignement des en-têtes.
+
+## [Planning capacité — catégories synchronisées avec l'Atelier] — 09/08/2026
+
+### Corrigé
+
+- Le Planning capacité reprend maintenant directement les départements de l'Atelier, comme Tournage, ainsi que leurs machines.
+- Les départements physiques, les catégories liées et les machines liées directement utilisent la même règle de rattachement partagée.
+- La sélection d'une catégorie dans le Planning capacité ne dépend plus d'une seconde liste de catégories visibles susceptible de diverger.
+- Aucun composant ni comportement du Planning Atelier n'a été modifié.
+
+## [Planning Atelier — durée locale de 8 h modifiable] — 09/08/2026
+
+### Ajouté
+
+- Chaque opération ERP reçoit un temps prévu local de 8 h par défaut lorsque l'ERP ne fournit aucune durée exploitable.
+- La colonne « Temps » de l'Atelier permet une édition directe par pas de 0,25 h.
+- La modification utilise la sauvegarde optimiste existante et le registre durable des décisions Planning ; un import ultérieur ne l'écrase pas.
+- Le Planning capacité, l'impression Atelier et les détails d'opération reprennent la même durée sans seconde donnée.
+
+## [Planning Atelier — photos machines agrandies] — 09/08/2026
+
+### Amélioré
+
+- La photo de chaque machine occupe désormais toute la largeur de son bandeau sur une hauteur visible, au lieu d'une vignette de 32 px.
+- Un dégradé sombre protège la lisibilité du nom, des compteurs, de la capacité et de la charge quelle que soit la photo.
+- Les boutons restent accessibles au premier plan et les machines sans photo conservent le bandeau compact existant.
+- La charge affichée dans le bandeau correspond maintenant à la somme des temps prévus des opérations.
+- Après retour utilisateur, la photo n'est plus recadrée : elle est affichée entièrement dans une zone dédiée, séparée des informations, et peut être agrandie en plein écran.
+- Après un second retour, la grande zone dédiée est remplacée par une carte photo compacte à gauche du bandeau ; l'agrandissement au clic est conservé.
+- La carte de gauche adopte finalement un format panoramique plus long, avec un liseré de couleur, un fond discret et un nom de machine mieux hiérarchisé.
+- Le format panoramique est finalement remplacé par une vignette sobre de 80 × 56 px à gauche ; le liseré et le dégradé ont été retirés pour alléger le bandeau.
+## 09/08/2026 — Refonte UX/UI transverse, lot pilote
+
+- Fondation UI existante transformée en Design System progressif : boutons, champs, recherche, sélecteurs, cartes, métriques, filtres, onglets, badges, liens d’entités, états de chargement/vide et notifications visuelles partagent désormais les mêmes contrats et styles.
+- Nouveau socle commun pour les modales et panneaux latéraux, avec fermeture par Échap ; le gabarit historique du Planning délègue désormais à ce composant sans changement de contrat.
+- Actions, Contacts, Parc Machines et Maintenance migrés comme modules pilotes. Aucun service métier, identifiant, donnée ou dépendance n’a été modifié.
+- Tests structurels ajoutés. La recette automatique dans un navigateur n’a pas été possible car aucun navigateur n’était connecté à l’environnement.
+
+## 09/08/2026 — Réordonnancement des catégories de l’Atelier
+
+- Les onglets du Planning Atelier (Tournage, Fraisage, etc.) peuvent désormais être déplacés directement par glisser-déposer.
+- La cible reçoit un repère visuel pendant le déplacement et l’ordre est sauvegardé dans le référentiel central existant, sans créer de préférence concurrente.
+- Le nouvel ordre reste donc identique dans l’Atelier, le Parc Machines et le Planning Capacité.
+
+## 09/08/2026 — Planning Atelier organisé par halls
+
+- Nouveau référentiel central de halls, initialisé avec Hall 1 à Hall 5 et extensible depuis Réglages → Production → Standards.
+- Les catégories existantes sont préservées et apparaissent dans « Non affectées » tant que l’utilisateur ne les a pas classées.
+- L’Atelier présente les halls en colonnes et les catégories de haut en bas ; une catégorie peut être déplacée dans son hall, vers un autre hall, vers « Non affectées » ou vers un hall vide.
+- Le hall et la position verticale sont sauvegardés sans modifier les rattachements machines, catégories ERP ou règles métier existantes.
+- La suppression d’un hall reste bloquée tant qu’il contient une catégorie.
+
+## 09/08/2026 — Machines rangées par hall
+
+- Le Planning Atelier propose maintenant un panneau repliable « Ranger les machines par hall » utilisant exactement le même tableau que les catégories.
+- Une machine peut être réordonnée verticalement, déplacée entre halls ou remise dans « Non affectées » ; l’organisation est sauvegardée automatiquement.
+- Le hall complète la fiche machine sans modifier son département, sa catégorie ERP, ses opérations ou ses rattachements métier.
+- Les machines existantes restent intactes et sont initialement non affectées. Un hall contenant une catégorie ou une machine ne peut pas être supprimé.
+
+## 09/08/2026 — Sélecteur de halls compact
+
+- Les grandes colonnes simultanées ont été remplacées par des onglets compacts qui gardent tous les halls visibles sans occuper la page.
+- Un clic sur un hall affiche uniquement ses catégories ou ses machines dans une liste verticale compacte et défilable.
+- Le glisser-déposer vertical reste disponible ; déposer un élément directement sur l’onglet Hall 2, par exemple, le déplace dans ce hall et ouvre immédiatement son contenu.
+
+## 09/08/2026 — Correction de l’emplacement des halls machines
+
+- Le panneau de rangement des machines a été retiré du Planning Atelier : ce planning conserve uniquement l’organisation des catégories par hall.
+- Le hall se renseigne désormais dans la fiche de la machine, au sein du Parc Machines, et apparaît aussi sur sa carte.
+- La liste des machines propose deux filtres indépendants et combinables : Catégorie et Hall. Il est possible d’afficher toutes les machines, un hall, une catégorie, les non-affectées ou une combinaison précise.
+- Les affectations existantes et les mises à jour provenant d’anciens parcours sont préservées.
+
+## 09/08/2026 — Hall commun aux catégories et aux machines
+
+- Le hall d’une catégorie constitue maintenant la source unique pour le Planning Atelier et le Parc Machines.
+- Placer « Fraisage » dans le Hall 1 met automatiquement toutes les machines de Fraisage dans le Hall 1 et actualise immédiatement le filtre du Parc Machines.
+- Le choix proposé dans une fiche machine est explicitement nommé « Hall de la catégorie », car il s’applique à toutes les machines rattachées à cette catégorie.
+
+## 09/08/2026 — Audit des référentiels uniques
+
+- Ajout d’une cartographie transverse des données partagées, de leurs propriétaires actuels et des duplications à traiter.
+- Identification des snapshots historiques légitimes afin de ne pas confondre preuve documentaire et duplication métier.
+- Proposition d’une migration progressive en six lots, commençant par une couche de résolution en lecture seule et sans suppression de champs.
+- Aucune migration métier n’a été engagée avant confirmation explicite du changement architectural.
+
+## 09/08/2026 — Référentiels uniques, Lot 1
+
+- Ajout d’un résolveur central indexé pour Contacts, Machines et OF. Il retourne directement l’objet du référentiel propriétaire et ne crée aucune copie métier.
+- Les références non renseignées et les références cassées sont maintenant deux états distincts, avec un libellé explicite pour les écrans.
+- Ajout d’un audit en lecture seule couvrant les relations des Actions, Réunions et problèmes Maintenance.
+- La fiche Action résout désormais son responsable depuis Contacts; une référence supprimée reste visible et signalée.
+- L’espace Maintenance résout les machines depuis le Parc Machines et conserve visiblement un problème même si sa machine est introuvable.
+- Le sélecteur partagé des liens d’Actions ne lit plus `DemoData.machines` : le Parc Machines devient sa source directe.
+
+## 09/08/2026 — Opérations remises sans machine
+
+- Le sélecteur de machine du Planning Atelier propose maintenant l’option explicite « Sans machine définie ».
+- Une opération affectée peut ainsi revenir dans le groupe des opérations sans machine, sans suppression de l’opération ni de ses autres décisions Planning.
+- Cette absence de machine est enregistrée comme un choix utilisateur durable. Elle reste prioritaire sur la machine provenant du mapping ERP après rechargement et après les imports suivants.
+
+## 16/08/2026 — Republication de la version locale
+
+- Validation complète de la version locale avec TypeScript, lint, 628 tests automatisés et le build de production.
+- Exclusion explicite des photos nominatives locales, des aperçus générés et des fichiers temporaires avant publication.
+- Republication de l’ensemble des évolutions validées sur la branche principale distante.

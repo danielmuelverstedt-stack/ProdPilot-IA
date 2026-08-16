@@ -10,6 +10,10 @@ import { groupErpPlanningRows } from "@/features/erp-import/services/erp-plannin
 import type { ErpPlanningOverview } from "@/features/erp-import/types/erp-import";
 import { useErpImportActive } from "@/features/planning/hooks/useErpImportActive";
 import { useWorkshopOperations } from "@/features/planning/hooks/useWorkshopOperations";
+import { PalletLabelDialog } from "@/features/pallet-label/components/PalletLabelDialog";
+import { PalletLabelPrintButton } from "@/features/pallet-label/components/PalletLabelPrintButton";
+import { PalletLabelPrintView } from "@/features/pallet-label/components/PalletLabelPrintView";
+import { usePalletLabelPrinting } from "@/features/pallet-label/hooks/usePalletLabelPrinting";
 import { matchesErpWorkOrderFilters, summarizeErpWorkOrder } from "@/features/work-orders/services/erp-work-order-summary";
 import { useVisibleTaskCategoryCodes } from "@/lib/visible-task-categories-store";
 
@@ -89,9 +93,13 @@ export function WorkOrdersModule() {
     [erpSummaries, search, status, machineFilter, department, delay, closedAfter, newOnly, activeImportId, waitingOnly],
   );
 
+  const palletLabel = usePalletLabelPrinting();
+  if (palletLabel.printFields) return <PalletLabelPrintView fields={palletLabel.printFields} onBack={palletLabel.exitPalletLabelPrint} />;
+
   if (hasActiveImport) {
     return <div className="mx-auto max-w-7xl">
-      <ModuleHeader eyebrow="Production" title="Ordres de fabrication" description="Consultez les OF réels importés d’ERP, leur avancement et leurs opérations." />
+      <ModuleHeader eyebrow="Production" title="Ordres de fabrication" description="Consultez les OF réels importés d’ERP, leur avancement et leurs opérations." actions={<PalletLabelPrintButton onClick={() => palletLabel.openPalletLabelDialog()} />} />
+      {palletLabel.isDialogOpen ? <PalletLabelDialog initialOfNumber={palletLabel.dialogOfNumber} onClose={palletLabel.closePalletLabelDialog} onPrint={palletLabel.confirmPalletLabelPrint} /> : null}
       <div className="mt-6 flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
         <WorkOrderViewTabButton label="Tous" count={erpSummaries.length} isSelected={view === "all"} onClick={() => setView("all")} />
         <WorkOrderViewTabButton label="Clôturées récemment" count={closedCount} isSelected={view === "closed"} onClick={() => setView("closed")} />
@@ -122,7 +130,8 @@ export function WorkOrdersModule() {
     </div>;
   }
 
-  return <div className="mx-auto max-w-7xl"><ModuleHeader eyebrow="Production" title="Ordres de fabrication" description="Consultez les OF, leurs gammes, leur avancement et les problèmes détectés dans les données de démonstration." />
+  return <div className="mx-auto max-w-7xl"><ModuleHeader eyebrow="Production" title="Ordres de fabrication" description="Consultez les OF, leurs gammes, leur avancement et les problèmes détectés dans les données de démonstration." actions={<PalletLabelPrintButton onClick={() => palletLabel.openPalletLabelDialog()} />} />
+    {palletLabel.isDialogOpen ? <PalletLabelDialog initialOfNumber={palletLabel.dialogOfNumber} onClose={palletLabel.closePalletLabelDialog} onPrint={palletLabel.confirmPalletLabelPrint} /> : null}
     <section aria-label="Filtres des OF" className="mt-6 grid gap-2 rounded-2xl border border-[var(--app-border)] bg-white p-4 sm:grid-cols-2 xl:grid-cols-6"><input className={fieldClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="OF, client, article…" /><Filter value={status} setValue={setStatus} values={["Tous", "À lancer", "En production", "Bloqué", "Terminé"]} /><Filter value={priority} setValue={setPriority} values={["Toutes", "Normale", "Haute", "Urgente", "Bloquante"]} /><Filter value={machineFilter} setValue={setMachineFilter} values={["Toutes", ...data.machines.map((item) => item.id)]} /><Filter value={department} setValue={setDepartment} values={["Tous", ...new Set(data.machines.map((item) => item.department))]} /><Filter value={delay} setValue={setDelay} values={["Tous", "En retard", "À l’heure"]} /></section>
     <div className="mt-5 overflow-hidden rounded-2xl border border-[var(--app-border)] bg-white"><div className="hidden grid-cols-[1fr_1.2fr_1fr_110px_120px_100px] gap-3 border-b bg-slate-50 p-4 text-xs font-semibold uppercase text-slate-500 md:grid"><span>OF / article</span><span>Client</span><span>État</span><span>Échéance</span><span>Machine</span><span>Progression</span></div>{filteredDemo.length ? filteredDemo.map((item) => { const current = item.operations.find((operation) => operation.status === "En cours" || operation.status === "Bloquée") ?? item.operations[0]; const late = new Date(item.dueDate) < new Date("2026-07-13T00:00:00.000Z") && item.status !== "Terminé"; return <Link href={`/of/${item.id}`} key={item.id} className="grid gap-3 border-b border-[var(--app-border)] p-4 last:border-0 hover:bg-slate-50 md:grid-cols-[1fr_1.2fr_1fr_110px_120px_100px] md:items-center"><div><strong className="block text-sm">{item.id}</strong><span className="text-xs text-slate-500">{item.article}</span></div><div><strong className="block text-sm font-medium">{item.customer}</strong><span className="text-xs text-slate-500">{item.description}</span></div><div className="flex flex-wrap gap-1"><StatusPill tone={item.status === "Bloqué" ? "danger" : item.status === "En production" ? "info" : "neutral"}>{item.status}</StatusPill><StatusPill tone={item.priority === "Urgente" || item.priority === "Bloquante" ? "danger" : "warning"}>{item.priority}</StatusPill></div><span className={late ? "text-sm font-semibold text-red-700" : "text-sm"}>{formatEuropeanDate(item.dueDate)}</span><span className="text-sm">{current.machineId ?? "Non définie"}</span><div><span className="text-xs font-semibold">{item.progress} %</span><div className="mt-1 h-2 overflow-hidden rounded-full bg-slate-100"><span className="block h-full bg-[var(--app-primary)]" style={{ width: `${item.progress}%` }} /></div></div></Link>; }) : <div className="p-4"><EmptyState title="Aucun OF" description="Aucun ordre ne correspond aux filtres." /></div>}</div>
   </div>;

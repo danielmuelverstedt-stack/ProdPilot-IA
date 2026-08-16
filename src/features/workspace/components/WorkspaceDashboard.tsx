@@ -57,8 +57,8 @@ function getCardCounter(id: string, demo: ReturnType<typeof useDemoData>, urgent
   if (id === "mails") return urgentMailCount + replyMailCount;
   if (id === "open-actions") return demo.actions.filter((item) => item.statut !== "Fait").length;
   if (id === "planning") return demo.planning.filter((item) => item.status === "Bloquée").length + demo.machines.filter((item) => item.status === "En panne").length;
-  if (id === "qrqc") return demo.meetings.filter((item) => item.type === "QRQC" && item.status !== "Clôturée").length;
-  if (id === "production-meeting") return demo.meetings.filter((item) => item.type === "Production" && item.status !== "Clôturée").length;
+  if (id === "qrqc") return demo.meetings.filter((item) => item.type === "QRQC" && item.status !== "Archivée").length;
+  if (id === "production-meeting") return demo.meetings.filter((item) => item.type === "Production" && item.status !== "Archivée").length;
   if (id === "machines") return demo.machines.filter((item) => item.status === "En panne" || item.status === "Maintenance prévue").length;
   if (id === "requests") return demo.requests.filter((item) => item.status !== "Terminée" && item.status !== "Refusée").length;
   if (id === "erp-quality") return demo.erpQuality.filter((item) => item.status !== "Résolue").length;

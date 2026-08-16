@@ -17,6 +17,8 @@ export interface MachineIdentityUpdate {
   favorite: boolean;
   /** Code de catégorie de tâche (voir src/lib/task-category-dictionary.ts) ; `null` = non catégorisée. */
   taskCategoryCode: string | null;
+  /** Hall physique de la machine ; `null` = non affectée. */
+  hallId?: string | null;
 }
 
 export interface MachineCreateInput {
@@ -49,6 +51,26 @@ function fallbackIdPrefix(label: string): string {
 }
 
 export const machineSettingsService = {
+  moveMachineToHall(settings: AppSettings, draggedId: string, hallId: string | null, targetId: string | null): boolean {
+    if (draggedId === targetId) return false;
+    const dragged = settings.production.machines.find((machine) => machine.id === draggedId);
+    if (!dragged || (hallId !== null && !settings.production.halls.some((hall) => hall.id === hallId))) return false;
+    const target = targetId ? settings.production.machines.find((machine) => machine.id === targetId) : null;
+    if (targetId && (!target || (target.hallId ?? null) !== hallId)) return false;
+    const sourceHallId = dragged.hallId ?? null;
+    settings.production.machines
+      .filter((machine) => (machine.hallId ?? null) === sourceHallId && machine.id !== draggedId)
+      .sort((a, b) => (a.hallOrder ?? a.order) - (b.hallOrder ?? b.order))
+      .forEach((machine, index) => { machine.hallOrder = index; });
+    const destination = settings.production.machines
+      .filter((machine) => (machine.hallId ?? null) === hallId && machine.id !== draggedId)
+      .sort((a, b) => (a.hallOrder ?? a.order) - (b.hallOrder ?? b.order));
+    const targetIndex = targetId ? destination.findIndex((machine) => machine.id === targetId) : destination.length;
+    destination.splice(targetIndex < 0 ? destination.length : targetIndex, 0, dragged);
+    destination.forEach((machine, index) => { machine.hallId = hallId; machine.hallOrder = index; });
+    return true;
+  },
+
   setActive(settings: AppSettings, machineId: string): boolean {
     return updateMachine(settings, machineId, (machine) => { machine.active = true; });
   },
@@ -64,6 +86,7 @@ export const machineSettingsService = {
   updateIdentity(settings: AppSettings, machineId: string, patch: MachineIdentityUpdate): boolean {
     return updateMachine(settings, machineId, (machine) => {
       const department = settings.production.departments.find((entry) => entry.id === patch.departmentId);
+      const previousHallId = machine.hallId ?? null;
       machine.name = patch.name.trim() || machine.name;
       machine.displayName = patch.displayName.trim() || machine.displayName;
       machine.departmentId = patch.departmentId;
@@ -74,6 +97,21 @@ export const machineSettingsService = {
       machine.comments = patch.comments;
       machine.favorite = patch.favorite;
       machine.taskCategoryCode = patch.taskCategoryCode;
+      if (patch.hallId !== undefined) {
+        const hallId = patch.hallId && settings.production.halls?.some((hall) => hall.id === patch.hallId) ? patch.hallId : null;
+        const category = settings.production.departments.find((entry) => entry.id === patch.departmentId);
+        if (category) {
+          category.hallId = hallId;
+          category.hallOrder = settings.production.departments.filter((entry) => entry.id !== category.id && (entry.hallId ?? null) === hallId).length;
+        }
+        settings.production.machines.filter((entry) => entry.departmentId === patch.departmentId).forEach((entry, index) => {
+          entry.hallId = hallId;
+          entry.hallOrder = index;
+        });
+        if (machine.departmentId !== patch.departmentId || hallId !== previousHallId) {
+          machine.hallId = hallId;
+        }
+      }
     });
   },
   softDelete(settings: AppSettings, machineId: string): boolean {
@@ -106,6 +144,8 @@ export const machineSettingsService = {
       machineType: "",
       color: "",
       order: settings.production.machines.length,
+      hallId: null,
+      hallOrder: settings.production.machines.filter((entry) => !entry.hallId).length,
       technicalInformation: "",
       deleted: false,
       favorite: false,

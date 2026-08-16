@@ -92,7 +92,7 @@ function printCellValue(columnId: WorkshopColumnId, operation: OperationView): s
   if (columnId === "client") return operation.workOrder?.customerName || "—";
   if (columnId === "quantity") return operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—";
   if (columnId === "description") return operation.description || "Sans description";
-  if (columnId === "time") return "Non disponible";
+  if (columnId === "time") return `${operation.plannedDurationHours.toLocaleString("fr-BE")} h`;
   if (columnId === "status") return ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus];
   if (columnId === "start-date") return formatDate(operation.plannedDate);
   if (columnId === "end-date") return formatDate(operation.dueDate);

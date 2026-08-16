@@ -13,7 +13,7 @@ interface DecisionRegistry {
   migratedLegacyOverrides: boolean;
 }
 
-const mutableFields = ["plannedDate", "machineId", "priority", "manualOrder", "status", "comment", "visible", "locked"] as const;
+const mutableFields = ["plannedDate", "machineId", "priority", "manualOrder", "plannedDurationHours", "status", "comment", "visible", "locked"] as const;
 type MutableField = (typeof mutableFields)[number];
 
 class ErpDecisionRepository {
@@ -69,7 +69,9 @@ class ErpDecisionRepository {
         operationIdentity: event.stableOperationId,
         userPriority: null,
         manualOrder: null,
+        plannedDurationHours: null,
         plannedMachineId: null,
+        hasMachineAssignmentOverride: false,
         comment: null,
         visible: true,
         locked: false,
@@ -80,7 +82,8 @@ class ErpDecisionRepository {
       };
       if (event.field === "priority") current.userPriority = event.nextValue as number | null;
       if (event.field === "manualOrder") current.manualOrder = event.nextValue as number | null;
-      if (event.field === "machineId") current.plannedMachineId = event.nextValue as string | null;
+      if (event.field === "plannedDurationHours") current.plannedDurationHours = event.nextValue as number | null;
+      if (event.field === "machineId") { current.plannedMachineId = event.nextValue as string | null; current.hasMachineAssignmentOverride = true; }
       if (event.field === "comment") current.comment = event.nextValue as string | null;
       if (event.field === "visible") current.visible = (event.nextValue as boolean | null) ?? true;
       if (event.field === "locked") current.locked = (event.nextValue as boolean | null) ?? false;

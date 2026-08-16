@@ -108,7 +108,7 @@ test("l'import réutilise machineSettingsService.createMachine/updateIdentity et
 test("l'import/export CSV et l'import de photos en masse sont regroupés derrière un bouton « Options » du Parc Machines, plutôt qu'affichés en permanence sur la page", async () => {
   const listModule = await readFile(new URL("../src/features/machines/components/MachinesModule.tsx", import.meta.url), "utf8");
   assert.match(listModule, /const \[optionsOpen, setOptionsOpen\] = useState\(false\);/);
-  assert.match(listModule, /<button type="button" className={secondaryButton} onClick={\(\) => setOptionsOpen\(true\)}>Options<\/button>/);
+  assert.match(listModule, /<Button variant="secondary" onClick={\(\) => setOptionsOpen\(true\)}>Options<\/Button>/);
   assert.match(listModule, /\{optionsOpen \? <MachineOptionsDialog onClose={\(\) => setOptionsOpen\(false\)} \/> : null\}/);
   assert.doesNotMatch(listModule, /<MachineCsvTools \/>/, "l'outil CSV n'est plus affiché directement sur la page, seulement dans la fenêtre Options");
   assert.doesNotMatch(listModule, /<MachinePhotoBulkImport \/>/, "l'import de photos n'est plus affiché directement sur la page, seulement dans la fenêtre Options");

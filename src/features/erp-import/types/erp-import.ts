@@ -110,6 +110,7 @@ export interface ErpManualOverride {
   machineId?: string | null;
   priority?: number | null;
   manualOrder?: number | null;
+  plannedDurationHours?: number | null;
   status?: ErpOperationStatus | null;
   comment?: string | null;
   visible?: boolean | null;
@@ -122,7 +123,10 @@ export interface PlanningDecision {
   operationIdentity: string;
   userPriority: number | null;
   manualOrder: number | null;
+  plannedDurationHours: number | null;
   plannedMachineId: string | null;
+  /** `true` signifie qu'un utilisateur a explicitement choisi une machine ou « Sans machine définie ». */
+  hasMachineAssignmentOverride?: boolean;
   comment: string | null;
   visible: boolean;
   locked: boolean;
@@ -152,6 +156,8 @@ export interface OperationView {
   userPriority: number | null;
   comment: string | null;
   manualOrder: number | null;
+  /** Durée locale de planification ; 8 h par défaut tant qu'aucune décision manuelle n'existe. */
+  plannedDurationHours: number;
   isLocked: boolean;
   hasPlannedMachine: boolean;
   hasUserPriority: boolean;
@@ -172,6 +178,10 @@ export interface OperationView {
   workOrder: ErpWorkOrder | ErpPlanningWorkOrderSummary | null;
   sourceMachineCode: string | null;
   sourceMachineDescription: string | null;
+  /** Machine issue du dernier import après application du mapping ERP, avant toute décision Planning. */
+  sourceMachineId: string | null;
+  /** Vrai uniquement lorsqu'une affectation manuelle diffère actuellement de la source ERP. */
+  hasMachineDifference: boolean;
   /** Alias de compatibilité d'affichage ; la fusion reste détenue par OperationViewService. */
   erpMachineCode: string | null;
   sourcePriority: number;
@@ -216,7 +226,7 @@ export interface ErpDecisionEvent {
   origin: ErpDecisionOrigin;
   operationId: string;
   stableOperationId: string;
-  field: keyof Pick<ErpManualOverride, "plannedDate" | "machineId" | "priority" | "manualOrder" | "status" | "comment" | "visible" | "locked">;
+  field: keyof Pick<ErpManualOverride, "plannedDate" | "machineId" | "priority" | "manualOrder" | "plannedDurationHours" | "status" | "comment" | "visible" | "locked">;
   previousValue: string | number | boolean | null;
   nextValue: string | number | boolean | null;
   comment: string | null;

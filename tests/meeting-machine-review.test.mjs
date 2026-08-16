@@ -29,7 +29,7 @@ test("buildErpMachineReview : les OF les plus prioritaires de chaque machine act
   assert.deepEqual(groups[0].rows.map((row) => row.workOrderId), ["OF-101", "OF-102"], "les 2 OF de plus haute priorité (numéro le plus bas), limité à N");
   assert.deepEqual(groups[0].rows.map((row) => row.description), ["Axe", "Support"]);
   assert.deepEqual(groups[1].rows.map((row) => row.workOrderId), ["OF-200"]);
-  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-101", description: "Axe", customerName: "EXAIL", articleCode: "A100", quantity: 120 }, "client, code article et quantité repris de l'opération/du work order ERP");
+  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-101", description: "Axe", customerName: "EXAIL", articleCode: "A100", quantity: 120, plannedStartAt: null, plannedEndAt: null }, "client, code article, quantité et planning repris de l'opération/du work order ERP");
 });
 
 test("buildErpMachineReview : machine masquée exclue, machine sans opération absente du résultat, désignation/client/quantité manquants repliés sur des valeurs explicites", () => {
@@ -39,7 +39,7 @@ test("buildErpMachineReview : machine masquée exclue, machine sans opération a
   ];
   const groups = buildErpMachineReview(operations, machines, 5);
   assert.deepEqual(groups.map((group) => group.machineId), ["cv5-500"], "machine masquée exclue, DMU50 sans opération absente du résultat");
-  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-101", description: "Sans description", customerName: "Client inconnu", articleCode: "—", quantity: null });
+  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-101", description: "Sans description", customerName: "Client inconnu", articleCode: "—", quantity: null, plannedStartAt: null, plannedEndAt: null });
 });
 
 const demoMachines = [
@@ -62,8 +62,8 @@ test("buildDemoMachineReview : regroupe par machine dans l'ordre chronologique, 
   const groups = buildDemoMachineReview(planning, demoMachines, workOrders, 2);
   assert.deepEqual(groups.map((group) => group.machineId), ["m-1"], "Machine 2 sans planning absente du résultat");
   assert.deepEqual(groups[0].rows.map((row) => row.workOrderId), ["OF-1", "OF-2"], "ordre chronologique, limité à N");
-  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-1", description: "Perçage", customerName: "EXAIL", articleCode: "A100", quantity: 50 }, "opération résolue par id dans l'OF, client/article/quantité de l'OF");
-  assert.deepEqual(groups[0].rows[1], { workOrderId: "OF-2", description: "Autre OF", customerName: "SAB", articleCode: "B200", quantity: 12 }, "repli sur la description de l'OF quand l'opération est introuvable");
+  assert.deepEqual(groups[0].rows[0], { workOrderId: "OF-1", description: "Perçage", customerName: "EXAIL", articleCode: "A100", quantity: 50, plannedStartAt: "2026-08-01T08:00:00Z", plannedEndAt: "2026-08-01T10:00:00Z" }, "opération résolue par id dans l'OF, client/article/quantité de l'OF");
+  assert.deepEqual(groups[0].rows[1], { workOrderId: "OF-2", description: "Autre OF", customerName: "SAB", articleCode: "B200", quantity: 12, plannedStartAt: "2026-08-01T09:00:00Z", plannedEndAt: "2026-08-01T10:00:00Z" }, "repli sur la description de l'OF quand l'opération est introuvable");
 });
 
 test("le nouveau composant de revue OF par machine bascule entre planning ERP réel et démonstration, comme la fiche OF", async () => {
@@ -97,26 +97,34 @@ test("une action créée depuis la revue OF par machine reste liée à l'OF pré
   assert.match(source, /<ActionFormDialog origine={origine} contextLink={buildContextLink\(actionTarget\.workOrderId\)}/);
 });
 
+test("une action créée depuis la revue OF par machine remonte aussi à la réunion (responsable ajouté en participant, présence au compte rendu), comme les étapes « Cinq projets critiques » et « + Nouvelle action » — jusque-là elle en était orpheline", async () => {
+  const source = await readFile(new URL("../src/features/meetings/components/MeetingMachineReview.tsx", import.meta.url), "utf8");
+  assert.match(source, /onCreated={onActionCreated} \/> : null}/, "la fenêtre de création doit transmettre onActionCreated à onCreated");
+  assert.match(source, /export function MeetingMachineReview\({ origine, onActionCreated }: { origine: string; onActionCreated: \(id: string, responsable: string\) => void }\)/, "le callback doit être un prop obligatoire, transmis par MeetingWorkflow (pas un ajout silencieusement optionnel)");
+  assert.match(source, /return hasActiveImport \? <ErpMachineReview origine={origine} onActionCreated={onActionCreated} \/> : <DemoMachineReview origine={origine} onActionCreated={onActionCreated} \/>;/, "transmis aux deux modes (ERP réel et démonstration)");
+});
+
 test("les étapes de la réunion se pilotent aussi depuis des onglets en haut de l'écran (revenir/sauter librement), pas seulement Précédent/Suivant", async () => {
   const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
-  assert.match(workflow, /<StepTabs steps={steps} activeStep={step} disabled={closed} onSelect={setStep} \/>/, "la barre d'étapes doit permettre de sauter directement à n'importe quelle étape via setStep");
+  assert.match(workflow, /<StepTabs steps={steps} activeStep={step} disabled={isTerminee} recapLocked={!isTerminee} onSelect={setStep} \/>/, "la barre d'étapes doit permettre de sauter directement à toute étape disponible via setStep");
   assert.match(workflow, /onClick={\(\) => onSelect\(index\)}/, "chaque onglet doit déclencher la navigation au clic");
-  assert.match(workflow, /disabled={disabled}/, "la navigation par onglet doit être désactivée une fois la réunion clôturée");
+  assert.match(workflow, /disabled={disabled \|\| \(recapLocked && label === "Compte rendu"\)}/, "la navigation doit verrouiller le compte rendu avant la clôture");
   assert.match(workflow, /disabled={step === 0} onClick={\(\) => setStep\(\(value\) => value - 1\)}>Précédent/, "les boutons Précédent/Suivant restent disponibles en complément");
 });
 
 test("le bouton « + Nouvelle action » de la réunion est dans le ModuleHeader, même emplacement et même style que le module Actions", async () => {
   const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
   const actionsModule = await readFile(new URL("../src/features/actions/components/ActionsModule.tsx", import.meta.url), "utf8");
-  assert.match(workflow, /<ModuleHeader[^>]*actions={<><button className={primaryButton} onClick={\(\) => setCreatingAction\(true\)}>\+ Nouvelle action<\/button>/, "le bouton doit être le premier élément de ModuleHeader.actions, comme dans ActionsModule.tsx");
-  assert.match(actionsModule, /actions={<button className={primaryButton} onClick={\(\) => setCreating\(true\)}>/, "référence : emplacement/style du bouton dans le module Actions");
+  assert.match(workflow, /<ModuleHeader[^>]*actions={<.*<button className={secondaryButton} onClick={\(\) => setCreatingAction\(true\)}>\+ Nouvelle action<\/button>/, "le bouton doit rester dans ModuleHeader.actions avec les commandes principales de réunion");
+  assert.match(actionsModule, /actions={<Button onClick={\(\) => setCreating\(true\)}>/, "référence : emplacement et bouton commun dans le module Actions");
   assert.doesNotMatch(workflow, /<label className="text-xs font-semibold uppercase text-slate-500">Créer une action<\/label>/, "l'ancien emplacement au milieu de la page doit disparaître");
 });
 
 test("la réunion de production remplace l'étape « Vue planning » (redondante) par « OF planifiés par machine », sans décaler les étapes QRQC", async () => {
+  const steps = await readFile(new URL("../src/features/meetings/services/meeting-steps.ts", import.meta.url), "utf8");
+  assert.match(steps, /"OF planifiés par machine"/);
+  assert.doesNotMatch(steps, /"Vue planning"/, "l'ancienne étape, devenue redondante avec la nouvelle revue par machine, doit disparaître");
   const workflow = await readFile(new URL("../src/features/meetings/components/MeetingWorkflow.tsx", import.meta.url), "utf8");
-  assert.match(workflow, /"OF planifiés par machine"/);
-  assert.doesNotMatch(workflow, /"Vue planning"/, "l'ancienne étape, devenue redondante avec la nouvelle revue par machine, doit disparaître");
-  assert.match(workflow, /type === "Production" && step === 2\) return <MeetingMachineReview origine={origine} \/>/);
-  assert.match(workflow, /type === "QRQC" && \[1, 2, 3, 4\]\.includes\(step\)/, "les indices d'étapes QRQC ne doivent pas bouger");
+  assert.match(workflow, /type === "Production" && step === 5\) return <MeetingMachineReview origine={origine} onActionCreated={onActionCreated} \/>/);
+  assert.match(workflow, /type === "QRQC" && \[2, 3, 4, 5\]\.includes\(step\)/, "les indices d'étapes QRQC ne doivent pas bouger l'un par rapport à l'autre, même si l'étape Participants ajoutée en tête décale tout d'un cran");
 });

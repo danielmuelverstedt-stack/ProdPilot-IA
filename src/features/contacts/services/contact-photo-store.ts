@@ -39,8 +39,10 @@ function getSnapshot(): PhotoMap {
   return snapshot;
 }
 
+const EMPTY_SNAPSHOT: PhotoMap = {};
+
 function getServerSnapshot(): PhotoMap {
-  return {};
+  return EMPTY_SNAPSHOT;
 }
 
 export function useContactPhotos(): PhotoMap {

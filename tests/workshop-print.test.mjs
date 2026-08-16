@@ -29,7 +29,7 @@ test("WorkshopMachinePrintView affiche les mêmes colonnes que celles actuelleme
   const printView = await read("src/features/planning/components/WorkshopMachinePrintView.tsx");
   assert.match(printView, /visibleColumnIds\.map\(\(columnId\) => <th key=\{columnId\}[^>]*>\{WORKSHOP_COLUMN_LABELS\[columnId\]\}<\/th>\)/);
   assert.match(printView, /operations\.length\.toLocaleString\("fr-BE"\)\}? sur \$?\{totalOperationCount\.toLocaleString\("fr-BE"\)\}/);
-  assert.match(printView, /if \(columnId === "time"\) return "Non disponible";/);
+  assert.match(printView, /if \(columnId === "time"\) return `\$\{operation\.plannedDurationHours\.toLocaleString\("fr-BE"\)\} h`;/);
   assert.match(printView, /window\.print\(\)/);
   assert.match(printView, /@page \{ size: \$\{settings\.print\.paperSize\} \$\{settings\.print\.orientation\}/, "reprend la même configuration papier que l'impression du Planning capacité, une seule source de réglages");
 });

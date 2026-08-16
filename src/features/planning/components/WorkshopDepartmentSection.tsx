@@ -18,8 +18,9 @@ interface WorkshopDepartmentSectionProps {
   busy: boolean;
   onToggleMachineCollapsed: (machineId: string) => void;
   onUpdatePriority: (operationId: string, priority: number) => void;
-  onUpdateMachine: (operationId: string, machineId: string) => void;
+  onUpdateMachine: (operationId: string, machineId: string | null) => void;
   onUpdateStatus: (operationId: string, status: OperationView["status"]) => void;
+  onUpdateDuration: (operationId: string, plannedDurationHours: number) => void;
   onReorderOperations: (orderedOperationIds: string[]) => void;
   onRenumberOperations: (orderedOperationIds: string[]) => void;
   onMoveColumn: (sourceId: WorkshopColumnId, targetId: WorkshopColumnId) => void;
@@ -28,7 +29,7 @@ interface WorkshopDepartmentSectionProps {
   onPrint: (machine: MachineSettings | null, operations: OperationView[], totalOperationCount: number) => void;
 }
 
-export function WorkshopDepartmentSection({ department, visibleColumnIds, collapsedMachineIds, rowsPerMachine, sort, machines, capacities, defaultCapacityHours, columnWidths, busy, onToggleMachineCollapsed, onUpdatePriority, onUpdateMachine, onUpdateStatus, onReorderOperations, onRenumberOperations, onMoveColumn, onResizeColumn, onCycleSort, onPrint }: WorkshopDepartmentSectionProps) {
+export function WorkshopDepartmentSection({ department, visibleColumnIds, collapsedMachineIds, rowsPerMachine, sort, machines, capacities, defaultCapacityHours, columnWidths, busy, onToggleMachineCollapsed, onUpdatePriority, onUpdateMachine, onUpdateStatus, onUpdateDuration, onReorderOperations, onRenumberOperations, onMoveColumn, onResizeColumn, onCycleSort, onPrint }: WorkshopDepartmentSectionProps) {
   // La section « direct » (voir buildWorkshopCategories) ne contient que des machines rattachées
   // individuellement au département actif : son identifiant suffit à savoir si le badge « Machine
   // liée directement » doit être affiché, sans faire redescendre la liste des id liés.
@@ -58,6 +59,7 @@ export function WorkshopDepartmentSection({ department, visibleColumnIds, collap
         onUpdatePriority={onUpdatePriority}
         onUpdateMachine={onUpdateMachine}
         onUpdateStatus={onUpdateStatus}
+        onUpdateDuration={onUpdateDuration}
         onReorderOperations={onReorderOperations}
         onRenumberOperations={onRenumberOperations}
         onMoveColumn={onMoveColumn}

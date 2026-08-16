@@ -16,9 +16,10 @@ import { PlanningSummary } from "@/features/planning/components/PlanningSummary"
 import { PlanningTaskDialog, type PlanningTaskInput } from "@/features/planning/components/PlanningTaskDialog";
 import { PlanningToolbar } from "@/features/planning/components/PlanningToolbar";
 import { buildPlanningView, sumDurationHours } from "@/features/planning/services/planning-view";
+import { buildDepartmentOperationIndex, resolveDepartmentMachineIds } from "@/features/planning/services/workshop-view-service";
 import type { PlanningFiltersState, PlanningMoveTarget, WorkOrderPlanningBlock } from "@/features/planning/types/planning";
 import { useSettings } from "@/features/settings/components/SettingsProvider";
-import { groupMachinesByTaskCategory } from "@/lib/task-category-grouping";
+import type { TaskCategoryMachineGroup } from "@/lib/task-category-grouping";
 import { setVisibleTaskCategoryCodes, useVisibleTaskCategoryCodes } from "@/lib/visible-task-categories-store";
 
 const INITIAL_FILTERS: PlanningFiltersState = { department: "all", machineId: "all", customer: "", workOrder: "", week: "all" };
@@ -26,12 +27,13 @@ const INITIAL_FILTERS: PlanningFiltersState = { department: "all", machineId: "a
 export function PlanningModule() {
   const data = useDemoData();
   const { settings } = useSettings();
-  // Réglage partagé « catégories visibles », dans son propre stockage rapide (pas dans les Réglages
-  // partagés) : voir src/lib/visible-task-categories-store.ts.
+  // Le sélecteur de catégories reste le réglage partagé avec l'Atelier. Toutes les opérations
+  // restent disponibles pour résoudre fidèlement les rattachements de chaque département.
   const visibleTaskCategoryCodes = useVisibleTaskCategoryCodes();
-  const { rows, updatePlacement } = useWorkshopOperations(settings.production.machines, visibleTaskCategoryCodes);
+  const { allRows, updatePlacement } = useWorkshopOperations(settings.production.machines, visibleTaskCategoryCodes);
   const { hasActiveImport } = useErpImportActive();
-  const view = useMemo(() => buildPlanningView(data, settings, rows, hasActiveImport), [data, settings, rows, hasActiveImport]);
+  const view = useMemo(() => buildPlanningView(data, settings, allRows, hasActiveImport), [data, settings, allRows, hasActiveImport]);
+  const departmentOperationIndex = useMemo(() => buildDepartmentOperationIndex(allRows), [allRows]);
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
@@ -52,11 +54,19 @@ export function PlanningModule() {
   const canPrint = permission?.print ?? false;
 
   const days = filters.week === "all" ? view.days : view.days.filter((day) => day.week === filters.week);
+  const departmentMachineIds = useMemo(() => new Map(view.departments.map((department) => [department.id, resolveDepartmentMachineIds(departmentOperationIndex, settings.production.machines, department)])), [departmentOperationIndex, settings.production.machines, view.departments]);
   const machines = view.machines.filter((machine) =>
-    (filters.department === "all" || machine.departmentId === filters.department) &&
+    (filters.department === "all" || departmentMachineIds.get(filters.department)?.has(machine.id)) &&
     (filters.machineId === "all" || machine.id === filters.machineId),
   );
-  const groups = groupMachinesByTaskCategory(machines, visibleTaskCategoryCodes);
+  const groups = useMemo<TaskCategoryMachineGroup<(typeof machines)[number]>[]>(() => {
+    const departmentsToShow = filters.department === "all" ? view.departments : view.departments.filter((department) => department.id === filters.department);
+    return departmentsToShow.flatMap((department) => {
+      const machineIds = departmentMachineIds.get(department.id) ?? new Set<string>();
+      const matchingMachines = machines.filter((machine) => machineIds.has(machine.id));
+      return matchingMachines.length ? [{ code: `department:${department.id}`, label: department.label, machines: matchingMachines }] : [];
+    });
+  }, [departmentMachineIds, filters.department, machines, view.departments]);
   const visibleMachineCount = groups.reduce((sum, group) => sum + group.machines.length, 0);
   const blocks = view.blocks.filter((block) => {
     if (!machines.some((machine) => machine.id === block.machineId) || !days.some((day) => day.date === block.date)) return false;
@@ -172,15 +182,15 @@ export function PlanningModule() {
     <ModuleHeader eyebrow="Ordonnancement local" title="Planning" description={hasActiveImport ? "Affiche les opérations ERP réelles par machine et par jour ; les OF de démonstration sont masqués tant qu'un import est actif." : "Planifiez les OF de démonstration par machine et par jour, surveillez la charge et conservez les ajustements localement."} actions={canPrint ? <button type="button" className={secondaryButton} onClick={() => setPrintTarget("all")}>Aperçu avant impression</button> : undefined} />
     <section className="mt-6 space-y-3 rounded-2xl border border-[var(--app-border)] bg-white p-4 shadow-sm print:hidden">
       <PlanningToolbar departments={departments} allDepartmentsLabel={view.allDepartmentsLabel} legend={[...view.statuses, ...view.taskTypes]} department={filters.department} weeks={view.weeks} week={filters.week} canCreate={canCreate} canPrint={canPrint} onDepartmentChange={(department) => setFilters((current) => ({ ...current, department, machineId: "all" }))} onWeekChange={(week) => setFilters((current) => ({ ...current, week }))} onTask={() => setTaskTarget(defaultTaskTarget)} onPrint={() => setPrintTarget("all")} />
-      <PlanningFilters filters={filters} machines={view.machines.filter((machine) => filters.department === "all" || machine.departmentId === filters.department)} onChange={(next) => setFilters((current) => ({ ...current, ...next }))} />
+      <PlanningFilters filters={filters} machines={view.machines.filter((machine) => filters.department === "all" || departmentMachineIds.get(filters.department)?.has(machine.id))} onChange={(next) => setFilters((current) => ({ ...current, ...next }))} />
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
         <TaskCategoryVisibilityControl visibleTaskCategoryCodes={visibleTaskCategoryCodes} onChange={updateVisibleTaskCategoryCodes} />
-        <span className="text-xs text-slate-500">Activez une catégorie pour afficher ses machines et postes de travail dans le planning.</span>
+        <span className="text-xs text-slate-500">Catégories, machines et rattachements partagés avec le Planning Atelier.</span>
       </div>
     </section>
     <div className="mt-4"><PlanningSummary blocks={blocks} machines={machines} dates={days.map((day) => day.date)} warningColor={view.loadColors.warning} /></div>
     <div className="mt-4">
-      {visibleMachineCount ? <PlanningGrid groups={groups} collapsedCategoryCodes={collapsedCategoryCodes} onToggleCategoryCollapsed={toggleCategoryCollapsed} days={days} blocks={blocks} canCreate={canCreate && !hasActiveImport} canEdit={canEdit} canPrint={canPrint} draggedId={draggedId} dragOver={dragOver} loadWarningPercent={view.loadWarningPercent} loadCriticalPercent={view.loadCriticalPercent} loadColors={view.loadColors} onDragStart={setDraggedId} onDragEnd={() => { setDraggedId(null); setDragOver(null); }} onDragOver={(key) => setDragOver(key || null)} onDrop={handleDrop} onAdd={(machineId, date) => setAddTarget({ machineId, date })} onMove={(block) => setMoveTarget({ block, machineId: block.machineId, date: block.date })} onReorder={handleReorder} onPrint={setPrintTarget} /> : <p className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white p-10 text-center text-sm text-slate-500">{visibleTaskCategoryCodes.length ? "Aucune machine ne correspond aux filtres." : "Activez au moins une catégorie ci-dessus pour afficher des machines."}</p>}
+      {visibleMachineCount ? <PlanningGrid groups={groups} collapsedCategoryCodes={collapsedCategoryCodes} onToggleCategoryCollapsed={toggleCategoryCollapsed} days={days} blocks={blocks} canCreate={canCreate && !hasActiveImport} canEdit={canEdit} canPrint={canPrint} draggedId={draggedId} dragOver={dragOver} loadWarningPercent={view.loadWarningPercent} loadCriticalPercent={view.loadCriticalPercent} loadColors={view.loadColors} onDragStart={setDraggedId} onDragEnd={() => { setDraggedId(null); setDragOver(null); }} onDragOver={(key) => setDragOver(key || null)} onDrop={handleDrop} onAdd={(machineId, date) => setAddTarget({ machineId, date })} onMove={(block) => setMoveTarget({ block, machineId: block.machineId, date: block.date })} onReorder={handleReorder} onPrint={setPrintTarget} /> : <p className="rounded-2xl border border-dashed border-[var(--app-border)] bg-white p-10 text-center text-sm text-slate-500">Aucune machine du Planning Atelier ne correspond aux filtres.</p>}
     </div>
     <p className="mt-2 text-xs text-slate-500">Glissez un bloc vers une autre case pour le replanifier, ou utilisez le bouton ↗. Les opérations bloquées ne sont pas déplaçables.</p>
     {moveTarget ? <PlanningMoveDialog target={moveTarget} machines={view.machines} days={view.days} currentLoad={currentLoad} maintenanceConflict={maintenanceConflict} loadColors={view.loadColors} onConfirm={handleMoveConfirm} onClose={() => setMoveTarget(null)} /> : null}

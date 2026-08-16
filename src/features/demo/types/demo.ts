@@ -10,10 +10,19 @@ export interface HistoryEntry {
 }
 
 export interface ActionContextLink {
-  module: "meeting" | "workOrder" | "machine" | "request" | "erpQuality" | "mail";
+  /** "maintenance" pointe vers la même machine qu'un lien "machine" (même `id`) — il n'existe pas de fiche maintenance dédiée, volontairement (voir feuille de route). */
+  module: "meeting" | "workOrder" | "machine" | "maintenance" | "maintenanceProblem" | "request" | "erpQuality" | "mail";
   id: string;
   label: string;
   href: string;
+}
+
+/** Commentaire libre, horodaté et attribué sur une action — distinct de `remarque` (un seul texte, existant) et de `HistoryEntry` (traçabilité des changements de champs, pas un fil de discussion). */
+export interface ActionComment {
+  id: string;
+  author: string;
+  date: string;
+  text: string;
 }
 
 export interface ProductionAction {
@@ -21,13 +30,22 @@ export interface ProductionAction {
   dateEncodage: string;
   introduitPar: string;
   origine: string;
-  contextLink: ActionContextLink | null;
+  /** Une action peut être rattachée à plusieurs éléments à la fois (ex. une machine + sa maintenance + la réunion où elle a été créée) — jamais un lien unique, jamais de copie de l'action elle-même. */
+  contextLinks: ActionContextLink[];
   description: string;
   responsable: string;
+  /** Contact (module Contacts) résolu pour `responsable` quand connu — photo/nom toujours lus en direct depuis Contacts, jamais dupliqués ici. `null` = responsable resté en texte libre uniquement (comme aujourd'hui). */
+  responsableContactId: string | null;
   echeance: string;
   statut: ActionStatus;
   dateCloture: string | null;
   remarque: string | null;
+  /** Fil de commentaires (auteur + date + texte), affiché dans la fiche action et le panneau rapide de réunion. */
+  comments: ActionComment[];
+  /** Traçabilité des changements importants (responsable, échéance, statut, clôture, commentaire) — même type que `WorkOrder`/`InternalRequest`, source unique déjà établie dans ce codebase. */
+  history: HistoryEntry[];
+  /** Type de besoin (Qualité, Planning, Matière…) quand l'action vient d'un bouton de besoin de l'étape « Cinq projets critiques » d'une réunion Production ; `null` pour toute autre action (y compris une action libre créée depuis la même étape). */
+  besoinType: string | null;
   /** Priorité affichée sur les cartes de la planification équipe ; `null` = non définie. */
   priority: Priority | null;
   /**
@@ -179,17 +197,178 @@ export interface MaintenanceEvent {
   maintenanceTypeId?: string;
 }
 
+/** Une note ou décision rattachée à l'étape de la réunion pendant laquelle elle a été saisie — permet de reconstituer le déroulé « étape par étape » dans le compte rendu. */
+export interface MeetingStepEntry {
+  step: string;
+  text: string;
+}
+
+/**
+ * Participation d'un contact (module Contacts) à une réunion : uniquement une référence et un
+ * statut de présence, jamais de copie des informations personnelles (nom, photo, fonction,
+ * service…), qui restent lues en direct depuis `DemoData.contacts` à l'affichage.
+ */
+export interface MeetingParticipant {
+  contactId: string;
+  present: boolean;
+}
+
+/**
+ * Cycle de vie complet d'une réunion, commun à toutes les catégories (présentes et futures) :
+ * Brouillon (visible uniquement par son créateur, aucune notification) → Préparation (mêmes
+ * capacités que Brouillon, partagée avec l'équipe) → Envoyée (document de préparation envoyé) →
+ * En cours (réunion live) → Terminée (compte rendu généré) → Archivée (consultable, tous les liens
+ * vers les autres modules restent actifs).
+ */
+export type MeetingLifecycleStatus = "Brouillon" | "Préparation" | "Envoyée" | "En cours" | "Terminée" | "Archivée";
+
+/** Canal utilisé pour envoyer le document de préparation ou le compte rendu d'une réunion. */
+export type MeetingSendChannelType = "email" | "print" | "teams";
+
+export type MeetingPriorityDossierStatus = "À discuter" | "En cours de discussion" | "Décision prise" | "Reporté";
+export type MeetingPriorityDossierReferenceKind = "workOrder" | "project" | "client" | "machine" | "free";
+
+/**
+ * Sujet de discussion propre à une réunion. Les données métier ne sont jamais recopiées :
+ * `referenceId` pointe vers l'OF/la machine, ou contient la valeur canonique d'un projet/client
+ * issue du référentiel des OF. Seuls les textes produits pendant la réunion vivent ici.
+ */
+export interface MeetingPriorityDossier {
+  id: string;
+  title: string;
+  description: string;
+  preparationComment: string;
+  meetingComment: string;
+  decision: string;
+  status: MeetingPriorityDossierStatus;
+  referenceKind: MeetingPriorityDossierReferenceKind;
+  referenceId: string | null;
+  actionIds: string[];
+}
+
+/** Point exprimé pendant le tour de table. Les objets liés restent dans leurs référentiels propriétaires. */
+export interface MeetingFieldPoint {
+  id: string;
+  participantContactId: string;
+  authorContactId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  text: string;
+  comments: string;
+  actionIds: string[];
+  machineIds: string[];
+  workOrderIds: string[];
+  priorityDossierIds: string[];
+}
+
+export type MeetingRecapDocumentStatus = "À relire" | "Prêt" | "Envoyé";
+export interface MeetingRecapSentVersion {
+  id: string;
+  sentAt: string;
+  recipientContactIds: string[];
+  recipientEmails: string[];
+  subject: string;
+  mailBody: string;
+  documentBody: string;
+  attachmentNames: string[];
+}
+export interface MeetingRecapDocument {
+  status: MeetingRecapDocumentStatus;
+  generatedAt: string;
+  updatedAt: string;
+  subject: string;
+  mailBody: string;
+  documentBody: string;
+  recipientContactIds: string[];
+  includePdf: boolean;
+  includeActions: boolean;
+  includePreparation: boolean;
+  sentVersions: MeetingRecapSentVersion[];
+}
+
+export type MaintenanceProblemStatus = "Ouvert" | "En cours" | "En attente" | "Résolu";
+
+export interface MaintenanceProblemComment {
+  id: string;
+  author: string;
+  createdAt: string;
+  text: string;
+}
+
+export interface MaintenanceProblemHistoryEntry {
+  id: string;
+  author: string;
+  createdAt: string;
+  text: string;
+}
+
+/** Problème technique durable. La machine et les actions restent dans leurs référentiels respectifs. */
+export interface MaintenanceProblem {
+  id: string;
+  machineId: string;
+  title: string;
+  description: string;
+  occurredOn: string;
+  status: MaintenanceProblemStatus;
+  problemType: string | null;
+  machineStopped: boolean;
+  productionImpact: string;
+  dueDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt: string | null;
+  sourceMeetingId: string | null;
+  actionIds: string[];
+  comments: MaintenanceProblemComment[];
+  history: MaintenanceProblemHistoryEntry[];
+}
+
 export interface Meeting {
   id: string;
   type: "QRQC" | "Production";
   date: string;
-  status: "Planifiée" | "En cours" | "Clôturée";
-  participants: string[];
-  notes: string[];
-  decisions: string[];
+  status: MeetingLifecycleStatus;
+  /** `UserSettings.id` de la personne ayant créé la réunion — sert uniquement au filtrage cosmétique du Brouillon dans les listes (l'application n'a pas d'authentification réelle), jamais à une restriction d'accès effective. */
+  createdByUserId: string | null;
+  /** Horodatage de chaque transition du cycle de vie ; `null` tant qu'elle n'a pas eu lieu (jamais déduit rétroactivement lors d'une migration de donnée déjà enregistrée). */
+  sharedAt: string | null;
+  preparationSentAt: string | null;
+  preparationSentVia: MeetingSendChannelType | null;
+  startedAt: string | null;
+  closedAt: string | null;
+  archivedAt: string | null;
+  /** Contact interne qui mène la réunion ; `null` tant qu'il n'a pas été choisi. */
+  responsableContactId: string | null;
+  participants: MeetingParticipant[];
+  notes: MeetingStepEntry[];
+  decisions: MeetingStepEntry[];
   parkingLot: string[];
   actionIds: string[];
+  /** Jusqu'à cinq sujets ordonnés, contenant uniquement les données propres au déroulement de la réunion et des références vers les modules propriétaires. */
+  priorityDossiers: MeetingPriorityDossier[];
+  /** Références vers les problèmes maintenance retenus pour cette occurrence, dans leur ordre d'affichage. */
+  maintenanceProblemIds: string[];
+  /** Remontées du tour de table et progression des participants, uniquement utilisées pendant la réunion. */
+  fieldPoints: MeetingFieldPoint[];
+  fieldRoundCompletedContactIds: string[];
+  fieldRoundNoIssueContactIds: string[];
+  /** Couche éditoriale du compte rendu ; les données métier restent lues dans leurs modules. */
+  recapDocument: MeetingRecapDocument | null;
+  /** OF suivis à l'étape « Cinq projets critiques » (réunion Production) : préremplis automatiquement à la création de la réunion, ajustables ensuite (ajout/retrait). */
+  criticalWorkOrderIds: string[];
 }
+
+/** Un point daté (statut + remarque) posé sur un OF suivi à l'étape « Cinq projets critiques », lors d'une réunion Production précise — permet de voir son évolution réunion après réunion. */
+export interface ProjetSuiviEntry {
+  date: string;
+  meetingId: string;
+  /** Valeur stable d'un statut configuré (`ProductionSettings.projetSuiviStatuses[].value`), pas son libellé — un renommage de libellé ne doit pas invalider l'historique déjà enregistré. */
+  statut: string;
+  remarque: string;
+}
+
+/** Historique par OF (clé = `WorkOrder.id`, même id que `Meeting.criticalWorkOrderIds`), indépendant du fait que l'OF soit encore suivi ou non sur la réunion en cours. */
+export type ProjetSuiviLog = Record<string, ProjetSuiviEntry[]>;
 
 export type RequestStatus = "Reçue" | "En analyse" | "Acceptée" | "Refusée" | "Planifiée" | "En cours" | "Terminée";
 
@@ -278,6 +457,7 @@ export interface DemoData {
   planning: PlannedOperation[];
   machines: Machine[];
   maintenance: MaintenanceEvent[];
+  maintenanceProblems: MaintenanceProblem[];
   meetings: Meeting[];
   requests: InternalRequest[];
   erpQuality: ErpQualityIssue[];
@@ -286,4 +466,5 @@ export interface DemoData {
   consumables: MachineConsumable[];
   people: TeamMember[];
   contacts: Contact[];
+  projetSuivi: ProjetSuiviLog;
 }

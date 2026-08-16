@@ -18,7 +18,7 @@ export function PlanningCard({ block, canEdit, canMoveUp, canMoveDown, onMove, o
   const title = block.source === "work-order"
     ? `${block.order.id} — ${block.order.customer} — ${block.order.article} — ${block.operation.description} — ${block.durationHours} h — ${block.comments || "Sans commentaire"}`
     : block.source === "erp-operation"
-      ? `${block.operationView.workOrderId} — ${block.operationView.workOrder?.customerName ?? "Client inconnu"} — ${block.operationView.articleCode} — ${block.operationView.description ?? "Sans description"} — Temps non disponible — ${block.comments || "Sans commentaire"}`
+      ? `${block.operationView.workOrderId} — ${block.operationView.workOrder?.customerName ?? "Client inconnu"} — ${block.operationView.articleCode} — ${block.operationView.description ?? "Sans description"} — ${block.durationHours} h — ${block.comments || "Sans commentaire"}`
       : `${block.label} — ${block.durationHours} h — ${block.responsible || "Sans responsable"}`;
   const canMove = canEdit && (block.source === "work-order" || block.source === "erp-operation");
   return <div
@@ -39,7 +39,7 @@ export function PlanningCard({ block, canEdit, canMoveUp, canMoveDown, onMove, o
     </> : block.source === "erp-operation" ? <>
       <span className="flex items-center gap-1 font-bold">{block.operationView.workOrderId}<StatusPill tone={block.display.tone}>{block.display.label}</StatusPill></span>
       <span className="block truncate">{block.operationView.articleCode || "Article inconnu"} · {block.operationView.description || "Sans description"}</span>
-      <span className="block truncate opacity-80" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Temps non disponible · {block.operationView.workOrder?.customerName || "Client inconnu"}</span>
+      <span className="block truncate opacity-80" title="Temps prévu local, modifiable dans le Planning Atelier">{block.durationHours.toLocaleString("fr-BE")} h · {block.operationView.workOrder?.customerName || "Client inconnu"}</span>
     </> : <>
       <strong>🔧 {block.taskType.label}</strong>
       <span className="block truncate">{block.label}</span>

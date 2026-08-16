@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StatusPill } from "@/components/ui/ModuleUi";
+import { useMachinePhotos } from "@/features/machines/services/machine-photo-store";
 import { resolveCapacity } from "@/features/planning/services/planning-view";
 import { clampColumnWidth } from "@/features/planning/services/workshop-view-preferences";
 import { computeVirtualRowRange } from "@/features/planning/services/virtual-rows";
@@ -62,8 +63,9 @@ interface WorkshopMachinePanelProps {
   isDirectlyLinked?: boolean;
   onToggleCollapsed: (machineId: string) => void;
   onUpdatePriority: (operationId: string, priority: number) => void;
-  onUpdateMachine: (operationId: string, machineId: string) => void;
+  onUpdateMachine: (operationId: string, machineId: string | null) => void;
   onUpdateStatus: (operationId: string, status: OperationView["status"]) => void;
+  onUpdateDuration: (operationId: string, plannedDurationHours: number) => void;
   onReorderOperations: (orderedOperationIds: string[]) => void;
   onRenumberOperations: (orderedOperationIds: string[]) => void;
   onMoveColumn: (sourceId: WorkshopColumnId, targetId: WorkshopColumnId) => void;
@@ -72,8 +74,11 @@ interface WorkshopMachinePanelProps {
   onPrint: (machine: MachineSettings | null, operations: OperationView[], totalOperationCount: number) => void;
 }
 
-export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, rowsPerMachine, sort, machines, capacities, defaultCapacityHours, columnWidths, busy, isDirectlyLinked, onToggleCollapsed, onUpdatePriority, onUpdateMachine, onUpdateStatus, onReorderOperations, onRenumberOperations, onMoveColumn, onResizeColumn, onCycleSort, onPrint }: WorkshopMachinePanelProps) {
+export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, rowsPerMachine, sort, machines, capacities, defaultCapacityHours, columnWidths, busy, isDirectlyLinked, onToggleCollapsed, onUpdatePriority, onUpdateMachine, onUpdateStatus, onUpdateDuration, onReorderOperations, onRenumberOperations, onMoveColumn, onResizeColumn, onCycleSort, onPrint }: WorkshopMachinePanelProps) {
   const { machine, operations, operationCount, workOrderCount } = group;
+  const photos = useMachinePhotos();
+  const machinePhoto = machine ? photos[machine.id] : undefined;
+  const plannedLoadHours = useMemo(() => operations.reduce((total, operation) => total + operation.plannedDurationHours, 0), [operations]);
   const panelKey = machine?.id ?? "unassigned";
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const todaysCapacity = machine ? resolveCapacity(machine.id, machine.departmentId, today, capacities, defaultCapacityHours) : null;
@@ -98,6 +103,7 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
   const visibleOperations = operations.slice(startIndex, endIndex);
 
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
+  const [isPhotoOpen, setIsPhotoOpen] = useState(false);
   // La fiche imprimable suit l'ordre/tri actuellement affiché (`operations`, pas `visibleOperations`
   // qui ne sert qu'au fenêtrage DOM) : le nombre de lignes est choisi dans la boîte de dialogue, pas
   // limité par ce qui est actuellement monté à l'écran.
@@ -138,19 +144,27 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
   }, [onRenumberOperations]);
 
   return <section className="overflow-hidden rounded-lg border border-[var(--app-border)] bg-white">
-    <div className="flex w-full flex-wrap items-center gap-1.5 bg-slate-50 px-2 py-1">
-      <button type="button" aria-expanded={!isCollapsed} onClick={() => onToggleCollapsed(panelKey)} className="flex flex-1 flex-wrap items-center gap-1.5 text-left">
+    <div className="flex w-full items-center gap-2 border-b border-slate-100 bg-slate-50 p-1.5">
+      {machinePhoto ? <button
+        type="button"
+        className="relative h-14 w-20 shrink-0 overflow-hidden rounded-md border border-slate-200 bg-white bg-contain bg-center bg-no-repeat transition hover:border-[var(--app-primary)] sm:h-16 sm:w-24"
+        style={{ backgroundImage: `url(${machinePhoto})` }}
+        aria-label={`Agrandir la photo de la machine ${machine?.displayName}`}
+        title="Cliquer pour agrandir la photo"
+        onClick={() => setIsPhotoOpen(true)}
+      ><span className="absolute bottom-1 right-1 rounded bg-slate-950/65 px-1 py-0.5 text-[9px] font-semibold text-white">⌕</span></button> : null}
+      <button type="button" aria-expanded={!isCollapsed} onClick={() => onToggleCollapsed(panelKey)} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5 text-left">
         <span aria-hidden="true" className="text-[10px] text-slate-400">{isCollapsed ? "▶" : "▼"}</span>
-        <span className="text-xs font-semibold">{machine?.displayName ?? "Machine non définie"}</span>
+        <span className="text-sm font-bold text-slate-900">{machine?.displayName ?? "Machine non définie"}</span>
         {machine ? <MachineStatusIcon machine={machine} /> : null}
         {isDirectlyLinked ? <StatusPill tone="info">Machine liée directement</StatusPill> : null}
         <span className="text-[10px] text-slate-500">{operationCount.toLocaleString("fr-BE")} opération(s) · {workOrderCount.toLocaleString("fr-BE")} OF</span>
         {todaysCapacity !== null ? <span className="text-[10px] text-slate-500">Capacité aujourd’hui : {todaysCapacity.toLocaleString("fr-BE")} h</span> : null}
-        <span className="text-[10px] italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Charge : non disponible</span>
+        <span className="text-[10px] font-semibold text-slate-600">Charge : {plannedLoadHours.toLocaleString("fr-BE")} h</span>
       </button>
       <button
         type="button"
-        className="shrink-0 rounded-md border border-[var(--app-border)] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className="relative z-10 shrink-0 rounded-md border border-[var(--app-border)] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={busy || operations.length < 2}
         title="Réattribue la priorité de 1 à la dernière opération de cette machine selon l’ordre actuellement affiché (recherche, tri et filtres compris), du haut vers le bas."
         onClick={handleRenumber}
@@ -159,7 +173,7 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
       </button>
       <button
         type="button"
-        className="shrink-0 rounded-md border border-[var(--app-border)] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+        className="relative z-10 shrink-0 rounded-md border border-[var(--app-border)] bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
         disabled={!operations.length}
         title="Imprimer une fiche pour cette machine, avec le nombre de lignes de votre choix."
         onClick={() => setIsPrintDialogOpen(true)}
@@ -167,6 +181,10 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
         Imprimer
       </button>
     </div>
+    {isPhotoOpen && machinePhoto ? <div role="dialog" aria-modal="true" aria-label={`Photo de la machine ${machine?.displayName}`} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 p-4" onClick={() => setIsPhotoOpen(false)}>
+      <button type="button" className="absolute right-4 top-4 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-900" onClick={() => setIsPhotoOpen(false)}>Fermer</button>
+      <div className="h-full max-h-[90vh] w-full max-w-6xl bg-contain bg-center bg-no-repeat" style={{ backgroundImage: `url(${machinePhoto})` }} />
+    </div> : null}
     {isPrintDialogOpen ? <WorkshopMachinePrintDialog machineLabel={machine?.displayName ?? "Machine non définie"} totalOperationCount={operations.length} onConfirm={handlePrintConfirm} onClose={() => setIsPrintDialogOpen(false)} /> : null}
     {!isCollapsed ? (operations.length ? <div className="border-t border-[var(--app-border)] p-1">
       {/* `height` (fixe) et non `maxHeight` : sinon une machine avec moins d'opérations que le
@@ -215,6 +233,7 @@ export function WorkshopMachinePanel({ group, visibleColumnIds, isCollapsed, row
               onUpdatePriority={onUpdatePriority}
               onUpdateMachine={onUpdateMachine}
               onUpdateStatus={onUpdateStatus}
+              onUpdateDuration={onUpdateDuration}
               onReorder={handleReorder}
             />)}
             {bottomSpacerPx > 0 ? <tr aria-hidden="true" style={{ height: bottomSpacerPx }}><td colSpan={visibleColumnIds.length + 1} /></tr> : null}

@@ -53,7 +53,7 @@ function baseRow(overrides = {}) {
     manualOrder: null, isLocked: false, hasPlannedMachine: true, hasUserPriority: false, hasComment: false,
     hasManualOrder: false, isRemoved: false, isVisible: true, isWithoutMachine: false, isLate: null, isStarted: null,
     isFinished: null, isBlocked: null, estimatedStart: null, estimatedEnd: null, capacityGroup: null, department: "Fraisage",
-    resourceGroup: null, workOrder: { id: "OF-1", customerName: "EXAIL" }, sourceMachineCode: "M1", sourceMachineDescription: null,
+    resourceGroup: null, workOrder: { id: "OF-1", customerName: "EXAIL" }, sourceMachineCode: "M1", sourceMachineDescription: null, sourceMachineId: null, hasMachineDifference: true,
     erpMachineCode: "M1", sourcePriority: 5, effectivePriority: 5, sourceStatus: "not-started", effectiveStatus: "not-started",
     sourceOperationStatusId: 1, sourceOrderStatus: "OUVERT", sourceMacroRangeCode: "10", sourceRow: 1, duplicateOf: null,
     plannedDate: "2026-01-10", delayDays: -3, priorityScore: 12, articleWorkOrderCount: 2, hasManualOverride: false, issues: [],
@@ -96,6 +96,16 @@ test("applyOperationPatchLocally(machine) bascule isWithoutMachine/hasPlannedMac
   assert.equal(reassigned.isWithoutMachine, false);
   assert.equal(reassigned.hasPlannedMachine, true);
   assert.ok(!reassigned.issues.includes(ISSUE_LABELS["missing-machine"]));
+});
+
+test("supprimer la surcharge machine reprend immédiatement la valeur du dernier import", () => {
+  const row = baseRow({ sourceMachineId: "dmu50", machineId: "cmx50", machine: "cmx50", hasMachineDifference: true });
+  const restored = applyOperationPatchLocally(row, { machineId: null });
+  assert.equal(restored.machineId, "dmu50");
+  assert.equal(restored.machine, "dmu50");
+  assert.equal(restored.hasPlannedMachine, false);
+  assert.equal(restored.hasMachineDifference, false);
+  assert.equal(restored.isWithoutMachine, false);
 });
 
 test("applyOperationPatchLocally(date) bascule l'anomalie « Délai manquant »", () => {

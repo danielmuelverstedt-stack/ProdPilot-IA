@@ -19,36 +19,39 @@ const OPERATIONS_PER_MACHINE = 5;
  * Étape « OF planifiés par machine » de la réunion de production : les 5 OF les plus
  * prioritaires actuellement planifiés sur chaque machine, avec leur désignation, pour aller en
  * revue. Bascule automatiquement entre le planning ERP réel (import actif) et le repli
- * démonstration, comme la fiche OF (`WorkOrderDetail.tsx`).
+ * démonstration, comme la fiche OF (`WorkOrderDetail.tsx`). Une action créée depuis cette étape
+ * est liée à la réunion (`onActionCreated` remonte jusqu'à `MeetingWorkflow.linkActionToMeeting`,
+ * comme les étapes « Cinq projets critiques » et « + Nouvelle action » du header) : son
+ * responsable rejoint les participants et elle apparaît au compte rendu.
  */
-export function MeetingMachineReview({ origine }: { origine: string }) {
+export function MeetingMachineReview({ origine, onActionCreated }: { origine: string; onActionCreated: (id: string, responsable: string) => void }) {
   const { hasActiveImport, isLoading: isCheckingImport } = useErpImportActive();
   if (isCheckingImport) return <p className="mt-4 text-sm text-slate-500">Vérification de la source du planning…</p>;
-  return hasActiveImport ? <ErpMachineReview origine={origine} /> : <DemoMachineReview origine={origine} />;
+  return hasActiveImport ? <ErpMachineReview origine={origine} onActionCreated={onActionCreated} /> : <DemoMachineReview origine={origine} onActionCreated={onActionCreated} />;
 }
 
-function ErpMachineReview({ origine }: { origine: string }) {
+function ErpMachineReview({ origine, onActionCreated }: { origine: string; onActionCreated: (id: string, responsable: string) => void }) {
   const { settings } = useSettings();
   const machines = settings.production.machines;
   const { allRows, isLoading, error } = useWorkshopOperations(machines, []);
   const groups = useMemo(() => buildErpMachineReview(allRows, machines, OPERATIONS_PER_MACHINE), [allRows, machines]);
   if (isLoading) return <p className="mt-4 text-sm text-slate-500">Chargement du planning…</p>;
   if (error) return <ErrorBanner>{error}</ErrorBanner>;
-  return <MachineReviewList origine={origine} groups={groups} />;
+  return <MachineReviewList origine={origine} groups={groups} onActionCreated={onActionCreated} />;
 }
 
-function DemoMachineReview({ origine }: { origine: string }) {
+function DemoMachineReview({ origine, onActionCreated }: { origine: string; onActionCreated: (id: string, responsable: string) => void }) {
   const data = useDemoData();
   const groups = useMemo(() => buildDemoMachineReview(data.planning, data.machines, data.workOrders, OPERATIONS_PER_MACHINE), [data.planning, data.machines, data.workOrders]);
-  return <MachineReviewList origine={origine} groups={groups} />;
+  return <MachineReviewList origine={origine} groups={groups} onActionCreated={onActionCreated} />;
 }
 
-function MachineReviewList({ origine, groups }: { origine: string; groups: MeetingMachineReviewGroup[] }) {
+function MachineReviewList({ origine, groups, onActionCreated }: { origine: string; groups: MeetingMachineReviewGroup[]; onActionCreated: (id: string, responsable: string) => void }) {
   const photos = useMachinePhotos();
   const [actionTarget, setActionTarget] = useState<{ workOrderId: string } | null>(null);
   if (!groups.length) return <p className="mt-4 text-sm text-slate-600">Aucun OF planifié sur une machine active pour le moment.</p>;
   return <div className="mt-4 grid gap-4">
-    {actionTarget ? <ActionFormDialog origine={origine} contextLink={buildContextLink(actionTarget.workOrderId)} onClose={() => setActionTarget(null)} /> : null}
+    {actionTarget ? <ActionFormDialog origine={origine} contextLink={buildContextLink(actionTarget.workOrderId)} onClose={() => setActionTarget(null)} onCreated={onActionCreated} /> : null}
     {groups.map((group) => <article key={group.machineId} className="overflow-hidden rounded-xl border border-[var(--app-border)] bg-white">
       <div className="flex items-center gap-3 border-b border-[var(--app-border)] bg-slate-50 px-4 py-3">
         <PhotoThumbnail photoDataUrl={photos[group.machineId]} alt={group.machineLabel} size="md" />

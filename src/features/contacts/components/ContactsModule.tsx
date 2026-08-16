@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { EmptyState, fieldClass, ModuleHeader, primaryButton, StatusPill } from "@/components/ui/ModuleUi";
+import { Button, EmptyState, FilterBar, ModuleHeader, SearchInput, Select, StatusPill } from "@/components/ui/ModuleUi";
 import { AppIcon } from "@/components/ui/AppIcon";
 import { PhotoThumbnail } from "@/components/ui/PhotoThumbnail";
 import { useDemoData } from "@/features/demo/services/demo-repository";
@@ -27,22 +27,22 @@ export function ContactsModule() {
       eyebrow="Annuaire d'entreprise"
       title="Contacts"
       description="Collaborateurs, fournisseurs, sous-traitants et tout autre contact professionnel, au même endroit."
-      actions={<button className={primaryButton} onClick={() => setCreating(true)}>+ Nouveau contact</button>}
+      actions={<Button onClick={() => setCreating(true)}>+ Nouveau contact</Button>}
     />
     {creating ? <ContactFormDialog onClose={() => setCreating(false)} /> : null}
 
-    <section aria-label="Filtres des contacts" className="mt-6 grid gap-2 rounded-2xl border border-[var(--app-border)] bg-white p-4 sm:grid-cols-3">
-      <input className={fieldClass} value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Rechercher par nom, société…" />
-      <select className={fieldClass} value={filters.type} onChange={(event) => setFilters({ ...filters, type: event.target.value as ContactType | "Tous" })}>
+    <FilterBar className="mt-6 grid gap-2 sm:grid-cols-3">
+      <SearchInput value={filters.search} onChange={(event) => setFilters({ ...filters, search: event.target.value })} onClear={() => setFilters({ ...filters, search: "" })} placeholder="Rechercher par nom, société…" />
+      <Select value={filters.type} onChange={(event) => setFilters({ ...filters, type: event.target.value as ContactType | "Tous" })}>
         <option value="Tous">Tous les types</option>
         <option value="Interne">Contact interne</option>
         <option value="Externe">Contact externe</option>
-      </select>
-      <select className={fieldClass} value={filters.categoryId} onChange={(event) => setFilters({ ...filters, categoryId: event.target.value })}>
+      </Select>
+      <Select value={filters.categoryId} onChange={(event) => setFilters({ ...filters, categoryId: event.target.value })}>
         <option value="Toutes">Toutes les catégories</option>
         {categories.map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
-      </select>
-    </section>
+      </Select>
+    </FilterBar>
 
     <p className="mt-4 text-xs text-slate-500">{contacts.length.toLocaleString("fr-BE")} contact{contacts.length > 1 ? "s" : ""}</p>
 
@@ -64,6 +64,6 @@ export function ContactsModule() {
           </div>
         </div>
       </Link>;
-    })}</div> : <div className="mt-4"><EmptyState title="Aucun contact" description="Aucun contact ne correspond aux filtres sélectionnés." /></div>}
+    })}</div> : <div className="mt-4"><EmptyState icon="contacts" title="Aucun contact" description="Aucun contact ne correspond aux filtres sélectionnés." action={<Button variant="secondary" onClick={() => setFilters(createDefaultContactFilters())}>Réinitialiser les filtres</Button>} /></div>}
   </div>;
 }

@@ -30,12 +30,13 @@ interface WorkshopOperationRowProps {
   machines: MachineSettings[];
   busy: boolean;
   onUpdatePriority: (operationId: string, priority: number) => void;
-  onUpdateMachine: (operationId: string, machineId: string) => void;
+  onUpdateMachine: (operationId: string, machineId: string | null) => void;
   onUpdateStatus: (operationId: string, status: OperationView["status"]) => void;
+  onUpdateDuration: (operationId: string, plannedDurationHours: number) => void;
   onReorder: (draggedOperationId: string, targetOperationId: string) => void;
 }
 
-export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operation, visibleColumnIds, machineId, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus, onReorder }: WorkshopOperationRowProps) {
+export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operation, visibleColumnIds, machineId, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus, onUpdateDuration, onReorder }: WorkshopOperationRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   return <>
     <tr
@@ -48,7 +49,7 @@ export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operati
       }}
       className="cursor-grab border-t border-slate-100 align-middle hover:bg-slate-50 active:cursor-grabbing"
     >
-      {visibleColumnIds.map((columnId) => <td key={columnId} className="p-1 text-[11px]">{renderCell(columnId, operation, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus)}</td>)}
+      {visibleColumnIds.map((columnId) => <td key={columnId} className="p-1 text-[11px]">{renderCell(columnId, operation, machines, busy, onUpdatePriority, onUpdateMachine, onUpdateStatus, onUpdateDuration)}</td>)}
       <td className="p-1 text-right text-[11px]">
         <div className="flex flex-wrap justify-end gap-0.5">
           <button type="button" className={compactButtonClass} aria-expanded={isExpanded} title={isExpanded ? "Fermer" : "Ouvrir l’opération"} onClick={() => setIsExpanded((current) => !current)}>{isExpanded ? "Fermer" : "Détails"}</button>
@@ -61,7 +62,7 @@ export const WorkshopOperationRow = memo(function WorkshopOperationRow({ operati
   </>;
 });
 
-function renderCell(columnId: WorkshopColumnId, operation: OperationView, machines: MachineSettings[], busy: boolean, onUpdatePriority: (operationId: string, priority: number) => void, onUpdateMachine: (operationId: string, machineId: string) => void, onUpdateStatus: (operationId: string, status: OperationView["status"]) => void) {
+function renderCell(columnId: WorkshopColumnId, operation: OperationView, machines: MachineSettings[], busy: boolean, onUpdatePriority: (operationId: string, priority: number) => void, onUpdateMachine: (operationId: string, machineId: string | null) => void, onUpdateStatus: (operationId: string, status: OperationView["status"]) => void, onUpdateDuration: (operationId: string, plannedDurationHours: number) => void) {
   if (columnId === "priority") return <input
     key={operation.effectivePriority}
     type="number"
@@ -84,7 +85,21 @@ function renderCell(columnId: WorkshopColumnId, operation: OperationView, machin
   if (columnId === "client") return <span className="block truncate">{operation.workOrder?.customerName || "—"}</span>;
   if (columnId === "quantity") return <span>{operation.workOrder?.quantity != null ? operation.workOrder.quantity.toLocaleString("fr-BE") : "—"}</span>;
   if (columnId === "description") return <span className="line-clamp-1" title={operation.description ?? ""}>{operation.description || "Sans description"}</span>;
-  if (columnId === "time") return <span className="text-[9px] italic text-slate-400" title="Le temps de fabrication n’est pas encore disponible dans les données ERP importées">Non disp.</span>;
+  if (columnId === "time") return <label className="flex items-center gap-0.5" title="Temps prévu local, conservé lors des prochains imports ERP"><input
+    key={operation.plannedDurationHours}
+    type="number"
+    min="0.25"
+    max="999"
+    step="0.25"
+    className={`${compactFieldClass} w-12 text-right`}
+    defaultValue={operation.plannedDurationHours}
+    disabled={busy}
+    aria-label={`Temps prévu de ${operation.workOrderId}`}
+    onBlur={(event) => {
+      const value = Number(event.target.value);
+      if (Number.isFinite(value) && value >= 0.25 && value !== operation.plannedDurationHours) onUpdateDuration(operation.id, value);
+    }}
+  /><span className="text-[9px] text-slate-500">h</span></label>;
   if (columnId === "status") return <select className={`${compactFieldClass} w-full`} value={operation.effectiveStatus} disabled={busy} onChange={(event) => onUpdateStatus(operation.id, event.target.value as OperationView["status"])}>
     {(Object.keys(ERP_OPERATION_STATUS_LABELS) as Array<OperationView["status"]>).map((code) => <option key={code} value={code}>{ERP_OPERATION_STATUS_LABELS[code]}</option>)}
   </select>;
@@ -107,6 +122,7 @@ function OperationDetail({ operation }: { operation: OperationView }) {
     ["Machine", operation.machine],
     ["Statut", ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus]],
     ["Priorité", `${operation.effectivePriority}`],
+    ["Temps prévu", `${operation.plannedDurationHours.toLocaleString("fr-BE")} h`],
     ["Date début", formatDate(operation.plannedDate)],
     ["Date fin", formatDate(operation.dueDate)],
     ["Retard", erpOperationDelayLabel(operation.delayDays)],

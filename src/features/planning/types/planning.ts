@@ -65,11 +65,11 @@ export interface TaskPlanningBlock extends PlanningBlockBase {
 
 /**
  * Opération ERP réelle placée sur la grille (jour = plannedDate, machine = operationView.machineId).
- * Aucun temps de fabrication : OperationView n'en porte pas, donc durationHours reste null ici.
+ * Opération ERP utilisant la durée locale de planification (8 h par défaut, modifiable dans l'Atelier).
  */
 export interface ErpOperationPlanningBlock extends PlanningBlockBase {
   source: "erp-operation";
-  durationHours: null;
+  durationHours: number;
   status: ErpOperationStatus;
   display: { tone: ErpOperationStatusTone; label: string };
   operationView: OperationView;

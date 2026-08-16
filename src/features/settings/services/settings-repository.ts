@@ -52,12 +52,14 @@ function isSettings(value: unknown): value is AppSettings {
   const themeValid = isRecord(value.theme) && hasStrings(value.theme, ["primary", "secondary", "success", "warning", "danger", "information", "background", "card", "border", "text"]);
   const production = isRecord(value.production) ? value.production : null;
   const productionValid = production !== null &&
-    Array.isArray(production.machines) && production.machines.every((machine) => isRecord(machine) && hasStrings(machine, ["id", "name", "displayName", "department", "departmentId", "machineType", "color", "technicalInformation"]) && typeof machine.active === "boolean" && typeof machine.visible === "boolean" && typeof machine.order === "number" && (machine.deleted === undefined || typeof machine.deleted === "boolean") && (machine.favorite === undefined || typeof machine.favorite === "boolean") && (machine.futureCapacityHours === undefined || machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number") && (machine.comments === undefined || typeof machine.comments === "string") && (machine.taskCategoryCode === undefined || machine.taskCategoryCode === null || typeof machine.taskCategoryCode === "string")) &&
+    Array.isArray(production.machines) && production.machines.every((machine) => isRecord(machine) && hasStrings(machine, ["id", "name", "displayName", "department", "departmentId", "machineType", "color", "technicalInformation"]) && typeof machine.active === "boolean" && typeof machine.visible === "boolean" && typeof machine.order === "number" && (machine.hallId === undefined || machine.hallId === null || typeof machine.hallId === "string") && (machine.hallOrder === undefined || typeof machine.hallOrder === "number") && (machine.deleted === undefined || typeof machine.deleted === "boolean") && (machine.favorite === undefined || typeof machine.favorite === "boolean") && (machine.futureCapacityHours === undefined || machine.futureCapacityHours === null || typeof machine.futureCapacityHours === "number") && (machine.comments === undefined || typeof machine.comments === "string") && (machine.taskCategoryCode === undefined || machine.taskCategoryCode === null || typeof machine.taskCategoryCode === "string")) &&
     Array.isArray(production.departments) && production.departments.every(isStandard) &&
+    Array.isArray(production.halls) && production.halls.every(isStandard) &&
     Array.isArray(production.priorities) && production.priorities.every((item) => isStandard(item) && isRecord(item) && typeof item.highlight === "boolean") &&
     [production.statuses, production.maintenanceStatuses].every((items) => Array.isArray(items) && items.every((item) => isStandard(item) && isRecord(item) && ["planned", "in-progress", "blocked", "completed", "neutral"].includes(String(item.behavior)))) &&
     Array.isArray(production.taskTypes) && production.taskTypes.every((item) => isStandard(item) && isRecord(item) && ["maintenance", "other"].includes(String(item.category))) &&
     Array.isArray(production.maintenanceTypes) && production.maintenanceTypes.every(isStandard) &&
+    Array.isArray(production.projetSuiviStatuses) && production.projetSuiviStatuses.every(isStandard) &&
     Array.isArray(production.capacities) && production.capacities.every((item) => isRecord(item) && hasStrings(item, ["id", "label", "scope", "targetId"]) && ["department", "machine"].includes(String(item.scope)) && typeof item.active === "boolean" && typeof item.order === "number" && Number.isFinite(item.order) && typeof item.hoursPerDay === "number" && Number.isFinite(item.hoursPerDay) && Array.isArray(item.workingDays) && item.workingDays.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6) && Array.isArray(item.exceptions) && item.exceptions.every((exception) => isRecord(exception) && typeof exception.date === "string" && typeof exception.hours === "number" && Number.isFinite(exception.hours))) &&
     isRecord(production.planning) && hasStrings(production.planning, ["allDepartmentsLabel"]) && ["defaultCapacityHours", "weekStartsOn", "visibleWeeks", "loadWarningPercent", "loadCriticalPercent"].every((key) => isRecord(production.planning) && typeof production.planning[key] === "number" && Number.isFinite(production.planning[key])) && Array.isArray(production.planning.workingDays) && production.planning.workingDays.every((day) => typeof day === "number" && Number.isInteger(day) && day >= 0 && day <= 6) &&
     Array.isArray(production.workOrderTypes) && production.workOrderTypes.every((item) => typeof item === "string") &&
@@ -114,7 +116,7 @@ function migrateSettings(value: unknown): AppSettings {
     ...defaults,
     ...saved,
     version: SETTINGS_VERSION,
-    company: { ...defaults.company, ...(isRecord(saved.company) ? saved.company : {}) },
+    company: migrateCompanySettings(saved.version, saved.company, defaults.company),
     theme: { ...defaults.theme, ...(isRecord(saved.theme) ? saved.theme : {}) },
     ai: {
       ...defaults.ai,
@@ -159,6 +161,17 @@ function migrateSettings(value: unknown): AppSettings {
   };
 }
 
+function migrateCompanySettings(savedVersion: number | undefined, value: unknown, defaults: AppSettings["company"]): AppSettings["company"] {
+  const saved = isRecord(value) ? value : {};
+  const merged = { ...defaults, ...saved };
+  // Le nom d'entreprise par défaut du kit de démonstration est passé de « ProdPilot IA » (qui
+  // reprenait par erreur le nom du produit lui-même) à « TKMi » : les installations existantes qui
+  // avaient encore ce texte jamais personnalisé sont corrigées une seule fois, sans écraser un nom
+  // réellement choisi par l'utilisateur.
+  if ((savedVersion ?? 0) < 18 && merged.name === "ProdPilot IA") merged.name = defaults.name;
+  return merged;
+}
+
 function migrateMailAssistantSettings(savedVersion: number | undefined, value: unknown, defaults: AppSettings["mailAssistant"]): AppSettings["mailAssistant"] {
   const saved = isRecord(value) ? value : {};
   const migrated = { ...defaults, ...saved, workflowStatuses: Array.isArray(saved.workflowStatuses) ? saved.workflowStatuses as AppSettings["mailAssistant"]["workflowStatuses"] : defaults.workflowStatuses };
@@ -172,17 +185,24 @@ function migrateMailAssistantSettings(savedVersion: number | undefined, value: u
 
 function migrateProductionSettings(savedVersion: number | undefined, value: unknown, defaults: ProductionSettings): ProductionSettings {
   const saved = isRecord(value) ? value : {};
-  const departments = migrateStandards(saved.departments, defaults.departments);
+  const halls = migrateStandards(saved.halls, defaults.halls);
+  const departments = migrateStandards(saved.departments, defaults.departments).map((department, index) => ({
+    ...department,
+    hallId: typeof department.hallId === "string" && halls.some((hall) => hall.id === department.hallId) ? department.hallId : null,
+    hallOrder: typeof department.hallOrder === "number" ? department.hallOrder : index,
+  }));
   return {
     ...defaults,
     machines: migrateProductionMachines(savedVersion, saved.machines, defaults.machines, departments),
     departments,
+    halls,
     capacities: migrateCapacities(saved.capacities, defaults.capacities, departments),
     priorities: migrateStandards(saved.priorities, defaults.priorities),
     statuses: migrateStandards(saved.statuses, defaults.statuses),
     maintenanceStatuses: migrateStandards(saved.maintenanceStatuses, defaults.maintenanceStatuses),
     taskTypes: migrateStandards(saved.taskTypes, defaults.taskTypes),
     maintenanceTypes: migrateStandards(saved.maintenanceTypes, defaults.maintenanceTypes),
+    projetSuiviStatuses: migrateStandards(saved.projetSuiviStatuses, defaults.projetSuiviStatuses),
     planning: isRecord(saved.planning) ? { ...defaults.planning, ...saved.planning } : defaults.planning,
     workOrderTypes: Array.isArray(saved.workOrderTypes) && saved.workOrderTypes.every((item) => typeof item === "string") ? saved.workOrderTypes : defaults.workOrderTypes,
     visibleTaskCategoryCodes: Array.isArray(saved.visibleTaskCategoryCodes) && saved.visibleTaskCategoryCodes.every((item) => typeof item === "string") ? saved.visibleTaskCategoryCodes : defaults.visibleTaskCategoryCodes,
@@ -216,6 +236,8 @@ function migrateProductionMachines(savedVersion: number | undefined, value: unkn
       machineType: typeof machine.machineType === "string" ? machine.machineType : fallback?.machineType ?? "",
       color: typeof machine.color === "string" ? machine.color : fallback?.color ?? "",
       order: typeof machine.order === "number" ? machine.order : index,
+      hallId: typeof machine.hallId === "string" ? machine.hallId : null,
+      hallOrder: typeof machine.hallOrder === "number" ? machine.hallOrder : index,
       technicalInformation: typeof machine.technicalInformation === "string" ? machine.technicalInformation : fallback?.technicalInformation ?? "",
       deleted: typeof machine.deleted === "boolean" ? machine.deleted : fallback?.deleted ?? false,
       favorite: typeof machine.favorite === "boolean" ? machine.favorite : fallback?.favorite ?? false,

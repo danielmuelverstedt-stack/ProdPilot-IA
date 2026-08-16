@@ -40,6 +40,11 @@ yarn-error.log*
 # local development integration data
 /.local-data/
 
+# local source assets and generated previews
+/Contact photo/
+/output/
+/tmp/
+
 # vercel
 .vercel
 

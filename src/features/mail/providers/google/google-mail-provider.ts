@@ -204,6 +204,9 @@ export class GoogleMailProvider implements MailProvider {
         bcc: input.bcc?.map((address) => address.email),
         subject: input.subject,
         bodyText: input.bodyText,
+        bodyHtml: input.bodyHtml,
+        inlineImages: input.inlineImages,
+        attachments: input.attachments,
         inReplyTo,
         references,
       });

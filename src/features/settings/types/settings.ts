@@ -2,7 +2,7 @@ import type { AiBudgetPolicy, AiPricingEntry } from "@/features/ai/types/ai";
 import type { MailMemorySettings } from "@/features/mail-memory/types/mail-memory";
 import type { MailAssistantStartSettings } from "@/features/mail-assistant/types/mail-assistant";
 
-export const SETTINGS_VERSION = 17;
+export const SETTINGS_VERSION = 19;
 
 export type CardSize = "small" | "medium" | "wide";
 
@@ -66,6 +66,10 @@ export interface MachineSettings {
   machineType: string;
   color: string;
   order: number;
+  /** Hall d'implantation dans le Planning Atelier ; `null`/absent = machine non affectée. */
+  hallId?: string | null;
+  /** Position verticale de la machine à l'intérieur de son hall. */
+  hallOrder?: number;
   technicalInformation: string;
   deleted?: boolean;
   favorite?: boolean;
@@ -91,6 +95,10 @@ export interface OrderedStandardSettings {
 
 export interface DepartmentSettings extends OrderedStandardSettings {
   value: string;
+  /** Hall d'affichage dans le Planning Atelier ; `null`/absent = catégorie encore non affectée. */
+  hallId?: string | null;
+  /** Position verticale de la catégorie à l'intérieur de son hall. */
+  hallOrder?: number;
   /**
    * `"physical"` : le contenu de l'onglet Atelier vient uniquement des machines dont la fiche
    * indique ce département (`MachineSettings.departmentId`), sans lien par catégorie — le cas des
@@ -107,6 +115,8 @@ export interface DepartmentSettings extends OrderedStandardSettings {
   /** Machines rattachées individuellement à ce département dans l'Atelier, en plus de celles couvertes par `linkedCategoryCodes`. Ignoré si `membershipMode` vaut `"physical"`. */
   linkedMachineIds?: string[];
 }
+
+export type HallSettings = OrderedStandardSettings;
 
 export interface PrioritySettings extends OrderedStandardSettings {
   highlight: boolean;
@@ -150,12 +160,15 @@ export interface PlanningSettings {
 export interface ProductionSettings {
   machines: MachineSettings[];
   departments: DepartmentSettings[];
+  halls: HallSettings[];
   capacities: CapacitySettings[];
   priorities: PrioritySettings[];
   statuses: StatusSettings[];
   maintenanceStatuses: StatusSettings[];
   taskTypes: TaskTypeSettings[];
   maintenanceTypes: OrderedStandardSettings[];
+  /** Statuts proposés pour le suivi daté d'un OF à l'étape « Cinq projets critiques » de la réunion Production (`ProjetSuiviEntry.statut` référence la `value` d'un de ces statuts). */
+  projetSuiviStatuses: OrderedStandardSettings[];
   planning: PlanningSettings;
   workOrderTypes: string[];
   /**

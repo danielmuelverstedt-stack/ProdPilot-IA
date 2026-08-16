@@ -200,27 +200,30 @@ test("resetWorkshopView conserve le département sélectionné, comme les sectio
   assert.deepEqual(reset.collapsedMachineIds, ["cv5-500"]);
 });
 
-test("Planning capacité expose désormais le contrôle de catégories et regroupe ses machines par catégorie via le moteur partagé", async () => {
+test("Planning capacité reprend directement les départements et machines de l'Atelier", async () => {
   const planningModule = await readFile(new URL("../src/features/planning/components/PlanningModule.tsx", import.meta.url), "utf8");
-  assert.match(planningModule, /<TaskCategoryVisibilityControl visibleTaskCategoryCodes={visibleTaskCategoryCodes} onChange={updateVisibleTaskCategoryCodes} \/>/);
-  assert.match(planningModule, /groupMachinesByTaskCategory\(machines, visibleTaskCategoryCodes\)/);
-  assert.match(planningModule, /from "@\/lib\/visible-task-categories-store"/, "lit le réglage partagé depuis son propre store, pas depuis les Réglages complets (évite de tout cloner/réécrire à chaque changement)");
+  assert.match(planningModule, /buildDepartmentOperationIndex, resolveDepartmentMachineIds/);
+  assert.match(planningModule, /resolveDepartmentMachineIds\(departmentOperationIndex, settings\.production\.machines, department\)/);
+  assert.match(planningModule, /from "@\/lib\/visible-task-categories-store"/, "le sélecteur reste le même réglage partagé que l'Atelier");
   const grid = await readFile(new URL("../src/features/planning/components/PlanningGrid.tsx", import.meta.url), "utf8");
-  assert.match(grid, /groups: TaskCategoryMachineGroup<PlanningMachine>\[\]/, "la grille reçoit des sections par catégorie plutôt qu'une liste plate de machines");
+  assert.match(grid, /groups: TaskCategoryMachineGroup<PlanningMachine>\[\]/, "la grille conserve son contrat de sections pour recevoir les départements partagés");
 });
 
 test("l'Atelier navigue par onglets de département dont le contenu vient uniquement des catégories/machines liées, indépendamment du département physique de la machine", async () => {
   const view = await readFile(new URL("../src/features/planning/components/PlanningWorkshopView.tsx", import.meta.url), "utf8");
-  assert.match(view, /<WorkshopDepartmentTabs departments={activeDepartments} selectedDepartmentId={selectedDepartmentId} operationCountByDepartmentId={operationCountByDepartmentId} onSelect={handleSelectDepartment} onCreate={\(\) => setCreatingDepartment\(true\)} onEdit={setEditingDepartmentId} \/>/);
+  assert.match(view, /<WorkshopDepartmentTabs halls={halls} departments={activeDepartments} selectedDepartmentId={selectedDepartmentId} operationCountByDepartmentId={operationCountByDepartmentId} onSelect={handleSelectDepartment} onCreate={\(\) => setCreatingDepartment\(true\)} onEdit={setEditingDepartmentId} onMove={handleMoveDepartment} \/>/);
   assert.match(view, /buildWorkshopCategories\(rows, machines, preferences\.state\.filters, preferences\.state\.sort, visibleTaskCategoryCodes, selectedDepartment\?\.linkedMachineIds \?\? \[\]\)/, "le calcul ne filtre plus par machine.departmentId, seulement par les liens configurés");
   assert.match(view, /updateVisibleTaskCategoryCodes\(department\?\.linkedCategoryCodes \?\? \[\]\)/, "sélectionner un onglet écrase le réglage partagé Catégories avec les catégories liées du département");
   assert.doesNotMatch(view, /groupBy/, "l'ancien sélecteur Département/Catégorie a bien été remplacé par les onglets, pas gardé en plus");
   assert.match(view, /from "@\/lib\/visible-task-categories-store"/, "le changement d'onglet ne doit plus passer par updateSettings pour les catégories : store dédié, pas de clone/réécriture de tous les Réglages à chaque clic");
 
   const tabs = await readFile(new URL("../src/features/planning/components/WorkshopDepartmentTabs.tsx", import.meta.url), "utf8");
-  assert.match(tabs, /onSelect\(department\.id\)/);
+  const board = await readFile(new URL("../src/features/planning/components/HallAssignmentBoard.tsx", import.meta.url), "utf8");
+  assert.match(tabs, /<HallAssignmentBoard[\s\S]*?onSelect=\{onSelect\}/);
+  assert.match(board, /draggable onDragStart=/, "les éléments peuvent être déplacés directement");
+  assert.match(board, /onMove\(draggedId, hallId, targetId\)/, "le dépôt transmet l'élément déplacé, son hall et sa cible verticale");
   assert.match(tabs, /onCreate/, "un onglet « ＋ » permet de créer un département");
-  assert.match(tabs, /isSelected \? .*onEdit/, "l'icône d'édition n'apparaît que sur l'onglet actif");
+  assert.match(board, /item\.selected && onEdit/, "l'icône d'édition n'apparaît que sur la catégorie active");
 
   const filtersComponent = await readFile(new URL("../src/features/planning/components/WorkshopFilters.tsx", import.meta.url), "utf8");
   assert.doesNotMatch(filtersComponent, /Départements/, "le filtre départements par cases à cocher a disparu, remplacé par les onglets");
@@ -595,6 +598,44 @@ test("WorkshopMachinePanel affiche toutes les opérations dans un cadre défilan
   assert.match(panel, /sticky top-0/, "l'en-tête doit rester visible pendant le défilement du cadre");
 });
 
+test("WorkshopMachinePanel affiche la machine entière dans une carte compacte à gauche et agrandissable", async () => {
+  const panel = await readFile(new URL("../src/features/planning/components/WorkshopMachinePanel.tsx", import.meta.url), "utf8");
+  assert.match(panel, /import \{ useMachinePhotos \} from "@\/features\/machines\/services\/machine-photo-store";/);
+  assert.match(panel, /backgroundImage: `url\(\$\{machinePhoto\}\)`/);
+  assert.match(panel, /h-14 w-20 shrink-0[^\n]+bg-contain bg-center bg-no-repeat/);
+  assert.match(panel, /flex w-full items-center gap-2 border-b border-slate-100 bg-slate-50/);
+  assert.match(panel, /onClick=\{\(\) => setIsPhotoOpen\(true\)\}/);
+  assert.match(panel, /role="dialog" aria-modal="true"/);
+  assert.match(panel, /Charge : \{plannedLoadHours\.toLocaleString\("fr-BE"\)\} h/);
+});
+
+test("departmentSettingsService déplace durablement une catégorie avant sa cible et renumérote l'ordre", async () => {
+  const { departmentSettingsService } = await import("../src/features/settings/services/department-settings-service.ts");
+  const settings = {
+    production: {
+      departments: [
+        { id: "turning", order: 0 },
+        { id: "milling", order: 1 },
+        { id: "quality", order: 2 },
+      ],
+    },
+  };
+  assert.equal(departmentSettingsService.moveDepartment(settings, "turning", "quality"), true);
+  assert.deepEqual(settings.production.departments.map((item) => [item.id, item.order]), [["milling", 0], ["quality", 1], ["turning", 2]]);
+  assert.equal(departmentSettingsService.moveDepartment(settings, "unknown", "milling"), false);
+  assert.deepEqual(settings.production.departments.map((item) => item.id), ["milling", "quality", "turning"], "un identifiant inconnu ne modifie rien");
+});
+
+test("Planning capacité reprend les départements et rattachements machine du Planning Atelier sans modifier sa vue", async () => {
+  const capacity = await readFile(new URL("../src/features/planning/components/PlanningModule.tsx", import.meta.url), "utf8");
+  const workshop = await readFile(new URL("../src/features/planning/components/PlanningWorkshopView.tsx", import.meta.url), "utf8");
+  assert.match(capacity, /buildDepartmentOperationIndex, resolveDepartmentMachineIds/);
+  assert.match(capacity, /resolveDepartmentMachineIds\(departmentOperationIndex, settings\.production\.machines, department\)/);
+  assert.match(capacity, /label: department\.label, machines: matchingMachines/);
+  assert.match(capacity, /Catégories, machines et rattachements partagés avec le Planning Atelier/);
+  assert.doesNotMatch(workshop, /Planning capacité reprend/);
+});
+
 test("sortOperations trie par priorité ou par retard selon la colonne active, et laisse les valeurs inconnues en fin de liste", () => {
   const unsorted = [
     { id: "a", workOrderId: "OF-1", effectivePriority: 3, delayDays: 5 },
@@ -736,14 +777,14 @@ test("buildPlanningView bascule entre OF de démonstration et opérations ERP se
     theme: { success: "#0a0", warning: "#fa0", danger: "#a00", card: "#fff", text: "#000", information: "#00a" },
   };
   const data = { machines: [], workOrders: [], planning: [], maintenance: [] };
-  const testOperations = [{ id: "op-erp-1", workOrderId: "OF-9", machineId: "m1", plannedDate: "2026-07-20", effectiveStatus: "in-progress", effectivePriority: 5, comment: null, articleCode: "A1", description: "desc", operationNumber: 1, dueDate: null, workOrder: null }];
+  const testOperations = [{ id: "op-erp-1", workOrderId: "OF-9", machineId: "m1", plannedDate: "2026-07-20", plannedDurationHours: 8, effectiveStatus: "in-progress", effectivePriority: 5, comment: null, articleCode: "A1", description: "desc", operationNumber: 1, dueDate: null, workOrder: null }];
 
   const withErp = buildPlanningView(data, settings, testOperations, true);
   assert.equal(withErp.blocks.length, 1);
   assert.equal(withErp.blocks[0].source, "erp-operation");
   assert.equal(withErp.blocks[0].machineId, "m1");
   assert.equal(withErp.blocks[0].date, "2026-07-20");
-  assert.equal(withErp.blocks[0].durationHours, null, "aucun temps de fabrication inventé pour un bloc ERP");
+  assert.equal(withErp.blocks[0].durationHours, 8, "le bloc reprend le temps prévu local initialisé à 8 h");
 
   const withoutErp = buildPlanningView(data, settings, testOperations, false);
   assert.equal(withoutErp.blocks.length, 0, "sans import actif, les opérations ERP ne s'affichent pas et aucun OF de démonstration n'existe dans ce jeu de test");
@@ -771,27 +812,28 @@ test("Planning capacité masque les OF de démonstration dès qu'un import ERP e
   const planningModule = await readFile(new URL("../src/features/planning/components/PlanningModule.tsx", import.meta.url), "utf8");
   const view = await readFile(new URL("../src/features/planning/services/planning-view.ts", import.meta.url), "utf8");
   assert.match(planningModule, /useErpImportActive/);
-  assert.match(planningModule, /buildPlanningView\(data, settings, rows, hasActiveImport\)/);
+  assert.match(planningModule, /buildPlanningView\(data, settings, allRows, hasActiveImport\)/);
   assert.match(view, /hasActiveImport \? erpOperationBlocks : planningBlocks/);
 });
 
-test("Planning capacité n'invente aucun temps de fabrication pour les OF ERP", async () => {
+test("Planning capacité utilise le temps prévu local modifiable de l'Atelier", async () => {
   const planningView = await readFile(new URL("../src/features/planning/services/planning-view.ts", import.meta.url), "utf8");
   const card = await readFile(new URL("../src/features/planning/components/PlanningCard.tsx", import.meta.url), "utf8");
   const row = await readFile(new URL("../src/features/planning/components/MachinePlanningRow.tsx", import.meta.url), "utf8");
-  assert.match(planningView, /durationHours: null/);
-  assert.match(card, /Temps non disponible/);
-  assert.match(row, /temps n\.d\./);
+  assert.match(planningView, /durationHours: operation\.plannedDurationHours/);
+  assert.match(card, /block\.durationHours\.toLocaleString\("fr-BE"\)/);
+  assert.match(row, /sumDurationHours/);
 });
 
-test("l'Atelier n'invente aucun temps de fabrication : Temps et Charge restent des indisponibilités explicites", async () => {
-  const service = await readFile(new URL("../src/features/planning/services/workshop-view-service.ts", import.meta.url), "utf8");
+test("l'Atelier initialise le temps prévu à 8 h et permet son édition inline durable", async () => {
+  const operationView = await readFile(new URL("../src/features/erp-import/services/operation-view-service.ts", import.meta.url), "utf8");
   const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
-  const panel = await readFile(new URL("../src/features/planning/components/WorkshopMachinePanel.tsx", import.meta.url), "utf8");
-  assert.doesNotMatch(`${service}${row}${panel}`, /plannedDuration|durationHours|capacityHours/);
-  assert.match(row, /n’est pas encore disponible/);
-  assert.match(panel, /non disponible/);
-  assert.match(service, /hoursAvailable: false/);
+  const hook = await readFile(new URL("../src/features/planning/hooks/useWorkshopOperations.ts", import.meta.url), "utf8");
+  const route = await readFile(new URL("../src/app/api/erp/operations/[id]/route.ts", import.meta.url), "utf8");
+  assert.match(operationView, /plannedDurationHours: decision\?\.plannedDurationHours \?\? 8/);
+  assert.match(row, /onUpdateDuration\(operation\.id, value\)/);
+  assert.match(hook, /\{ plannedDurationHours \}/);
+  assert.match(route, /patch\.plannedDurationHours = nullableDuration/);
 });
 
 test("reorderOperationIds déplace un identifiant juste avant sa cible sans perdre ni dupliquer d'entrée", () => {
@@ -816,17 +858,20 @@ test("le glisser-déposer d'une opération recalcule la priorité de tout ce qui
 test("la réaffectation de machine passe par la même route PATCH que le Cockpit ERP (champ machineId)", async () => {
   const hook = await readFile(new URL("../src/features/planning/hooks/useWorkshopOperations.ts", import.meta.url), "utf8");
   const row = await readFile(new URL("../src/features/planning/components/WorkshopOperationRow.tsx", import.meta.url), "utf8");
-  assert.match(hook, /const updateMachine = useCallback\(async \(operationId: string, machineId: string\)/);
+  assert.match(hook, /const updateMachine = useCallback\(async \(operationId: string, machineId: string \| null\)/);
   assert.match(hook, /patchOneOptimistically\(operationId, \{ machineId \}/);
   assert.match(row, /WorkshopMachinePicker/);
   assert.match(row, /onUpdateMachine/);
+  const picker = await readFile(new URL("../src/features/planning/components/WorkshopMachinePicker.tsx", import.meta.url), "utf8");
+  assert.match(picker, /Sans machine définie/);
+  assert.match(picker, /onClick=\{\(\) => select\(null\)\}/);
 });
 
 test("le statut d'une opération se modifie directement dans l'Atelier, via la même route PATCH que la machine et la priorité", async () => {
   const hook = await readFile(new URL("../src/features/planning/hooks/useWorkshopOperations.ts", import.meta.url), "utf8");
   assert.match(hook, /const updateStatus = useCallback\(async \(operationId: string, status: OperationView\["status"\]\)/);
   assert.match(hook, /patchOneOptimistically\(operationId, \{ status \}/);
-  assert.match(hook, /return \{ rows, allRows, isLoading, isMutating, error, refresh: load, updatePriority, updateMachine, updateStatus, updatePlacement, reorderOperations, renumberOperations \};/);
+  assert.match(hook, /return \{ rows, allRows, isLoading, isMutating, error, refresh: load, updatePriority, updateMachine, updateStatus, updateDuration, updatePlacement, reorderOperations, renumberOperations \};/);
 
   // Propagation par props à travers les quatre couches, comme onUpdateMachine.
   const view = await readFile(new URL("../src/features/planning/components/PlanningWorkshopView.tsx", import.meta.url), "utf8");

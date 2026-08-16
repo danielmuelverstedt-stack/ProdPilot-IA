@@ -1,17 +1,27 @@
 import { TKMI_DIRECTORY_CONTACTS } from "../mock/tkmi-directory-seed.ts";
-import type { ActionContextLink, ActionStatus, Contact, DemoData, ProductionAction } from "@/features/demo/types/demo";
+import type { ActionContextLink, ActionStatus, Contact, DemoData, Meeting, MeetingFieldPoint, MeetingLifecycleStatus, MeetingParticipant, MeetingPriorityDossier, MeetingStepEntry, ProductionAction, ProjetSuiviLog } from "@/features/demo/types/demo";
 
-/** Complète une action déjà stockée (avant la planification équipe) avec les nouveaux champs, tous `null` par défaut — jamais `undefined`, pour rester conforme au type même sur des données anciennes. */
+/**
+ * Complète une action déjà stockée (avant la planification équipe, puis avant les liens multiples/
+ * commentaires/historique/responsable Contact) avec les nouveaux champs, tous `null`/vides par
+ * défaut — jamais `undefined`, pour rester conforme au type même sur des données anciennes.
+ * `contextLink` (ancien champ singulier) est converti en tableau `contextLinks` s'il existe encore.
+ */
 function withActionPlanningDefaults(value: unknown): ProductionAction {
-  const action = value as ProductionAction;
+  const action = value as ProductionAction & { contextLink?: ActionContextLink | null };
   return {
     ...action,
+    contextLinks: Array.isArray(action.contextLinks) ? action.contextLinks : (action.contextLink ? [action.contextLink] : []),
+    responsableContactId: action.responsableContactId ?? null,
+    comments: Array.isArray(action.comments) ? action.comments : [],
+    history: Array.isArray(action.history) ? action.history : [],
     priority: action.priority ?? null,
     responsableId: action.responsableId ?? null,
     estimatedHours: action.estimatedHours ?? null,
     plannedWeek: action.plannedWeek ?? null,
     planningOrder: action.planningOrder ?? null,
     parentActionId: action.parentActionId ?? null,
+    besoinType: action.besoinType ?? null,
   };
 }
 
@@ -19,6 +29,119 @@ function withActionPlanningDefaults(value: unknown): ProductionAction {
 function withContactDefaults(value: unknown): Contact {
   const contact = value as Contact;
   return { ...contact, internalNumber: contact.internalNumber ?? null, privateNumber: contact.privateNumber ?? null };
+}
+
+/** Convertit une note/décision de réunion enregistrée avant le rattachement par étape (simple texte) en entrée `{ step, text }`, sous une étape générique — les entrées déjà migrées passent inchangées. */
+function withMeetingStepEntries(items: unknown): MeetingStepEntry[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((item) => (typeof item === "string" ? { step: "Réunion", text: item } : item as MeetingStepEntry));
+}
+
+function normalizeContactName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase("fr");
+}
+
+/**
+ * Convertit les participants enregistrés avant le rattachement au module Contacts (simples noms
+ * en texte libre) en références `{ contactId, present }`, en retrouvant chaque nom dans l'annuaire
+ * par correspondance exacte (même normalisation que `resolveParticipantEmails`) — un nom sans
+ * contact correspondant (personne jamais créée dans Contacts) est perdu, faute de pouvoir le
+ * rattacher à une fiche réelle ; les entrées déjà migrées passent inchangées.
+ */
+function withMeetingParticipants(items: unknown, contacts: Contact[]): MeetingParticipant[] {
+  if (!Array.isArray(items)) return [];
+  const contactIdByName = new Map(contacts.map((contact) => [normalizeContactName(`${contact.firstName} ${contact.lastName}`), contact.id]));
+  return items
+    .map((item) => {
+      if (typeof item === "string") {
+        const contactId = contactIdByName.get(normalizeContactName(item));
+        return contactId ? { contactId, present: true } : null;
+      }
+      if (item && typeof item === "object" && typeof (item as MeetingParticipant).contactId === "string") return item as MeetingParticipant;
+      return null;
+    })
+    .filter((item): item is MeetingParticipant => item !== null);
+}
+
+function withPriorityDossiers(meeting: Meeting): MeetingPriorityDossier[] {
+  if (Array.isArray(meeting.priorityDossiers)) return meeting.priorityDossiers.slice(0, 5).map((item, index) => ({
+    ...item,
+    id: item.id || `DOS-${index + 1}`,
+    title: item.title ?? "Dossier prioritaire",
+    description: item.description ?? "",
+    preparationComment: item.preparationComment ?? "",
+    meetingComment: item.meetingComment ?? "",
+    decision: item.decision ?? "",
+    status: item.status ?? "À discuter",
+    referenceKind: item.referenceKind ?? "free",
+    referenceId: item.referenceId ?? null,
+    actionIds: Array.isArray(item.actionIds) ? item.actionIds : [],
+  }));
+  const legacyIds = Array.isArray(meeting.criticalWorkOrderIds) ? meeting.criticalWorkOrderIds.slice(0, 5) : [];
+  return legacyIds.map((workOrderId, index) => ({ id: `DOS-${index + 1}`, title: workOrderId, description: "", preparationComment: "", meetingComment: "", decision: "", status: "À discuter", referenceKind: "workOrder", referenceId: workOrderId, actionIds: [] }));
+}
+
+function withMeetingFieldPoints(items: unknown): MeetingFieldPoint[] {
+  if (!Array.isArray(items)) return [];
+  return items.filter((item): item is MeetingFieldPoint => Boolean(item && typeof item === "object" && typeof (item as MeetingFieldPoint).id === "string")).map((item) => ({
+    ...item,
+    authorContactId: item.authorContactId ?? null,
+    updatedAt: item.updatedAt ?? item.createdAt,
+    comments: item.comments ?? "",
+    actionIds: Array.isArray(item.actionIds) ? item.actionIds : [],
+    machineIds: Array.isArray(item.machineIds) ? item.machineIds : [],
+    workOrderIds: Array.isArray(item.workOrderIds) ? item.workOrderIds : [],
+    priorityDossierIds: Array.isArray(item.priorityDossierIds) ? item.priorityDossierIds : [],
+  }));
+}
+
+const LEGACY_MEETING_STATUS_MAP: Record<string, MeetingLifecycleStatus> = {
+  "Planifiée": "Préparation",
+  "En cours": "En cours",
+  "Clôturée": "Terminée",
+};
+
+const MEETING_LIFECYCLE_STATUS_VALUES = new Set<MeetingLifecycleStatus>(["Brouillon", "Préparation", "Envoyée", "En cours", "Terminée", "Archivée"]);
+
+/** Convertit l'ancien statut à 3 valeurs vers le cycle de vie à 6 valeurs — une réunion déjà « Planifiée »/« En cours » avait forcément commencé sa préparation, donc jamais repliée sur « Brouillon » (privé) lors d'une migration. */
+function withMeetingStatus(status: unknown): MeetingLifecycleStatus {
+  if (typeof status === "string" && MEETING_LIFECYCLE_STATUS_VALUES.has(status as MeetingLifecycleStatus)) return status as MeetingLifecycleStatus;
+  if (typeof status === "string" && LEGACY_MEETING_STATUS_MAP[status]) return LEGACY_MEETING_STATUS_MAP[status];
+  return "Préparation";
+}
+
+/**
+ * Complète une réunion déjà stockée avec les OF suivis à l'étape « Cinq projets critiques »
+ * (tableau vide par défaut), un responsable (`null` par défaut), des participants convertis en
+ * références Contacts, son statut converti vers le cycle de vie à 6 valeurs (créateur et
+ * horodatages de transition à `null`, aucune date ne pouvant être devinée pour une donnée déjà
+ * enregistrée) et rattache ses notes/décisions à une étape (générique pour les anciennes, déjà
+ * présentes pour les nouvelles).
+ */
+function withMeetingDefaults(value: unknown, contacts: Contact[]): Meeting {
+  const meeting = value as Meeting;
+  return {
+    ...meeting,
+    status: withMeetingStatus(meeting.status),
+    createdByUserId: meeting.createdByUserId ?? null,
+    sharedAt: meeting.sharedAt ?? null,
+    preparationSentAt: meeting.preparationSentAt ?? null,
+    preparationSentVia: meeting.preparationSentVia ?? null,
+    startedAt: meeting.startedAt ?? null,
+    closedAt: meeting.closedAt ?? null,
+    archivedAt: meeting.archivedAt ?? null,
+    responsableContactId: meeting.responsableContactId ?? null,
+    participants: withMeetingParticipants(meeting.participants, contacts),
+    priorityDossiers: withPriorityDossiers(meeting),
+    maintenanceProblemIds: Array.isArray(meeting.maintenanceProblemIds) ? meeting.maintenanceProblemIds.filter((id): id is string => typeof id === "string") : [],
+    fieldPoints: withMeetingFieldPoints(meeting.fieldPoints),
+    fieldRoundCompletedContactIds: Array.isArray(meeting.fieldRoundCompletedContactIds) ? meeting.fieldRoundCompletedContactIds.filter((id): id is string => typeof id === "string") : [],
+    fieldRoundNoIssueContactIds: Array.isArray(meeting.fieldRoundNoIssueContactIds) ? meeting.fieldRoundNoIssueContactIds.filter((id): id is string => typeof id === "string") : [],
+    recapDocument: meeting.recapDocument ?? null,
+    criticalWorkOrderIds: Array.isArray(meeting.criticalWorkOrderIds) ? meeting.criticalWorkOrderIds : [],
+    notes: withMeetingStepEntries(meeting.notes),
+    decisions: withMeetingStepEntries(meeting.decisions),
+  };
 }
 
 /**
@@ -98,19 +221,23 @@ function migrateAction(value: unknown): ProductionAction | null {
     dateEncodage: legacy.createdAt ?? new Date().toISOString().slice(0, 10),
     introduitPar: lastHistoryEntry?.author ?? "Utilisateur inconnu",
     origine: ORIGIN_BY_SOURCE_TYPE[legacy.sourceType] ?? "Manuel",
-    contextLink: buildContextLink(legacy),
+    contextLinks: buildContextLink(legacy) ? [buildContextLink(legacy)!] : [],
     description: legacy.title && legacy.title !== legacy.description ? `${legacy.title} — ${legacy.description}` : legacy.description,
     responsable: legacy.responsible ?? "À assigner",
+    responsableContactId: null,
     echeance: legacy.dueDate ?? legacy.createdAt ?? new Date().toISOString().slice(0, 10),
     statut,
     dateCloture: statut === "Fait" ? (lastHistoryEntry?.date ?? legacy.createdAt ?? null) : null,
     remarque: comments.length ? comments.join(" | ") : null,
+    comments: [],
+    history: [],
     priority: null,
     responsableId: null,
     estimatedHours: null,
     plannedWeek: null,
     planningOrder: null,
     parentActionId: null,
+    besoinType: null,
   };
 }
 
@@ -122,6 +249,7 @@ function migrateAction(value: unknown): ProductionAction | null {
  * l'utilisateur.
  */
 function withMachineSheetDefaults(value: Record<string, unknown>): Record<string, unknown> {
+  const contacts = withTkmiDirectorySeed(Array.isArray(value.contacts) ? value.contacts.map(withContactDefaults) : []);
   return {
     ...value,
     savContacts: Array.isArray(value.savContacts) ? value.savContacts : [],
@@ -129,6 +257,9 @@ function withMachineSheetDefaults(value: Record<string, unknown>): Record<string
     people: Array.isArray(value.people) ? value.people : [],
     contacts: withTkmiDirectorySeed(Array.isArray(value.contacts) ? value.contacts.map(withContactDefaults) : []),
     actions: Array.isArray(value.actions) ? value.actions.map(withActionPlanningDefaults) : [],
+    meetings: Array.isArray(value.meetings) ? value.meetings.map((meeting) => withMeetingDefaults(meeting, contacts)) : [],
+    maintenanceProblems: Array.isArray(value.maintenanceProblems) ? value.maintenanceProblems : [],
+    projetSuivi: isRecord(value.projetSuivi) ? (value.projetSuivi as ProjetSuiviLog) : {},
   };
 }
 

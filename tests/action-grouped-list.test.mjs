@@ -16,7 +16,7 @@ test("getActionSortValue mappe chacune des 9 colonnes existantes vers une valeur
   assert.match(source, /if \(columnId === "echeance"\) return action\.echeance;/);
   assert.match(source, /if \(columnId === "statut"\) return action\.statut;/);
   assert.match(source, /if \(columnId === "remarque"\) return action\.remarque \?\? "";/, "une remarque absente retombe sur une chaîne vide plutôt que null, pour ne jamais faire couler la ligne au hasard");
-  assert.match(source, /if \(columnId === "lienContexte"\) return action\.contextLink\?\.label \?\? "";/);
+  assert.match(source, /if \(columnId === "lienContexte"\) return action\.contextLinks\.map\(\(item\) => item\.label\)\.join\(", "\);/);
 });
 
 test("le tableau Actions (ActionGroupedList) trie chaque groupe au clic sur un en-tête, sans glisser-déposer de colonnes (l'ordre reste piloté par Réglages → Actions)", async () => {

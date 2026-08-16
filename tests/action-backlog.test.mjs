@@ -6,7 +6,7 @@ import { actionStatusTone, isActionOverdue } from "../src/features/actions/servi
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 function action(overrides) {
-  return { id: "ACT-900", dateEncodage: "2026-07-01", introduitPar: "Daniel", origine: "Manuel", contextLink: null, description: "Test", responsable: "", echeance: "2026-07-01", statut: "À planifier", dateCloture: null, remarque: null, ...overrides };
+  return { id: "ACT-900", dateEncodage: "2026-07-01", introduitPar: "Daniel", origine: "Manuel", contextLinks: [], responsableContactId: null, description: "Test", responsable: "", echeance: "2026-07-01", statut: "À planifier", dateCloture: null, remarque: null, comments: [], history: [], ...overrides };
 }
 
 test("isActionOverdue ne considère jamais une idée « À planifier » comme en retard, même avec une échéance passée", () => {
@@ -41,7 +41,7 @@ test("createAction crée toujours une action « À faire » par défaut (compati
 
 test("planAction transforme une idée « À planifier » en action « À faire », avec le responsable et l'échéance donnés à la validation", async () => {
   const source = await read("src/features/actions/services/action-service.ts");
-  assert.match(source, /export function planAction\(id: string, responsable: string, echeance: string\): boolean \{/);
+  assert.match(source, /export function planAction\(id: string, responsable: string, echeance: string, author\?: string\): boolean \{/);
   assert.match(source, /target\.statut = "À faire";[\s\S]*?target\.responsable = responsable\.trim\(\);[\s\S]*?target\.echeance = echeance;/);
 });
 

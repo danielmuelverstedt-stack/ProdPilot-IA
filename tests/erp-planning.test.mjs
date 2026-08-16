@@ -190,19 +190,22 @@ test("OperationView centralise machine, priorité, visibilité et indicateurs", 
     macroRangeCode: "USINAGE", erpPriority: 3, erpMachineCode: "M-ERP", erpMachineDescription: "Centre d'usinage", normalizedStatus: "unknown", sourceRow: 2, duplicateOf: null,
   };
   const decision = {
-    operationIdentity: operation.stableId, userPriority: 9, manualOrder: 4, plannedMachineId: "M-PLAN",
+    operationIdentity: operation.stableId, userPriority: 9, manualOrder: 4, plannedDurationHours: 12, plannedMachineId: "M-PLAN",
     comment: "À lancer", visible: false, locked: true, plannedDate: null, planningStatus: null,
     createdAt: "2026-07-22T10:00:00.000Z", updatedAt: "2026-07-22T10:00:00.000Z",
   };
   const [view] = operationViewService.createViews({ operations: [operation], decisions: [decision], workOrders: [] });
   assert.equal(view.machine, "M-PLAN");
   assert.equal(view.sourceMachineDescription, "Centre d'usinage");
+  assert.equal(view.sourceMachineId, null);
+  assert.equal(view.hasMachineDifference, true);
   assert.equal(view.priority, 9);
   assert.equal(view.isVisible, false);
   assert.equal(view.hasPlannedMachine, true);
   assert.equal(view.hasUserPriority, true);
   assert.equal(view.hasComment, true);
   assert.equal(view.hasManualOrder, true);
+  assert.equal(view.plannedDurationHours, 12);
   assert.equal(view.isRemoved, false);
   assert.equal(view.isWithoutMachine, false);
   assert.equal(view.isLate, null);
@@ -213,11 +216,14 @@ test("OperationView centralise machine, priorité, visibilité et indicateurs", 
   assert.equal(erpFallback.machine, "Non définie");
   assert.equal(erpFallback.sourceMachineCode, "M-ERP");
   assert.equal(erpFallback.sourceMachineDescription, "Centre d'usinage");
+  assert.equal(erpFallback.plannedDurationHours, 8, "sans décision locale, chaque opération démarre avec 8 h prévues");
   assert.equal(erpFallback.isWithoutMachine, true);
 
   const [mapped] = operationViewService.createViews({ operations: [{ ...operation, erpMachineCode: "  m-erp  " }], decisions: [], workOrders: [], machineMappings: { "M-ERP": { erpMachineCode: "M-ERP", machineId: "FRA-01", updatedAt: "2026-07-22T10:00:00.000Z" } } });
   assert.equal(mapped.machineId, "FRA-01");
   assert.equal(mapped.machine, "FRA-01");
+  assert.equal(mapped.sourceMachineId, "FRA-01");
+  assert.equal(mapped.hasMachineDifference, false);
 
   const [fallback] = operationViewService.createViews({ operations: [{ ...operation, id: "removed", stableId: "removed", erpStatus: "Removed", erpMachineCode: null, erpMachineDescription: null }], decisions: [], workOrders: [] });
   assert.equal(fallback.machine, "Non définie");
@@ -252,6 +258,13 @@ test("la résolution machine respecte décision, mapping et absence de code", ()
   const decision = { operationIdentity: "op-1", userPriority: null, manualOrder: null, plannedMachineId: "FRA-01", comment: null, visible: true, locked: false, plannedDate: null, planningStatus: null, createdAt: mapping.updatedAt, updatedAt: mapping.updatedAt };
   const [planned] = operationViewService.createViews({ operations: [operation], decisions: [decision], workOrders: [], machineMappings: { DMU50: mapping } });
   assert.equal(planned.machineId, "FRA-01");
+  assert.equal(planned.sourceMachineId, "FRA-13");
+  assert.equal(planned.hasMachineDifference, true);
+  const explicitUnassignedDecision = { ...decision, plannedMachineId: null, hasMachineAssignmentOverride: true };
+  const [explicitlyUnassigned] = operationViewService.createViews({ operations: [operation], decisions: [explicitUnassignedDecision], workOrders: [], machineMappings: { DMU50: mapping } });
+  assert.equal(explicitlyUnassigned.machineId, null, "Sans machine définie reste prioritaire sur la machine issue du mapping ERP");
+  assert.equal(explicitlyUnassigned.isWithoutMachine, true);
+  assert.equal(explicitlyUnassigned.hasMachineDifference, true);
   const [empty] = operationViewService.createViews({ operations: [{ ...operation, erpMachineCode: " \uFEFF " }], decisions: [], workOrders: [], machineMappings: { DMU50: mapping } });
   assert.equal(empty.machineId, null);
   assert.equal(empty.machine, "Non définie");

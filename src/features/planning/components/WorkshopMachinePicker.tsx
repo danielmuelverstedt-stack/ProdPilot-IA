@@ -15,7 +15,7 @@ interface WorkshopMachinePickerProps {
   machines: MachineSettings[];
   currentMachineId: string | null;
   busy: boolean;
-  onSelect: (machineId: string) => void;
+  onSelect: (machineId: string | null) => void;
 }
 
 /**
@@ -37,7 +37,7 @@ export function WorkshopMachinePicker({ machines, currentMachineId, busy, onSele
       .sort((a, b) => a.displayName.localeCompare(b.displayName, "fr", { numeric: true }));
   }, [machines, search]);
 
-  function select(machineId: string) {
+  function select(machineId: string | null) {
     setIsOpen(false);
     setSearch("");
     if (machineId !== currentMachineId) onSelect(machineId);
@@ -51,6 +51,12 @@ export function WorkshopMachinePicker({ machines, currentMachineId, busy, onSele
     {isOpen ? <div className="absolute z-40 mt-1 w-60 rounded-lg border border-[var(--app-border)] bg-white p-1.5 shadow-lg">
       <input autoFocus className={compactSearchClass} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Rechercher une machine" />
       <ul className="mt-1.5 max-h-56 space-y-0.5 overflow-y-auto">
+        <li>
+          <button type="button" className={`flex w-full items-center gap-1 rounded-md px-1 py-1 text-left text-[11px] hover:bg-slate-50 ${currentMachineId === null ? "bg-slate-100 font-semibold" : "text-slate-600"}`} onClick={() => select(null)}>
+            <span className="grid size-5 shrink-0 place-items-center rounded bg-slate-100 text-slate-500">∅</span>
+            <span className="flex-1">Sans machine définie</span>
+          </button>
+        </li>
         {candidates.map((machine) => <li key={machine.id}>
           <button
             type="button"

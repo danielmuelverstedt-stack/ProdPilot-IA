@@ -9,9 +9,10 @@ export interface OperationViewLocalPatch {
   plannedDate?: string | null;
   status?: ErpOperationStatus;
   comment?: string | null;
+  plannedDurationHours?: number;
 }
 
-const LOCALLY_PATCHABLE_KEYS = new Set<keyof OperationViewLocalPatch>(["priority", "machineId", "plannedDate", "status", "comment"]);
+const LOCALLY_PATCHABLE_KEYS = new Set<keyof OperationViewLocalPatch>(["priority", "machineId", "plannedDate", "status", "comment", "plannedDurationHours"]);
 
 /** Vrai si toutes les clés du patch générique sont gérées par `applyOperationPatchLocally` (sinon : replier sur un rechargement complet). */
 export function isLocallyPatchable(patch: Record<string, unknown>): boolean {
@@ -35,7 +36,9 @@ export function isLocallyPatchable(patch: Record<string, unknown>): boolean {
  * reçu du serveur, avec les mêmes libellés (`ISSUE_LABELS`, partagés avec le serveur).
  */
 export function applyOperationPatchLocally(row: OperationView, patch: OperationViewLocalPatch): OperationView {
-  const machineId = patch.machineId !== undefined ? patch.machineId : row.machineId;
+  // `null` signifie « supprimer la décision machine » : la valeur effective revient alors
+  // immédiatement à la machine du dernier import, sans attendre un rechargement complet.
+  const machineId = patch.machineId !== undefined ? (patch.machineId ?? row.sourceMachineId) : row.machineId;
   const plannedDate = patch.plannedDate !== undefined ? patch.plannedDate : row.plannedDate;
   const priority = patch.priority !== undefined ? patch.priority : row.effectivePriority;
   const status = patch.status !== undefined ? patch.status : row.effectiveStatus;
@@ -54,7 +57,8 @@ export function applyOperationPatchLocally(row: OperationView, patch: OperationV
     machineId,
     machine: machineId ?? UNDEFINED_MACHINE,
     isWithoutMachine: machineId === null,
-    hasPlannedMachine: patch.machineId !== undefined ? true : row.hasPlannedMachine,
+    hasPlannedMachine: patch.machineId !== undefined ? patch.machineId !== null : row.hasPlannedMachine,
+    hasMachineDifference: patch.machineId !== undefined ? patch.machineId !== null && patch.machineId !== row.sourceMachineId : row.hasMachineDifference,
     plannedDate,
     priority,
     effectivePriority: priority,
@@ -63,6 +67,7 @@ export function applyOperationPatchLocally(row: OperationView, patch: OperationV
     status,
     effectiveStatus: status,
     comment: patch.comment !== undefined ? patch.comment : row.comment,
+    plannedDurationHours: patch.plannedDurationHours !== undefined ? patch.plannedDurationHours : row.plannedDurationHours,
     hasComment: patch.comment !== undefined ? Boolean(patch.comment?.trim()) : row.hasComment,
     hasManualOverride: true,
     issues,

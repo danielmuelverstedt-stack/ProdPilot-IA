@@ -149,7 +149,7 @@ export const defaultSettings: AppSettings = {
     { id: "erp-quality", label: "Qualité ERP", icon: "quality", color: "#9333ea", size: "medium", description: "Traitez les incohérences qui fragilisent le planning.", status: "À corriger", counter: 4, priorityLevel: "Haute", href: "/qualite-erp", visible: true, order: 8 },
   ],
   company: {
-    name: "ProdPilot IA",
+    name: "TKMi",
     logoDataUrl: "",
     address: "",
     phone: "",
@@ -209,6 +209,13 @@ export const defaultSettings: AppSettings = {
       { ...standard("quality", "Qualité", "Qualité", "#0891b2", "#ffffff", 3), linkedCategoryCodes: ["20"], linkedMachineIds: [] },
       { ...standard("maintenance", "Maintenance", "Maintenance", "#d97706", "#ffffff", 4), linkedCategoryCodes: ["23"], linkedMachineIds: [] },
     ],
+    halls: [
+      standard("hall-1", "Hall 1", "Hall 1", "#334155", "#ffffff", 0),
+      standard("hall-2", "Hall 2", "Hall 2", "#475569", "#ffffff", 1),
+      standard("hall-3", "Hall 3", "Hall 3", "#64748b", "#ffffff", 2),
+      standard("hall-4", "Hall 4", "Hall 4", "#475569", "#ffffff", 3),
+      standard("hall-5", "Hall 5", "Hall 5", "#334155", "#ffffff", 4),
+    ],
     capacities: [
       capacity("capacity-turning", "Capacité Tournage", "turning", 8, 0),
       capacity("capacity-milling", "Capacité Fraisage", "milling", 8, 1),
@@ -247,6 +254,13 @@ export const defaultSettings: AppSettings = {
       standard("maintenance-inspection", "Inspection", "Inspection", "#2563eb", "#ffffff", 4),
       standard("maintenance-intervention", "Intervention", "Intervention", "#dc2626", "#ffffff", 5),
       standard("maintenance-other", "Autre", "Autre", "#64748b", "#ffffff", 6),
+    ],
+    projetSuiviStatuses: [
+      standard("projet-suivi-en-cours", "En cours", "En cours", "#1d4ed8", "#ffffff", 0),
+      standard("projet-suivi-a-risque", "À risque", "À risque", "#d97706", "#ffffff", 1),
+      standard("projet-suivi-en-attente", "En attente", "En attente", "#64748b", "#ffffff", 2),
+      standard("projet-suivi-bloque", "Bloqué", "Bloqué", "#dc2626", "#ffffff", 3),
+      standard("projet-suivi-termine", "Terminé", "Terminé", "#059669", "#ffffff", 4),
     ],
     planning: { allDepartmentsLabel: "Tous", defaultCapacityHours: 8, workingDays: [1, 2, 3, 4, 5], weekStartsOn: 1, visibleWeeks: 4, loadWarningPercent: 80, loadCriticalPercent: 95 },
     workOrderTypes: ["Production", "Retouche", "Prototype", "Urgence client", "Sous-traitance"],

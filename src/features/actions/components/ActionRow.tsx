@@ -27,7 +27,7 @@ export function getActionSortValue(action: ProductionAction, columnId: string, o
   if (columnId === "echeance") return action.echeance;
   if (columnId === "statut") return action.statut;
   if (columnId === "remarque") return action.remarque ?? "";
-  if (columnId === "lienContexte") return action.contextLink?.label ?? "";
+  if (columnId === "lienContexte") return action.contextLinks.map((item) => item.label).join(", ");
   return "";
 }
 
@@ -62,7 +62,7 @@ function renderCell(columnId: string, action: ProductionAction, origins: ActionO
   if (columnId === "echeance") return action.statut === "À planifier" ? <span className="text-slate-400">—</span> : <span className={isActionOverdue(action) ? "font-semibold text-red-700" : undefined}>{formatEuropeanDate(action.echeance)}</span>;
   if (columnId === "statut") return <StatusPill tone={actionStatusTone(action.statut)}>{action.statut}</StatusPill>;
   if (columnId === "remarque") return action.remarque ? <span className="line-clamp-2" title={action.remarque}>{action.remarque}</span> : "—";
-  if (columnId === "lienContexte") return action.contextLink ? <Link href={action.contextLink.href} className="underline">{action.contextLink.label}</Link> : "—";
+  if (columnId === "lienContexte") return action.contextLinks.length ? <span className="flex flex-wrap gap-1">{action.contextLinks.map((link) => <Link key={`${link.module}-${link.id}`} href={link.href} className="underline">{link.label}</Link>)}</span> : "—";
   return null;
 }
 

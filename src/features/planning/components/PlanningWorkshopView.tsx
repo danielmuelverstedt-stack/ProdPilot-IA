@@ -21,6 +21,7 @@ import { setVisibleTaskCategoryCodes, useVisibleTaskCategoryCodes } from "@/lib/
 export function PlanningWorkshopView() {
   const { settings, updateSettings } = useSettings();
   const machines = settings.production.machines;
+  const halls = settings.production.halls;
   const activeDepartments = useMemo(() => [...settings.production.departments].filter((department) => department.active).sort((a, b) => a.order - b.order), [settings.production.departments]);
   const currentUser = useMemo(() => settings.users.find((entry) => entry.active && entry.roleId === settings.activeRoleId) ?? settings.users.find((entry) => entry.active) ?? settings.users[0], [settings.activeRoleId, settings.users]);
   const preferenceContext = useMemo(() => ({ companyId: "local-development-company", siteId: "default-site", userId: currentUser?.id ?? "local-development-user" }), [currentUser?.id]);
@@ -28,7 +29,7 @@ export function PlanningWorkshopView() {
   // Réglage partagé « catégories visibles », dans son propre stockage rapide (pas dans les Réglages
   // partagés) : changer d'onglet ne doit toucher que ce champ, pas cloner/réécrire toute l'application.
   const visibleTaskCategoryCodes = useVisibleTaskCategoryCodes();
-  const { rows, allRows, isLoading, isMutating, error, updatePriority, updateMachine, updateStatus, reorderOperations, renumberOperations } = useWorkshopOperations(machines, visibleTaskCategoryCodes);
+  const { rows, allRows, isLoading, isMutating, error, updatePriority, updateMachine, updateStatus, updateDuration, reorderOperations, renumberOperations } = useWorkshopOperations(machines, visibleTaskCategoryCodes);
   function updateVisibleTaskCategoryCodes(codes: string[]) {
     setVisibleTaskCategoryCodes(codes);
   }
@@ -149,11 +150,16 @@ export function PlanningWorkshopView() {
     return outcome.result;
   }
 
+  function handleMoveDepartment(draggedId: string, hallId: string | null, targetId: string | null) {
+    updateSettings((draft) => { departmentSettingsService.moveDepartmentToHall(draft, draggedId, hallId, targetId); }, "Organisation des catégories par hall modifiée");
+  }
+
+
   if (printTarget) return <WorkshopMachinePrintView machine={printTarget.machine} operations={printTarget.operations} totalOperationCount={printTarget.totalOperationCount} visibleColumnIds={visibleColumnIds} settings={settings} onBack={() => setPrintTarget(null)} />;
 
   return <div className="space-y-4">
     {error ? <ErrorBanner>{error}</ErrorBanner> : null}
-    {activeDepartments.length ? <WorkshopDepartmentTabs departments={activeDepartments} selectedDepartmentId={selectedDepartmentId} operationCountByDepartmentId={operationCountByDepartmentId} onSelect={handleSelectDepartment} onCreate={() => setCreatingDepartment(true)} onEdit={setEditingDepartmentId} /> : null}
+    {activeDepartments.length ? <WorkshopDepartmentTabs halls={halls} departments={activeDepartments} selectedDepartmentId={selectedDepartmentId} operationCountByDepartmentId={operationCountByDepartmentId} onSelect={handleSelectDepartment} onCreate={() => setCreatingDepartment(true)} onEdit={setEditingDepartmentId} onMove={handleMoveDepartment} /> : null}
     <WorkshopFilters filters={preferences.state.filters} resultCount={resultCount} totalCount={(isPhysicalDepartment ? allRows : rows).length} onChange={preferences.updateFilters} />
     <WorkshopColumnSelector columns={preferences.state.columns} rowsPerMachine={preferences.state.rowsPerMachine} persistenceError={preferences.persistenceError} onToggleColumn={preferences.toggleColumn} onChangeRowsPerMachine={preferences.setRowsPerMachine} />
     <div className="space-y-5">
@@ -190,6 +196,7 @@ export function PlanningWorkshopView() {
         onUpdatePriority={updatePriority}
         onUpdateMachine={updateMachine}
         onUpdateStatus={updateStatus}
+        onUpdateDuration={updateDuration}
         onReorderOperations={reorderOperations}
         onRenumberOperations={renumberOperations}
         onMoveColumn={preferences.reorderColumns}

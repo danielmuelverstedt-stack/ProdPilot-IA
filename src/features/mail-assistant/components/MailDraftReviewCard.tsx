@@ -9,6 +9,8 @@ export interface ReviewableDraft {
   recipient: string;
   subject: string;
   bodyText: string;
+  bodyHtml?: string;
+  attachmentNames?: string[];
 }
 
 export function MailDraftReviewCard({ draft, sendingEnabled, onSent }: {
@@ -41,7 +43,8 @@ export function MailDraftReviewCard({ draft, sendingEnabled, onSent }: {
     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Brouillon prêt · relisez avant d’envoyer</p>
     <p className="mt-2 text-sm"><strong className="font-semibold">À :</strong> {draft.recipient}</p>
     <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">{draft.subject}</p>
-    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{draft.bodyText}</p>
+    {draft.bodyHtml ? <iframe title="Aperçu du brouillon" sandbox="" srcDoc={draft.bodyHtml} className="mt-3 h-96 w-full rounded-xl border border-[var(--app-border)] bg-white" /> : <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{draft.bodyText}</p>}
+    {draft.attachmentNames?.length ? <p className="mt-3 text-xs font-medium text-slate-600">Pièce jointe : {draft.attachmentNames.join(", ")}</p> : null}
     {sent ? <p className="mt-3 text-sm font-semibold text-emerald-700">Message envoyé.</p> : (
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {sendingEnabled

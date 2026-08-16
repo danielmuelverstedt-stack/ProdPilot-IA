@@ -64,7 +64,7 @@ function isDemoData(value: unknown): value is DemoData {
   if (typeof value !== "object" || value === null) return false;
   const item = value as Partial<DemoData>;
   return item.version === 2
-    && [item.actions, item.workOrders, item.planning, item.machines, item.maintenance,
+    && [item.actions, item.workOrders, item.planning, item.machines, item.maintenance, item.maintenanceProblems,
       item.meetings, item.requests, item.erpQuality, item.notifications,
       item.savContacts, item.consumables, item.people, item.contacts]
       .every(Array.isArray);

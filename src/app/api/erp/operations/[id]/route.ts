@@ -17,6 +17,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if ("machineId" in body) patch.machineId = nullableShortString(body.machineId, 100);
     if ("priority" in body) patch.priority = nullablePriority(body.priority);
     if ("manualOrder" in body) patch.manualOrder = nullablePriority(body.manualOrder);
+    if ("plannedDurationHours" in body) patch.plannedDurationHours = nullableDuration(body.plannedDurationHours);
     if ("status" in body) patch.status = nullableStatus(body.status);
     if ("comment" in body) patch.comment = nullableShortString(body.comment, 500);
     if ("visible" in body) patch.visible = nullableBoolean(body.visible);
@@ -32,6 +33,7 @@ function nullableDate(value: unknown): string | null {
   return value;
 }
 function nullablePriority(value: unknown): number | null { if (value === null || value === "") return null; if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 999) throw new Error("La priorité doit être comprise entre 0 et 999."); return Math.round(value); }
+function nullableDuration(value: unknown): number | null { if (value === null || value === "") return null; if (typeof value !== "number" || !Number.isFinite(value) || value < 0.25 || value > 999) throw new Error("Le temps prévu doit être compris entre 0,25 h et 999 h."); return Math.round(value * 100) / 100; }
 function nullableStatus(value: unknown): ErpOperationStatus | null { if (value === null || value === "") return null; if (!["not-started", "in-progress", "completed", "blocked", "unknown", "waiting"].includes(String(value))) throw new Error("Le statut Planning est invalide."); return value as ErpOperationStatus; }
 function nullableShortString(value: unknown, max: number): string | null { if (value === null || value === "") return null; if (typeof value !== "string" || value.trim().length > max) throw new Error("La valeur Planning est invalide."); return value.trim(); }
 function nullableBoolean(value: unknown): boolean | null { if (value === null) return null; if (typeof value !== "boolean") throw new Error("La valeur Planning doit être booléenne."); return value; }

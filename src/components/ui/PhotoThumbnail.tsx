@@ -1,14 +1,16 @@
 /* eslint-disable @next/next/no-img-element */
 
-type PhotoThumbnailSize = "xs" | "md";
+type PhotoThumbnailSize = "xs" | "sm" | "md";
 
 const FALLBACK_CLASSES: Record<PhotoThumbnailSize, string> = {
   xs: "h-4 w-4 rounded text-[9px]",
+  sm: "h-8 w-8 rounded-md border border-[var(--app-border)] text-[10px]",
   md: "h-12 w-12 rounded-lg border border-[var(--app-border)] text-xs",
 };
 
 const IMAGE_CLASSES: Record<PhotoThumbnailSize, string> = {
   xs: "h-4 w-4 rounded",
+  sm: "h-8 w-8 rounded-md border border-[var(--app-border)]",
   md: "h-12 w-12 rounded-lg border border-[var(--app-border)]",
 };
 

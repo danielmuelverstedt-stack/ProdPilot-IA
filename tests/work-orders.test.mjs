@@ -140,7 +140,7 @@ test("le module OF réutilise le regroupement et les hooks existants sans dupliq
 test("la fiche OF garde la démonstration comme repli et le lien d'action inchangé en mode ERP", async () => {
   const detail = await readFile(new URL("../src/features/work-orders/components/WorkOrderDetail.tsx", import.meta.url), "utf8");
   assert.match(detail, /useErpImportActive/);
-  assert.match(detail, /hasActiveImport \? <ErpWorkOrderDetail id={id} \/> : <DemoWorkOrderDetail id={id} \/>/);
+  assert.match(detail, /hasActiveImport \? <ErpWorkOrderDetail id={id} onPrintLabel={.*?} \/> : <DemoWorkOrderDetail id={id} onPrintLabel={.*?} \/>/);
   const contextLinkOccurrences = detail.match(/module: "workOrder", id, label: id, href: `\/of\/\$\{id\}`/g) ?? [];
   assert.ok(contextLinkOccurrences.length >= 1, "le contextLink workOrder doit rester câblé en mode ERP");
   assert.match(detail, /include=work-order-details/, "la fiche ERP redemande le détail complet, comme l'ancienne fenêtre du Cockpit ERP");
@@ -154,6 +154,23 @@ test("la fiche OF ERP permet de changer le statut et d'ajouter une remarque sur 
   assert.match(detail, /<select className={`\$\{fieldClass\} h-8 py-0 text-xs`} value={row\.effectiveStatus} onChange={\(event\) => updateStatus\(row\.id, event\.target\.value as OperationView\["status"\]\)}>/, "le statut de chaque opération est éditable, plus un simple badge en lecture seule");
   assert.match(detail, /onBlur={\(event\) => \{ if \(event\.target\.value\.trim\(\) !== \(row\.comment \?\? ""\)\) updateComment\(row\.id, event\.target\.value\); \}}/, "la remarque se saisit directement dans le tableau des opérations");
   assert.match(detail, /const current = rows\.find\(\(row\) => row\.effectiveStatus === "blocked"\) \?\? rows\.find\(\(row\) => row\.effectiveStatus === "waiting"\) \?\? rows\.find\(\(row\) => row\.effectiveStatus === "in-progress"\) \?\? rows\[0\];/, "l'opération « courante » affichée en tête de fiche suit la même priorité que deriveErpWorkOrderStatus");
+});
+
+test("la fiche OF compare la machine ERP au planning et exige une confirmation avant de reprendre la source", async () => {
+  const detail = await readFile(new URL("../src/features/work-orders/components/WorkOrderDetail.tsx", import.meta.url), "utf8");
+  assert.match(detail, /Modification manuelle conservée/);
+  assert.match(detail, /Source ERP/);
+  assert.match(detail, /Planning actuel/);
+  assert.match(detail, /window\.confirm\(`La machine planifiée actuelle est \$\{row\.machine\}/);
+  assert.match(detail, /patchOperation\(row\.id, \{ machineId: null \}/, "reprendre l'ERP supprime la décision machine, sans recopier la source dans une nouvelle surcharge");
+});
+
+test("le résumé des imports liste les affectations machine manuelles conservées", async () => {
+  const workspace = await readFile(new URL("../src/features/erp-import/components/ErpPlanningWorkspace.tsx", import.meta.url), "utf8");
+  assert.match(workspace, /Modifications manuelles conservées/);
+  assert.match(workspace, /row\.hasMachineDifference/);
+  assert.match(workspace, /Source ERP/);
+  assert.match(workspace, /Planning actuel/);
 });
 
 test("la fiche OF ERP n'invente aucun temps de fabrication (le mode démonstration garde le sien, réel)", async () => {

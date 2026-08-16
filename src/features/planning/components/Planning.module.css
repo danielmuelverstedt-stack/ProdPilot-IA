@@ -43,3 +43,11 @@
   .planningCard { border: 0; box-shadow: none; }
   .gridScroller { overflow: visible; }
 }
+
+/* Grille dense (machines × jours) : sur un écran de téléphone, réduire les colonnes plutôt que de garder le gabarit desktop (1650px mini) fait tenir plusieurs jours à l'écran au lieu d'un seul avant de devoir défiler horizontalement — le défilement (`.gridScroller`) reste nécessaire dans les deux cas. */
+@media (max-width: 640px) {
+  .grid { min-width: 900px; font-size: 0.7rem; }
+  .machineColumn { min-width: 110px; width: 110px; }
+  .dayHeader, .cell { min-width: 46px; padding: 0.3rem 0.15rem; }
+  .chargeColumn { min-width: 60px; padding: 0.4rem 0.5rem; }
+}

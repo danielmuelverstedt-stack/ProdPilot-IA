@@ -25,9 +25,10 @@ export class OperationViewService {
 
   createView(operation: ErpOperation, decision: PlanningDecision | null, workOrder: ErpWorkOrder | ErpPlanningWorkOrderSummary | null, machineMappings: Record<string, ErpMachineMapping> = {}): OperationView {
     const plannedMachine = normalizeMachine(decision?.plannedMachineId);
+    const hasMachineAssignmentOverride = decision?.hasMachineAssignmentOverride ?? plannedMachine !== null;
     const normalizedErpMachineCode = normalizeErpMachineCode(operation.erpMachineCode);
     const erpMachine = normalizeMachine(normalizedErpMachineCode ? machineMappings[normalizedErpMachineCode]?.machineId : null);
-    const machineId = plannedMachine ?? erpMachine;
+    const machineId = hasMachineAssignmentOverride ? plannedMachine : erpMachine;
     const hasUserPriority = decision?.userPriority !== null && decision?.userPriority !== undefined;
     const comment = decision?.comment ?? null;
     const manualOrder = decision?.manualOrder ?? null;
@@ -50,6 +51,7 @@ export class OperationViewService {
       userPriority: decision?.userPriority ?? null,
       comment,
       manualOrder,
+      plannedDurationHours: decision?.plannedDurationHours ?? 8,
       isLocked: decision?.locked ?? false,
       hasPlannedMachine: plannedMachine !== null,
       hasUserPriority,
@@ -70,6 +72,8 @@ export class OperationViewService {
       workOrder,
       sourceMachineCode: operation.erpMachineCode,
       sourceMachineDescription: operation.erpMachineDescription,
+      sourceMachineId: erpMachine,
+      hasMachineDifference: hasMachineAssignmentOverride && plannedMachine !== erpMachine,
       erpMachineCode: operation.erpMachineCode,
       sourcePriority: operation.erpPriority,
       effectivePriority: hasUserPriority ? decision!.userPriority! : operation.erpPriority,

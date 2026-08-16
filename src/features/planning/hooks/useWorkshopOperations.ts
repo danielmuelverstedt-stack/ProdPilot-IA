@@ -99,12 +99,16 @@ export function useWorkshopOperations(machines: MachineSettings[], visibleTaskCa
     await patchOneOptimistically(operationId, { priority }, "La priorité n’a pas pu être modifiée.");
   }, [patchOneOptimistically]);
 
-  const updateMachine = useCallback(async (operationId: string, machineId: string) => {
+  const updateMachine = useCallback(async (operationId: string, machineId: string | null) => {
     await patchOneOptimistically(operationId, { machineId }, "La machine n’a pas pu être modifiée.");
   }, [patchOneOptimistically]);
 
   const updateStatus = useCallback(async (operationId: string, status: OperationView["status"]) => {
     await patchOneOptimistically(operationId, { status }, "Le statut n’a pas pu être modifié.");
+  }, [patchOneOptimistically]);
+
+  const updateDuration = useCallback(async (operationId: string, plannedDurationHours: number) => {
+    await patchOneOptimistically(operationId, { plannedDurationHours }, "Le temps prévu n’a pas pu être modifié.");
   }, [patchOneOptimistically]);
 
   /** Déplacement jour + machine en une seule écriture (Planning capacité : glisser un OF ERP vers une autre case). */
@@ -171,7 +175,7 @@ export function useWorkshopOperations(machines: MachineSettings[], visibleTaskCa
     await patchManyOptimistically(changed, "La renumérotation n’a pas pu être enregistrée.");
   }, [rows, patchManyOptimistically]);
 
-  return { rows, allRows, isLoading, isMutating, error, refresh: load, updatePriority, updateMachine, updateStatus, updatePlacement, reorderOperations, renumberOperations };
+  return { rows, allRows, isLoading, isMutating, error, refresh: load, updatePriority, updateMachine, updateStatus, updateDuration, updatePlacement, reorderOperations, renumberOperations };
 }
 
 function apiMessage(payload: unknown): string {

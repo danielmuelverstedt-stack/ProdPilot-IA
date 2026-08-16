@@ -54,3 +54,10 @@
   .planningCard { border: 0; box-shadow: none; }
   .gridScroller { overflow: visible; }
 }
+
+/* Même traitement que Planning.module.css (dont ce fichier est une copie adaptée, voir l'en-tête) : colonnes réduites sur téléphone pour faire tenir plusieurs périodes à l'écran avant de devoir défiler. */
+@media (max-width: 640px) {
+  .grid { min-width: 760px; font-size: 0.7rem; }
+  .personColumn { min-width: 130px; width: 130px; }
+  .periodHeader, .cell { min-width: 100px; padding: 0.3rem; }
+}

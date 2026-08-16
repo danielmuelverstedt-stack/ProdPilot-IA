@@ -13,7 +13,8 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-function endOfWeekIso(today: string): string {
+/** Dernier jour (dimanche) de la semaine courante, au format ISO date — source unique, réutilisée par le résumé « Cette semaine » de `MeetingActionsTracker`. */
+export function endOfWeekIso(today: string): string {
   const date = new Date(`${today}T00:00:00`);
   const day = date.getDay();
   const daysUntilSunday = day === 0 ? 0 : 7 - day;
@@ -25,7 +26,8 @@ function countOverdue(items: ProductionAction[], today: string): number {
   return items.filter((item) => isActionOverdue(item, today)).length;
 }
 
-function sortWithOverdueFirst(items: ProductionAction[], today: string): ProductionAction[] {
+/** Retard d'abord, puis échéance croissante — jamais de tri par priorité. Source unique, réutilisée par `MeetingActionsTracker` plutôt que d'être réécrite. */
+export function sortWithOverdueFirst(items: ProductionAction[], today: string): ProductionAction[] {
   return [...items].sort((a, b) => {
     const overdueDiff = Number(isActionOverdue(b, today)) - Number(isActionOverdue(a, today));
     if (overdueDiff !== 0) return overdueDiff;

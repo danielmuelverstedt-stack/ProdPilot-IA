@@ -53,7 +53,7 @@ test("le Parc Machines propose un filtre par catégorie (uniquement les catégor
   const module_ = await readFile(new URL("../src/features/machines/components/MachinesModule.tsx", import.meta.url), "utf8");
   assert.match(module_, /usedCategoryCodes = useMemo/, "seules les catégories effectivement utilisées apparaissent dans le filtre");
   assert.match(module_, /displayedMachines\.map\(\(machine\)/, "la grille de cartes utilise la liste filtrée");
-  assert.match(module_, /Metric label="Machines actives" value=\{machines\.filter/, "les compteurs globaux restent basés sur le parc complet, pas sur le filtre actif");
+  assert.match(module_, /MetricCard label="Machines actives" value=\{machines\.filter/, "les compteurs globaux restent basés sur le parc complet, pas sur le filtre actif");
 });
 
 test("le Parc Machines propose un onglet par département actif plus un onglet « Tous », en plus du filtre Catégorie qui affine ensuite l'onglet actif", async () => {

@@ -223,6 +223,12 @@ export interface CreateMailDraftInput {
   bcc?: MailAddress[];
   subject: string;
   bodyText: string;
+  /** Version HTML facultative, toujours accompagnée de `bodyText` comme repli accessible. */
+  bodyHtml?: string;
+  /** Images intégrées au HTML via `cid:<contentId>` ; jamais des pièces jointes externes opaques. */
+  inlineImages?: { contentId: string; mimeType: "image/jpeg" | "image/png" | "image/webp"; base64: string; filename: string }[];
+  /** Pièces jointes générées localement et explicitement ajoutées au brouillon. */
+  attachments?: { mimeType: "application/pdf"; base64: string; filename: string }[];
   replyToMessageId?: string;
   replyToThreadId?: string;
 }

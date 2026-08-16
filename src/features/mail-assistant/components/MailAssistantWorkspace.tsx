@@ -81,9 +81,9 @@ export function MailAssistantWorkspace({ initialAccount }: { initialAccount: Mai
     for (const draft of session.pendingActionDrafts ?? []) {
       if (appliedActionDraftIds.current.has(draft.id)) continue;
       appliedActionDraftIds.current.add(draft.id);
-      const alreadyExists = demoData.actions.some((action) => action.contextLink?.module === "mail" && action.contextLink.id === draft.messageId && action.description === draft.description);
+      const alreadyExists = demoData.actions.some((action) => action.contextLinks.some((link) => link.module === "mail" && link.id === draft.messageId) && action.description === draft.description);
       if (alreadyExists) continue;
-      createAction({ description: draft.description, responsable: draft.responsable, echeance: draft.echeance, origine: "Mail", introduitPar: `${firstName} ${user?.lastName ?? ""}`.trim(), contextLink: { module: "mail", id: draft.messageId, label: draft.messageId, href: "/mails" } });
+      createAction({ description: draft.description, responsable: draft.responsable, echeance: draft.echeance, origine: "Mail", introduitPar: `${firstName} ${user?.lastName ?? ""}`.trim(), contextLinks: [{ module: "mail", id: draft.messageId, label: draft.messageId, href: "/mails" }] });
     }
   }, [session, demoData.actions, firstName, user?.lastName]);
 

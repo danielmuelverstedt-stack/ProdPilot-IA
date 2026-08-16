@@ -131,7 +131,7 @@ function buildErpOperationBlocks(operations: OperationView[], machineIds: Set<st
       operationView: operation,
       machineId: operation.machineId,
       date: operation.plannedDate,
-      durationHours: null,
+      durationHours: operation.plannedDurationHours,
       status: operation.effectiveStatus,
       display: { tone: erpOperationStatusTone(operation.effectiveStatus), label: ERP_OPERATION_STATUS_LABELS[operation.effectiveStatus] },
       isBlocked: operation.effectiveStatus === "blocked",

@@ -92,6 +92,16 @@ test("migrateDemoData complète un ancien payload v2 sans « people » ni nouvea
   assert.deepEqual(result.actions[0].plannedWeek, null);
   assert.deepEqual(result.actions[0].planningOrder, null);
   assert.equal(result.actions[0].description, "Ancienne action", "les données existantes ne sont jamais perdues par le backfill");
+  assert.deepEqual(result.actions[0].contextLinks, [], "l'ancien champ contextLink (singulier, null) devient un tableau vide, pas une erreur");
+  assert.deepEqual(result.actions[0].comments, []);
+  assert.deepEqual(result.actions[0].history, []);
+  assert.deepEqual(result.actions[0].responsableContactId, null);
+});
+
+test("migrateDemoData convertit l'ancien contextLink (singulier) déjà renseigné en tableau contextLinks à une seule entrée, sans perdre le lien", () => {
+  const legacyAction = { id: "ACT-002", dateEncodage: "2026-01-01", introduitPar: "Daniel", origine: "Parc machines", contextLink: { module: "machine", id: "FIL-01", label: "FIL-01", href: "/machines/FIL-01" }, description: "Ancienne action liée à une machine", responsable: "Marc", echeance: "2026-02-01", statut: "À faire", dateCloture: null, remarque: null };
+  const result = migrateDemoData(baseV2Payload({ actions: [legacyAction] }));
+  assert.deepEqual(result.actions[0].contextLinks, [{ module: "machine", id: "FIL-01", label: "FIL-01", href: "/machines/FIL-01" }]);
 });
 
 test("migrateDemoData préserve un « people » déjà présent (ne l'écrase pas avec un tableau vide)", () => {
